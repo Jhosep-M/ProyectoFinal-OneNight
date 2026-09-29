@@ -23,7 +23,11 @@ export function AuthProvider({ children }) {
     if (error) throw error;
   }, []);
 
-  const signOut = useCallback(() => supabase.auth.signOut(), []);
+  const signOut = useCallback(async () => {
+    const { error } = await supabase.auth.signOut();
+    if (error) throw error;
+    setSession(null);
+  }, []);
 
   return (
     <AuthCtx.Provider value={{ session, loading, signIn, signOut }}>

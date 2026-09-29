@@ -1,4 +1,5 @@
-import { NavLink } from 'react-router-dom';
+import { useState } from 'react';
+import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 import { usePermisos } from '../context/PermisosContext.jsx';
 
@@ -36,6 +37,23 @@ const GRUPOS = [
 export default function Sidebar() {
   const { session, signOut } = useAuth();
   const { tienePermiso, loading } = usePermisos();
+  const navigate = useNavigate();
+  const [saliendo, setSaliendo] = useState(false);
+  const [errorSalir, setErrorSalir] = useState('');
+
+  const handleSalir = async () => {
+    if (saliendo) return;
+    setErrorSalir('');
+    setSaliendo(true);
+    try {
+      await signOut();
+      navigate('/login', { replace: true });
+    } catch {
+      setErrorSalir('No se pudo cerrar sesión. Intenta de nuevo.');
+    } finally {
+      setSaliendo(false);
+    }
+  };
 
   return (
     <aside className="sidebar">
@@ -70,10 +88,20 @@ export default function Sidebar() {
       <div className="sidebar-footer">
         <div className="sidebar-user">
           <div className="user-email">{session?.user?.email}</div>
-          <button className="btn btn-sm btn-outline-light" onClick={signOut}>
+          <button
+            type="button"
+            className="btn btn-sm btn-outline-light"
+            onClick={handleSalir}
+            disabled={saliendo}
+          >
             <i className="bi bi-box-arrow-right me-1"></i>
-            Salir
+            {saliendo ? 'Saliendo...' : 'Salir'}
           </button>
+          {errorSalir && (
+            <div className="text-danger small mt-1" role="alert">
+              {errorSalir}
+            </div>
+          )}
         </div>
       </div>
     </aside>

@@ -1,6 +1,6 @@
 ﻿import { render, screen } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import AuthLayout from '../AuthLayout.jsx';
 import MainLayout from '../MainLayout.jsx';
 import Sidebar from '../Sidebar.jsx';
@@ -10,10 +10,17 @@ const permsState = vi.hoisted(() => ({ concedidos: true }));
 vi.mock('../../context/PermisosContext.jsx', () => ({ usePermisos: () => ({ permisos: permsState.concedidos ? ['*'] : [], loading: false, tienePermiso: () => permsState.concedidos, recargar: vi.fn() }), PermisosProvider: ({ children }) => children }));
 
 describe('AuthLayout', () => {
-  it('envuelve children en contenedor centrado', () => {
-    render(<AuthLayout><p>Login</p></AuthLayout>);
+  it('renderiza ruta hija via Outlet (evita login en blanco)', () => {
+    render(
+      <MemoryRouter initialEntries={['/login']}>
+        <Routes>
+          <Route element={<AuthLayout />}>
+            <Route path="/login" element={<p>Login</p>} />
+          </Route>
+        </Routes>
+      </MemoryRouter>
+    );
     expect(screen.getByText('Login')).toBeInTheDocument();
-    expect(document.querySelector('.auth-wrap')).toBeInTheDocument();
   });
 });
 

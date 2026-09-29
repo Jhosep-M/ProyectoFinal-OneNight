@@ -22,8 +22,24 @@ export default function MainLayout() {
   const { sesion, cerrarSesion, perfil, orgSeleccionada, setOrgSeleccionada } = useAuth();
   const [abiertas, setAbiertas] = useState(null);
   const [hora, setHora] = useState(() => new Date());
+  const [saliendo, setSaliendo] = useState(false);
+  const [errorSalir, setErrorSalir] = useState(null);
   const navigate = useNavigate();
   const nombre = perfil?.nombre ?? perfil?.usuario?.nombre ?? sesion?.user?.email?.split('@')[0] ?? '';
+
+  async function handleSalir() {
+    if (saliendo) return;
+    setErrorSalir(null);
+    setSaliendo(true);
+    try {
+      await cerrarSesion();
+      navigate('/login', { replace: true });
+    } catch {
+      setErrorSalir('No se pudo cerrar sesión. Intenta de nuevo.');
+    } finally {
+      setSaliendo(false);
+    }
+  }
 
   const cargarAbiertas = useCallback(async () => {
     if (!orgSeleccionada) return;
@@ -78,7 +94,10 @@ export default function MainLayout() {
         </nav>
         <div className="pie">
           <span>{nombre}</span>
-          <button type="button" onClick={cerrarSesion}>Salir</button>
+          <button type="button" onClick={handleSalir} disabled={saliendo}>
+            {saliendo ? 'Saliendo…' : 'Salir'}
+          </button>
+          {errorSalir && <p className="error" role="alert">{errorSalir}</p>}
         </div>
       </aside>
       <div className="main">
