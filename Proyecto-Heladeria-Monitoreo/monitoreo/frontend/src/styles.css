@@ -224,21 +224,6 @@ body {
   color: #64748B;
 }
 
-.badge.prioridad-alta {
-  background: #FEE2E2;
-  color: #991B1B;
-}
-
-.badge.prioridad-media {
-  background: #FEF3C7;
-  color: #92400E;
-}
-
-.badge.prioridad-baja {
-  background: #DBEAFE;
-  color: #1E40AF;
-}
-
 .formulario {
   background: #FFFFFF;
   border: 1px solid #E2E8F0;
@@ -322,6 +307,22 @@ input[type="date"] {
   background: #E2E8F0;
   color: #94A3B8;
   cursor: default;
+}
+
+.formulario button + button {
+  margin-left: 8px;
+}
+
+.formulario button.peligro,
+.tabla button.peligro {
+  background: #FFFFFF;
+  color: #991B1B;
+  border: 1px solid #991B1B;
+}
+
+.formulario button.peligro:hover,
+.tabla button.peligro:hover {
+  background: #FEF2F2;
 }
 
 .error {
@@ -632,6 +633,41 @@ select:focus-visible {
   .col-8, .col-4 { grid-column: auto; }
 }
 .tabla-scroll { overflow-x: auto; width: 100%; }
+
+.tabla-umbrales { table-layout: fixed; }
+.tabla-umbrales th.num, .tabla-umbrales td.num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.tabla-umbrales th.centro, .tabla-umbrales td.centro { text-align: center; }
+.tabla-umbrales th.acciones-th { text-align: right; }
+.tabla-acciones { display: flex; gap: 8px; justify-content: flex-end; }
+.fila-vacia td { text-align: center; }
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  max-width: none;
+}
+.form-grid label { display: flex; flex-direction: column; gap: 6px; margin: 0; }
+.form-grid input, .form-grid select, .form-grid textarea { width: 100%; margin: 0; }
+.form-acciones { grid-column: 1 / -1; display: flex; gap: 8px; justify-content: flex-end; }
+
+.modal-fondo {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  z-index: 50;
+}
+.modal { background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 6px; padding: 20px; max-width: 420px; width: 100%; }
+.modal h3 { margin: 0 0 8px 0; font-size: 16px; color: #0F172A; }
+.modal p { font-size: 14px; color: #475569; margin: 0 0 16px 0; }
+.modal .form-acciones { display: flex; }
 .medidor-mini { border: 1px solid #B3B1B4; border-radius: 2px; padding: 12px; background: #FFFFFF; }
 .medidor-mini .codigo { font-family: Consolas, monospace; font-weight: bold; font-size: 12px; }
 .medidor-mini .codigo.agua { color: #1E40AF; }

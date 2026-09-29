@@ -7,7 +7,7 @@ async function token() {
   return data.session?.access_token ?? null;
 }
 
-async function solicitud(metodo, ruta, cuerpo, reintento429 = true) {
+async function solicitud(metodo, ruta, cuerpo) {
   const t = await token();
   const res = await fetch(`${BASE}${ruta}`, {
     method: metodo,
@@ -17,15 +17,9 @@ async function solicitud(metodo, ruta, cuerpo, reintento429 = true) {
     },
     ...(cuerpo !== undefined ? { body: JSON.stringify(cuerpo) } : {}),
   });
-  // 429: espera Retry-After (tope 5s) y reintenta una vez en vez de fallar.
-  if (res.status === 429 && reintento429) {
-    const espera = Math.min(Number(res.headers.get('Retry-After')) || 2, 5) * 1000;
-    await new Promise((r) => setTimeout(r, espera));
-    return solicitud(metodo, ruta, cuerpo, false);
-  }
   const cuerpoRes = await res.json().catch(() => ({}));
   if (!res.ok) {
-    const err = new Error(res.status === 429 ? 'Límite de peticiones excedido, espera unos segundos y reintenta' : (cuerpoRes.error || `Error ${res.status}`));
+    const err = new Error(cuerpoRes.error || `Error ${res.status}`);
     err.status = res.status;
     err.detail = cuerpoRes.detail;
     throw err;
@@ -37,4 +31,5 @@ export const api = {
   get: (ruta) => solicitud('GET', ruta),
   post: (ruta, cuerpo) => solicitud('POST', ruta, cuerpo),
   patch: (ruta, cuerpo) => solicitud('PATCH', ruta, cuerpo),
+  delete: (ruta) => solicitud('DELETE', ruta),
 };

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { listar } from '../services/alertasService';
+import { listar, acusar, resolver, reenviar } from '../services/alertasService';
 
 export default function Alertas() {
   const { orgSeleccionada } = useAuth();
@@ -38,7 +38,7 @@ export default function Alertas() {
       {error && <p className="error">{error}</p>}
       <table className="tabla">
         <thead>
-          <tr><th>Fecha</th><th>Nivel</th><th>Tipo</th><th>Mensaje</th><th>Entrega al POS</th></tr>
+          <tr><th>Fecha</th><th>Nivel</th><th>Tipo</th><th>Mensaje</th><th>Estado</th><th>Acciones</th></tr>
         </thead>
         <tbody>
           {data.map((a) => (
@@ -48,9 +48,14 @@ export default function Alertas() {
               <td>{a.tipo_recurso}</td>
               <td>{a.mensaje}</td>
               <td>{a.estado}</td>
+              <td>
+                <button type="button" onClick={() => acusar(a.id).then(cargar).catch((e) => setError(e.message))}>Acusar</button>{' '}
+                <button type="button" onClick={() => resolver(a.id).then(cargar).catch((e) => setError(e.message))}>Resolver</button>{' '}
+                <button type="button" onClick={() => reenviar(a.id).then(cargar).catch((e) => setError(e.message))}>Reenviar</button>
+              </td>
             </tr>
           ))}
-          {data.length === 0 && !error && <tr><td colSpan="5">Sin alertas</td></tr>}
+          {data.length === 0 && !error && <tr><td colSpan="6">Sin alertas</td></tr>}
         </tbody>
       </table>
     </section>

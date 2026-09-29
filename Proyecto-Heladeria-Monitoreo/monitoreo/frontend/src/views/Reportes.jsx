@@ -1,32 +1,22 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { consumo, topExcesos } from '../services/reportesService';
+import { consumo } from '../services/reportesService';
 
 export default function Reportes() {
   const { orgSeleccionada } = useAuth();
   const [rango, setRango] = useState({ desde: '', hasta: '' });
   const [reporte, setReporte] = useState(null);
-  const [excesos, setExcesos] = useState([]);
   const [error, setError] = useState(null);
 
   const cargar = useCallback(async () => {
     if (!orgSeleccionada) return;
     try {
       setError(null);
-      const [rep, exc] = await Promise.all([
-        consumo({
-          organizacionId: orgSeleccionada,
-          desde: rango.desde || undefined,
-          hasta: rango.hasta || undefined,
-        }),
-        topExcesos({
-          organizacionId: orgSeleccionada,
-          desde: rango.desde || undefined,
-          hasta: rango.hasta || undefined,
-        }).catch(() => ({ data: [] })),
-      ]);
-      setReporte(rep);
-      setExcesos(exc.data ?? []);
+      setReporte(await consumo({
+        organizacionId: orgSeleccionada,
+        desde: rango.desde || undefined,
+        hasta: rango.hasta || undefined,
+      }));
     } catch (e) { setError(e.message); }
   }, [orgSeleccionada, rango]);
 
@@ -105,22 +95,6 @@ export default function Reportes() {
                   </tr>
                 ))}
                 {reporte.avanceMetas.length === 0 && <tr><td colSpan="3">Sin metas activas</td></tr>}
-              </tbody>
-            </table>
-          </div>
-          <div className="tarjeta">
-            <h3>Top excesos diarios</h3>
-            <table className="tabla">
-              <thead><tr><th>Día</th><th>Tipo</th><th>Total</th></tr></thead>
-              <tbody>
-                {excesos.map((x, i) => (
-                  <tr key={`${x.dia}-${x.tipo}-${i}`}>
-                    <td>{x.dia}</td>
-                    <td><span className={`badge ${x.tipo}`}>{x.tipo}</span></td>
-                    <td>{Number(x.total).toLocaleString('es')}</td>
-                  </tr>
-                ))}
-                {excesos.length === 0 && <tr><td colSpan="3">Sin excesos en el rango</td></tr>}
               </tbody>
             </table>
           </div>

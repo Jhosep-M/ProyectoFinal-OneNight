@@ -8,10 +8,10 @@ const ctrl = require('../controllers/recursos.controller');
 const router = Router();
 router.use(authenticateJWT);
 
-// GET lista tipos de recurso (tabla semilla agua/energia): lectura para todos
-// los roles vía 'recurso.consultar' (ver database/monitoreo/003_*).
-// POST crea tipos nuevos: solo gestión.
-router.get('/', requirePermission('recurso.consultar'), ctrl.listar);
+// El plan menciona 'recurso.consultar' para GET, pero el seed (Task 2) solo crea
+// 'recurso.gestionar' (grep en database/monitoreo: no existe recurso.consultar).
+// Usar el permiso inexistente devolvería 403 para todos los roles, incluido admin.
+router.get('/', requirePermission('recurso.gestionar'), ctrl.listar);
 router.post('/', requirePermission('recurso.gestionar'), validateBody(recursoSchema), ctrl.crear);
 
 module.exports = { recursosRouter: router };

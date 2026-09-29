@@ -93,30 +93,4 @@ async function topExcesos(organizacionId, desde, hasta, limite) {
   return filas;
 }
 
-// Auditoría: acciones realizadas por miembros activos de la org (auditoria_cambio
-// no tiene organizacion_id; se acota por membresía del autor). Solo lectura.
-async function auditoria(organizacionId, { desde, hasta, page = 1, limit = 25 }) {
-  const lim = Math.min(Math.max(Number(limit) || 25, 1), 100);
-  const pag = Math.max(Number(page) || 1, 1);
-  const off = (pag - 1) * lim;
-  const where = `a.usuario_id IN (SELECT usuario_id FROM usuario_organizacion WHERE organizacion_id = :org AND estado = 'activo')
-    AND (:desde::date IS NULL OR a.creado_en::date >= :desde::date)
-    AND (:hasta::date IS NULL OR a.creado_en::date <= :hasta::date)`;
-  const [filas] = await sequelize.query(
-    `SELECT a.id, a.entidad, a.entidad_id, a.accion, a.usuario_id, u.email AS user_email,
-            a.req_id, a.detalle, a.creado_en
-       FROM auditoria_cambio a
-       LEFT JOIN usuario u ON u.id = a.usuario_id
-      WHERE ${where}
-      ORDER BY a.creado_en DESC
-      LIMIT :lim OFFSET :off`,
-    { replacements: { org: organizacionId, desde: desde ?? null, hasta: hasta ?? null, lim, off } },
-  );
-  const [tot] = await sequelize.query(
-    `SELECT COUNT(*)::int AS total FROM auditoria_cambio a WHERE ${where}`,
-    { replacements: { org: organizacionId, desde: desde ?? null, hasta: hasta ?? null } },
-  );
-  return { rows: filas, total: tot[0]?.total ?? 0 };
-}
-
-module.exports = { resumenConsumo, resumenAlertas, costoEstimado, avanceMetas, topExcesos, auditoria };
+module.exports = { resumenConsumo, resumenAlertas, costoEstimado, avanceMetas, topExcesos };

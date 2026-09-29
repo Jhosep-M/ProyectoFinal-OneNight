@@ -11,5 +11,6 @@ router.use(authenticateJWT);
 router.get('/', requirePermission('umbral.consultar'), scopeOrg, ctrl.listar);
 router.post('/', requirePermission('umbral.gestionar'), scopeOrg, validateBody(umbralSchema), ctrl.crear);
 router.patch('/:id', requirePermission('umbral.gestionar'), scopeOrg, validateBody(umbralUpdateSchema), ctrl.actualizar);
+router.delete('/:id', requirePermission('umbral.gestionar'), scopeOrg, ctrl.eliminar);
 
 module.exports = { umbralesRouter: router };

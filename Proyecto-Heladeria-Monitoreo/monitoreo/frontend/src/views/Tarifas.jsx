@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { listar, crear, actualizar } from '../services/tarifasService';
+import { listar, crear } from '../services/tarifasService';
 import { listarRecursos } from '../services/medidoresService';
 
 const vacio = { tipoRecursoId: '', nombre: '', monto: '', unidad: '', fechaInicio: '', fechaFin: '' };
@@ -16,7 +16,6 @@ export default function Tarifas() {
   const [data, setData] = useState([]);
   const [recursos, setRecursos] = useState([]);
   const [form, setForm] = useState(vacio);
-  const [editando, setEditando] = useState(null);
   const [error, setError] = useState(null);
   const [guardando, setGuardando] = useState(false);
   const [calc, setCalc] = useState({ cantidad: '', tarifaId: '' });
@@ -36,32 +35,18 @@ export default function Tarifas() {
 
   async function enviar(e) {
     e.preventDefault();
-    if (form.fechaInicio && form.fechaFin && form.fechaInicio > form.fechaFin) {
-      setError('Rango de fechas inválido');
-      return;
-    }
     setGuardando(true);
     setError(null);
     try {
-      if (editando) {
-        await actualizar(editando, {
-          nombre: form.nombre,
-          monto: Number(form.monto),
-          fechaInicio: form.fechaInicio,
-          fechaFin: form.fechaFin,
-        });
-        setEditando(null);
-      } else {
-        await crear({
-          organizacionId: orgSeleccionada,
-          tipoRecursoId: form.tipoRecursoId,
-          nombre: form.nombre,
-          monto: Number(form.monto),
-          unidad: form.unidad,
-          fechaInicio: form.fechaInicio,
-          fechaFin: form.fechaFin,
-        });
-      }
+      await crear({
+        organizacionId: orgSeleccionada,
+        tipoRecursoId: form.tipoRecursoId,
+        nombre: form.nombre,
+        monto: Number(form.monto),
+        unidad: form.unidad,
+        fechaInicio: form.fechaInicio,
+        fechaFin: form.fechaFin,
+      });
       setForm(vacio);
       await cargar();
     } catch (err) {
@@ -72,32 +57,32 @@ export default function Tarifas() {
     }
   }
 
-  function empezarEdicion(t) {
-    setEditando(t.id);
-    setForm({
-      tipoRecursoId: '',
-      nombre: t.nombre,
-      monto: String(t.monto),
-      unidad: t.unidad,
-      fechaInicio: (t.fecha_inicio ?? '').slice(0, 10),
-      fechaFin: (t.fecha_fin ?? '').slice(0, 10),
-    });
-    setError(null);
-  }
-
-  function cancelar() {
-    setEditando(null);
-    setForm(vacio);
-    setError(null);
-  }
-
   return (
     <section>
       <h2>Tarifas</h2>
       {error && <p className="error">{error}</p>}
+      <form className="formulario" onSubmit={enviar}>
+        <select value={form.tipoRecursoId} required
+          onChange={(e) => setForm({ ...form, tipoRecursoId: e.target.value })}>
+          <option value="">Recurso…</option>
+          {recursos.map((r) => <option key={r.id} value={r.id}>{r.nombre}</option>)}
+        </select>
+        <input placeholder="Nombre" value={form.nombre} required
+          onChange={(e) => setForm({ ...form, nombre: e.target.value })} />
+        <input type="number" step="0.0001" min="0" placeholder="Monto" required
+          value={form.monto} onChange={(e) => setForm({ ...form, monto: e.target.value })} />
+        <input placeholder="Unidad" value={form.unidad} required
+          onChange={(e) => setForm({ ...form, unidad: e.target.value })} />
+        <input type="date" value={form.fechaInicio} required
+          onChange={(e) => setForm({ ...form, fechaInicio: e.target.value })} />
+        <input type="date" value={form.fechaFin} required
+          onChange={(e) => setForm({ ...form, fechaFin: e.target.value })} />
+        <button type="submit" disabled={guardando}>{guardando ? 'Guardando…' : 'Crear tarifa'}</button>
+      </form>
+
       <table className="tabla">
         <thead>
-          <tr><th>Nombre</th><th>Monto</th><th>Unidad</th><th>Período</th><th /></tr>
+          <tr><th>Nombre</th><th>Monto</th><th>Unidad</th><th>Período</th></tr>
         </thead>
         <tbody>
           {data.map((t) => (
@@ -106,35 +91,11 @@ export default function Tarifas() {
               <td>{Number(t.monto).toFixed(4)}</td>
               <td>{t.unidad}</td>
               <td>{t.fecha_inicio} → {t.fecha_fin}</td>
-              <td><button type="button" onClick={() => empezarEdicion(t)}>Editar</button></td>
             </tr>
           ))}
-          {data.length === 0 && <tr><td colSpan="5">Sin tarifas</td></tr>}
+          {data.length === 0 && <tr><td colSpan="4">Sin tarifas</td></tr>}
         </tbody>
       </table>
-
-      <h2>{editando ? 'Editar tarifa' : 'Nueva tarifa'}</h2>
-      <form className="formulario" onSubmit={enviar}>
-        {!editando && (
-          <select value={form.tipoRecursoId} required
-            onChange={(e) => setForm({ ...form, tipoRecursoId: e.target.value })}>
-            <option value="">Recurso…</option>
-            {recursos.map((r) => <option key={r.id} value={r.id}>{r.nombre}</option>)}
-          </select>
-        )}
-        <input placeholder="Nombre" value={form.nombre} required
-          onChange={(e) => setForm({ ...form, nombre: e.target.value })} />
-        <input type="number" step="0.0001" min="0" placeholder="Monto" required
-          value={form.monto} onChange={(e) => setForm({ ...form, monto: e.target.value })} />
-        <input placeholder="Unidad" value={form.unidad} required disabled={!!editando}
-          onChange={(e) => setForm({ ...form, unidad: e.target.value })} />
-        <input type="date" value={form.fechaInicio} required
-          onChange={(e) => setForm({ ...form, fechaInicio: e.target.value })} />
-        <input type="date" value={form.fechaFin} required
-          onChange={(e) => setForm({ ...form, fechaFin: e.target.value })} />
-        <button type="submit" disabled={guardando}>{guardando ? 'Guardando…' : 'Guardar'}</button>{' '}
-        {editando && <button type="button" onClick={cancelar}>Cancelar</button>}
-      </form>
 
       <h2>Calculadora de costo</h2>
       <form className="formulario" onSubmit={(e) => e.preventDefault()}>

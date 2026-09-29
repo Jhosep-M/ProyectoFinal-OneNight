@@ -14,8 +14,4 @@ async function topExcesos(organizacionId, { desde, hasta, limite }) {
   return repo.topExcesos(organizacionId, desde, hasta, limite);
 }
 
-async function auditoriaReporte(organizacionId, { desde, hasta, page, limit }) {
-  return repo.auditoria(organizacionId, { desde, hasta, page, limit });
-}
-
-module.exports = { reporteConsumo, topExcesos, auditoriaReporte };
+module.exports = { reporteConsumo, topExcesos };

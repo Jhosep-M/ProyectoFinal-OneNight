@@ -5,7 +5,6 @@ const path = require('path');
 
 const DDL = path.join(__dirname, '..', '..', '..', '..', 'database', 'monitoreo', '001_v1_0_monitoreo_ddl.sql');
 const SEED = path.join(__dirname, '..', '..', '..', '..', 'database', 'monitoreo', '002_seed_dev.sql');
-const SEED3 = path.join(__dirname, '..', '..', '..', '..', 'database', 'monitoreo', '003_recurso_consultar.sql');
 
 function aSchemaTest(sql) {
   return sql
@@ -19,7 +18,6 @@ async function prepararSchema() {
   await sequelize.query('DROP SCHEMA IF EXISTS monitoreo_test CASCADE');
   await sequelize.query(aSchemaTest(fs.readFileSync(DDL, 'utf8')));
   await sequelize.query(aSchemaTest(fs.readFileSync(SEED, 'utf8')));
-  await sequelize.query(aSchemaTest(fs.readFileSync(SEED3, 'utf8')));
 }
 
 const ORG_DEMO = '11111111-1111-4111-8111-111111111111';

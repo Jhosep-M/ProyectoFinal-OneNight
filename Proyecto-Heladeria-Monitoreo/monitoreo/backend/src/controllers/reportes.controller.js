@@ -19,13 +19,4 @@ async function topExcesos(req, res) {
   }
 }
 
-async function auditoria(req, res) {
-  try {
-    const { rows, total } = await service.auditoriaReporte(req.organizacionId, req.query);
-    return okList(res, rows, { total });
-  } catch (e) {
-    return fail(res, 500, 'Error listando auditoría', e.message);
-  }
-}
-
-module.exports = { consumo, topExcesos, auditoria };
+module.exports = { consumo, topExcesos };

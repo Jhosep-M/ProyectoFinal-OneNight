@@ -16,9 +16,6 @@ export default function Recomendaciones() {
   const [form, setForm] = useState(vacio);
   const [error, setError] = useState(null);
   const [guardando, setGuardando] = useState(false);
-  const [filtroEstado, setFiltroEstado] = useState('');
-
-  const visibles = data.filter((r) => !filtroEstado || r.estado === filtroEstado);
 
   const cargar = useCallback(async () => {
     if (!orgSeleccionada) return;
@@ -77,40 +74,24 @@ export default function Recomendaciones() {
         <button type="submit" disabled={guardando}>{guardando ? 'Guardando…' : 'Crear recomendación'}</button>
       </form>
 
-      <form className="formulario">
-        <label>Estado
-          <select value={filtroEstado} onChange={(e) => setFiltroEstado(e.target.value)}>
-            <option value="">Todas</option>
-            <option value="abierta">Abiertas</option>
-            <option value="aplicada">Aplicadas</option>
-            <option value="descartada">Descartadas</option>
-          </select>
-        </label>
-      </form>
-
       <table className="tabla">
         <thead>
-          <tr><th>Título</th><th>Descripción</th><th>Prioridad</th><th>Estado</th><th /></tr>
+          <tr><th>Título</th><th>Prioridad</th><th>Estado</th><th /></tr>
         </thead>
         <tbody>
-          {visibles.map((r) => (
+          {data.map((r) => (
             <tr key={r.id}>
               <td>{r.titulo}</td>
-              <td>{r.descripcion}</td>
-              <td><span className={`badge prioridad-${r.prioridad}`}>{(r.prioridad ?? '').toUpperCase()}</span></td>
+              <td>{r.prioridad}</td>
               <td>{r.estado}</td>
               <td>
-                {r.estado === 'abierta' && (
-                  <>
-                    <button type="button" onClick={() => cambiarEstado(r.id, 'aplicada')}>Aplicar</button>
-                    {' '}
-                    <button type="button" onClick={() => cambiarEstado(r.id, 'descartada')}>Descartar</button>
-                  </>
-                )}
+                <button type="button" onClick={() => cambiarEstado(r.id, 'aplicada')}>Aplicar</button>
+                {' '}
+                <button type="button" onClick={() => cambiarEstado(r.id, 'descartada')}>Descartar</button>
               </td>
             </tr>
           ))}
-          {visibles.length === 0 && <tr><td colSpan="5">Sin recomendaciones</td></tr>}
+          {data.length === 0 && <tr><td colSpan="4">Sin recomendaciones</td></tr>}
         </tbody>
       </table>
     </section>

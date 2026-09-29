@@ -9,6 +9,14 @@ async function listarPorOrg(organizacionId) {
   });
 }
 
+async function listarActivosPorOrg(organizacionId) {
+  return PuntoMedicion.findAll({
+    where: { organizacion_id: organizacionId, estado: 'activo' },
+    include: [{ model: TipoRecurso, as: 'tipoRecurso' }],
+    order: [['codigo_medidor', 'ASC']],
+  });
+}
+
 async function buscarPorId(id) {
   return PuntoMedicion.findByPk(id, { include: [{ model: TipoRecurso, as: 'tipoRecurso' }] });
 }
@@ -35,4 +43,4 @@ async function actualizar(id, campos) {
   return p;
 }
 
-module.exports = { listarPorOrg, buscarPorId, existeCodigo, crear, actualizar };
+module.exports = { listarPorOrg, listarActivosPorOrg, buscarPorId, existeCodigo, crear, actualizar };

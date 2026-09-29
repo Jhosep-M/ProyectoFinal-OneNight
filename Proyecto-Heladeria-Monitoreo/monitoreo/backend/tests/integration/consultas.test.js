@@ -138,20 +138,6 @@ dbTest('GET /notificaciones trae broadcast + propias; PATCH vista lo marca solo 
   assert.ok(n[0].vista_en, 'vista_en registrado');
 });
 
-dbTest('GET /reportes/auditoria lista acciones de miembros de la org (antes 404)', async () => {
-  await sequelize.query(
-    `INSERT INTO auditoria_cambio (entidad, accion, usuario_id, detalle)
-     VALUES ('medidor', 'test-auditoria', :uid, '{}')`,
-    { replacements: { uid: ADM } },
-  );
-  const res = await fetch(`${baseObs}/api/v1/reportes/auditoria?organizacionId=${ORG}`);
-  assert.strictEqual(res.status, 200);
-  const body = await res.json();
-  assert.ok(Array.isArray(body.data));
-  assert.ok(body.data.some((r) => r.accion === 'test-auditoria'), 've la acción del miembro');
-  assert.strictEqual(typeof body.total, 'number');
-});
-
 dbTest('POST /integraciones devuelve la API key UNA sola vez; en BD solo hay hash; GET jamás la expone', async () => {
   // Negación genuina: observador sin integracion.gestionar no puede crear.
   const negada = await fetch(`${baseObs}/api/v1/integraciones`, {
