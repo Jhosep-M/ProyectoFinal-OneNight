@@ -97,6 +97,6 @@ describe('routes shifts -> turnoService', () => {
     turnoService.cerrar.mockResolvedValueOnce({ exito: true, diferencia: 0 });
     const res = await request(app).post(`/api/v1/shifts/${UUID('e')}/cerrar`).send({ monto_final_real: 120 });
     expect(res.status).toBe(200);
-    expect(turnoService.cerrar).toHaveBeenCalledWith(UUID('e'), 120);
+    expect(turnoService.cerrar).toHaveBeenCalledWith(UUID('e'), 120, 'u-test');
   });
 });

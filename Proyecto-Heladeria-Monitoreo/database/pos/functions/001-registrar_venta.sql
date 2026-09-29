@@ -55,10 +55,12 @@ BEGIN
     VALUES (v_venta_id, v_pid, v_cant, v_precio, 0, v_cant * v_precio);
     UPDATE producto SET stock = stock - v_cant WHERE id_producto = v_pid;
     IF (SELECT stock FROM producto WHERE id_producto = v_pid) < 0 THEN RAISE EXCEPTION 'STOCK_INSUFICIENTE %', v_pid; END IF;
+    -- Modelo Fase B: tipo cerrado ('venta'), cantidad positiva, XOR producto/insumo
+    -- (checks 009: tipo IN (ingreso,venta,anulacion,devolucion,ajuste), cantidad > 0).
     INSERT INTO movimiento_inventario (producto_id, venta_id, usuario_id, tipo, cantidad, motivo)
-    VALUES (v_pid, v_venta_id, p_usuario_id, 'salida_venta', -v_cant, 'venta ' || v_venta_id::text);
-    INSERT INTO movimiento_inventario (insumo_id, producto_id, venta_id, usuario_id, tipo, cantidad, motivo)
-    SELECT r.insumo_id, v_pid, v_venta_id, p_usuario_id, 'salida_venta', -(r.cantidad_requerida * v_cant), 'receta venta ' || v_venta_id::text
+    VALUES (v_pid, v_venta_id, p_usuario_id, 'venta', v_cant, 'venta ' || v_venta_id::text);
+    INSERT INTO movimiento_inventario (insumo_id, venta_id, usuario_id, tipo, cantidad, motivo)
+    SELECT r.insumo_id, v_venta_id, p_usuario_id, 'venta', (r.cantidad_requerida * v_cant), 'receta venta ' || v_venta_id::text || ' prod ' || v_pid::text
     FROM receta_insumo r WHERE r.producto_id = v_pid;
     UPDATE insumo i SET stock = stock - (r.cantidad_requerida * v_cant)
     FROM receta_insumo r WHERE r.producto_id = v_pid AND i.id_insumo = r.insumo_id;
@@ -76,7 +78,7 @@ BEGIN
     UPDATE cliente SET puntos_fidelidad = puntos_fidelidad + floor(v_total)::int WHERE id_cliente = p_cliente_id;
   END IF;
   INSERT INTO auditoria_accion (usuario_id, accion, entidad, entidad_id, resultado, detalle)
-  VALUES (p_usuario_id, 'REGISTRAR_VENTA', 'venta', v_venta_id, 'exitoso', jsonb_build_object('total', v_total, 'items', p_items)::text);
+  VALUES (p_usuario_id, 'REGISTRAR_VENTA', 'venta', v_venta_id, 'exitoso', jsonb_build_object('total', v_total, 'items', p_items));
   RETURN v_venta_id;
 END; $$;
 REVOKE ALL ON FUNCTION public.registrar_venta(uuid,uuid,uuid,jsonb,numeric,jsonb,text) FROM PUBLIC, anon, authenticated;

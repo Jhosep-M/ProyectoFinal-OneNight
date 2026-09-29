@@ -19,7 +19,7 @@ BEGIN
   END LOOP;
   UPDATE venta SET estado = 'anulada', motivo_anulacion = p_motivo WHERE id_venta = p_venta_id;
   INSERT INTO auditoria_accion (usuario_id, accion, entidad, entidad_id, resultado, detalle)
-  VALUES (p_usuario_id, 'ANULAR_VENTA', 'venta', p_venta_id, 'exitoso', p_motivo);
+  VALUES (p_usuario_id, 'ANULAR_VENTA', 'venta', p_venta_id, 'exitoso', to_jsonb(p_motivo));
 END; $$;
 REVOKE ALL ON FUNCTION public.anular_venta(uuid,uuid,varchar) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.anular_venta(uuid,uuid,varchar) TO service_role;

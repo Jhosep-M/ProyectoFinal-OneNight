@@ -9,8 +9,8 @@ import VentasPage from '../pages/ventas/VentasPage.jsx';
 import CajaPage from '../pages/caja/CajaPage.jsx';
 import PedidosPage from '../pages/pedidos/PedidosPage.jsx';
 import MesasPage from '../pages/mesas/MesasPage.jsx';
-import ProductosPage from '../pages/catalogo/Productos.jsx';
-import InventarioPage from '../pages/catalogo/Inventario.jsx';
+import ProductosPage, { Categorias as CategoriasPage } from '../pages/catalogo/Productos.jsx';
+import InventarioPage, { Proveedores as ProveedoresPage } from '../pages/catalogo/Inventario.jsx';
 import { Recetas as RecetasPage } from '../pages/catalogo/RecetasClientesPromos.jsx';
 import ClientesPage from '../pages/clientes/ClientesPage.jsx';
 import PromocionesPage from '../pages/promociones/PromocionesPage.jsx';
@@ -35,7 +35,9 @@ export default function AppRoutes() {
           <Route path="/pedidos" element={<RequirePermiso permiso="pedido.consultar"><PedidosPage /></RequirePermiso>} />
           <Route path="/mesas" element={<RequirePermiso permiso="mesa.consultar"><MesasPage /></RequirePermiso>} />
           <Route path="/catalogo/productos" element={<RequirePermiso permiso="producto.consultar"><ProductosPage /></RequirePermiso>} />
+          <Route path="/catalogo/categorias" element={<RequirePermiso permiso="producto.consultar"><CategoriasPage /></RequirePermiso>} />
           <Route path="/catalogo/inventario" element={<RequirePermiso permiso="inventario.consultar"><InventarioPage /></RequirePermiso>} />
+          <Route path="/catalogo/proveedores" element={<RequirePermiso permiso="inventario.consultar"><ProveedoresPage /></RequirePermiso>} />
           <Route path="/catalogo/recetas" element={<RequirePermiso permiso="producto.consultar"><RecetasPage /></RequirePermiso>} />
           <Route path="/catalogo/clientes" element={<RequirePermiso permiso="cliente.consultar"><ClientesPage /></RequirePermiso>} />
           <Route path="/catalogo/promociones" element={<RequirePermiso permiso="promocion.consultar"><PromocionesPage /></RequirePermiso>} />

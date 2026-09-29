@@ -1,9 +1,10 @@
 'use strict';
 
 /* Bloque 1 — Ventas: service delega a PG public.registrar_venta / anular_venta.
- * Firmas PG reales (verificadas en Supabase):
+ * Firmas PG reales (verificadas en Supabase tras fix de deriva):
  *   registrar_venta(p_usuario_id uuid, p_turno_id uuid, p_cliente_id uuid,
- *                   p_items jsonb, p_descuento numeric, p_pagos jsonb)
+ *                   p_items jsonb, p_descuento numeric, p_pagos jsonb,
+ *                   p_idempotency_key text DEFAULT NULL)
  *   anular_venta(p_venta_id uuid, p_usuario_id uuid, p_motivo varchar)
  * Sin DB ni red real.
  */

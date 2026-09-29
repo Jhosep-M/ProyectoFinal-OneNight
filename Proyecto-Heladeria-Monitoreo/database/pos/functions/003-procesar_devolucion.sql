@@ -22,7 +22,7 @@ BEGIN
   UPDATE insumo i SET stock = stock + (rec.cantidad_requerida * p_cantidad)
   FROM receta_insumo rec WHERE rec.producto_id = p_producto_id AND i.id_insumo = rec.insumo_id;
   INSERT INTO auditoria_accion (usuario_id, accion, entidad, entidad_id, resultado, detalle)
-  VALUES (p_usuario_id, 'PROCESAR_DEVOLUCION', 'devolucion', v_dev_id, 'exitoso', p_motivo);
+  VALUES (p_usuario_id, 'PROCESAR_DEVOLUCION', 'devolucion', v_dev_id, 'exitoso', to_jsonb(p_motivo));
   RETURN v_dev_id;
 END; $$;
 REVOKE ALL ON FUNCTION public.procesar_devolucion(uuid,uuid,integer,uuid,varchar) FROM PUBLIC, anon, authenticated;
