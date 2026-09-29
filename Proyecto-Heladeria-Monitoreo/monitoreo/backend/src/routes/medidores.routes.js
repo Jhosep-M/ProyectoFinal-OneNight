@@ -11,9 +11,6 @@ router.use(authenticateJWT);
 router.get('/', requirePermission('medidor.consultar'), scopeOrg, ctrl.listar);
 router.post('/', requirePermission('medidor.gestionar'), scopeOrg, validateBody(medidorSchema), ctrl.crear);
 router.patch('/:id', requirePermission('medidor.gestionar'), validateBody(medidorUpdateSchema), ctrl.actualizar);
-<<<<<<< HEAD
-=======
 router.delete('/:id', requirePermission('medidor.gestionar'), scopeOrg, ctrl.eliminar);
->>>>>>> origin/feature/Airton-auxilio
 
 module.exports = { medidoresRouter: router };

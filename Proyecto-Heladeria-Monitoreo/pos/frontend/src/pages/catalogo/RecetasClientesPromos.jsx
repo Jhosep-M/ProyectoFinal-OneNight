@@ -1,10 +1,7 @@
 import { useEffect, useState } from 'react';
 import { api } from '../../services/api.js';
-<<<<<<< HEAD
 import ClientesPage from '../clientes/ClientesPage.jsx';
 import PromocionesPage from '../promociones/PromocionesPage.jsx';
-=======
->>>>>>> origin/feature/Airton-auxilio
 
 function useList(path) {
   const [items, setItems] = useState([]);
@@ -26,30 +23,5 @@ export function Recetas() {
   );
 }
 
-<<<<<<< HEAD
 export const Clientes = ClientesPage;
 export const Promociones = PromocionesPage;
-=======
-export function Clientes() {
-  const { items, error } = useList('/api/v1/customers');
-  return (
-    <div>
-      <h2>Clientes y puntos</h2>
-      {error && <p role="alert">{error}</p>}
-      <p>Puntos: 1 por cada 10 de total (<code>puntosService.acumularPuntos</code>). Saldo con trazabilidad en <code>movimiento_puntos</code>.</p>
-      <ul>{items.map((c) => <li key={c.id_cliente}>{c.nombre} — {c.puntos_fidelidad} pts</li>)}</ul>
-    </div>
-  );
-}
-
-export function Promociones() {
-  const { items, error } = useList('/api/v1/promotions');
-  return (
-    <div>
-      <h2>Promociones</h2>
-      {error && <p role="alert">{error}</p>}
-      <ul>{items.map((p) => <li key={p.id_promocion}>{p.nombre} — {p.porcentaje_descuento}% — {p.estado}</li>)}</ul>
-    </div>
-  );
-}
->>>>>>> origin/feature/Airton-auxilio

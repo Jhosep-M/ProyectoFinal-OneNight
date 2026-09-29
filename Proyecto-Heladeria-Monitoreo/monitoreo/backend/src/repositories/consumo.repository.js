@@ -1,10 +1,6 @@
 const { RegistroConsumo, TipoRecurso } = require('../models');
 const { Op } = require('sequelize');
 
-<<<<<<< HEAD
-async function listar(organizacionId, { desde, hasta, page, limit }) {
-  const where = { organizacion_id: organizacionId };
-=======
 async function listar(organizacionId, { desde, hasta, page, limit, recurso, medidorId }) {
   const where = { organizacion_id: organizacionId };
   if (recurso === 'agua' || recurso === 'energia') {
@@ -13,7 +9,6 @@ async function listar(organizacionId, { desde, hasta, page, limit, recurso, medi
   if (medidorId) {
     where.punto_medicion_id = medidorId;
   }
->>>>>>> origin/feature/Airton-auxilio
   if (desde || hasta) {
     where.fecha_consumo = {
       ...(desde ? { [Op.gte]: new Date(`${desde}T00:00:00`) } : {}),

@@ -7,11 +7,7 @@
   "scripts": {
     "dev": "node src/server.js",
     "start": "node src/server.js",
-<<<<<<< HEAD
     "test": "jest"
-=======
-    "test": "node --test tests/"
->>>>>>> origin/feature/Airton-auxilio
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.116.0",

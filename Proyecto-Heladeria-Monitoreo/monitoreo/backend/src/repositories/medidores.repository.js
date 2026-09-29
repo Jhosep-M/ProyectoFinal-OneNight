@@ -9,8 +9,6 @@ async function listarPorOrg(organizacionId) {
   });
 }
 
-<<<<<<< HEAD
-=======
 async function listarActivosPorOrg(organizacionId) {
   return PuntoMedicion.findAll({
     where: { organizacion_id: organizacionId, estado: 'activo' },
@@ -19,7 +17,6 @@ async function listarActivosPorOrg(organizacionId) {
   });
 }
 
->>>>>>> origin/feature/Airton-auxilio
 async function buscarPorId(id) {
   return PuntoMedicion.findByPk(id, { include: [{ model: TipoRecurso, as: 'tipoRecurso' }] });
 }
@@ -46,8 +43,4 @@ async function actualizar(id, campos) {
   return p;
 }
 
-<<<<<<< HEAD
-module.exports = { listarPorOrg, buscarPorId, existeCodigo, crear, actualizar };
-=======
 module.exports = { listarPorOrg, listarActivosPorOrg, buscarPorId, existeCodigo, crear, actualizar };
->>>>>>> origin/feature/Airton-auxilio

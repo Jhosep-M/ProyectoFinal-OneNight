@@ -11,9 +11,6 @@ router.use(authenticateJWT);
 router.get('/', requirePermission('umbral.consultar'), scopeOrg, ctrl.listar);
 router.post('/', requirePermission('umbral.gestionar'), scopeOrg, validateBody(umbralSchema), ctrl.crear);
 router.patch('/:id', requirePermission('umbral.gestionar'), scopeOrg, validateBody(umbralUpdateSchema), ctrl.actualizar);
-<<<<<<< HEAD
-=======
 router.delete('/:id', requirePermission('umbral.gestionar'), scopeOrg, ctrl.eliminar);
->>>>>>> origin/feature/Airton-auxilio
 
 module.exports = { umbralesRouter: router };

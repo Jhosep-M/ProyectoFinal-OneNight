@@ -11,9 +11,6 @@ router.use(authenticateJWT);
 router.get('/', requirePermission('meta.consultar'), scopeOrg, ctrl.listar);
 router.post('/', requirePermission('meta.gestionar'), scopeOrg, validateBody(metaSchema), ctrl.crear);
 router.patch('/:id', requirePermission('meta.gestionar'), scopeOrg, validateBody(metaUpdateSchema), ctrl.actualizar);
-<<<<<<< HEAD
-=======
 router.delete('/:id', requirePermission('meta.gestionar'), scopeOrg, ctrl.eliminar);
->>>>>>> origin/feature/Airton-auxilio
 
 module.exports = { metasRouter: router };

@@ -5,11 +5,7 @@ const { env } = require('../config/environment');
 const RecepcionConsumoPOS = sequelize.define('RecepcionConsumoPOS', {
   id: { type: DataTypes.UUID, defaultValue: DataTypes.UUIDV4, primaryKey: true },
   consumo_externo_id: { type: DataTypes.UUID, allowNull: false, unique: true },
-<<<<<<< HEAD
-  idempotency_key: { type: DataTypes.STRING(120), allowNull: false, unique: true },
-=======
   idempotency_key: { type: DataTypes.STRING(150), allowNull: false, unique: true },
->>>>>>> origin/feature/Airton-auxilio
   organizacion_id: { type: DataTypes.UUID, allowNull: false },
   punto_medicion_id: { type: DataTypes.UUID, allowNull: true },
   tipo_recurso: { type: DataTypes.STRING(10), allowNull: false,

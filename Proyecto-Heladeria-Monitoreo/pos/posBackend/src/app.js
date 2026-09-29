@@ -23,10 +23,7 @@ const { promotionsRouter } = require('./routes/promotions');
 const { auditRouter } = require('./routes/audit');
 const { integrationsRouter } = require('./routes/integrations');
 const { configRouter } = require('./routes/config');
-<<<<<<< HEAD
 const { meRouter } = require('./routes/me');
-=======
->>>>>>> origin/feature/Airton-auxilio
 
 function createApp() {
   const app = express();
@@ -66,10 +63,7 @@ function createApp() {
   app.use('/api/v1/integrations/alerts', authLimiter);
   app.use('/api/v1/integrations', integrationsRouter);
   app.use('/api/v1/config', configRouter);
-<<<<<<< HEAD
   app.use('/api/v1/me', meRouter);
-=======
->>>>>>> origin/feature/Airton-auxilio
 
   app.use(notFound);
   app.use(errorHandler);

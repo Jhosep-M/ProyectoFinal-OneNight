@@ -40,11 +40,7 @@ router.get('/:id', authorize('mesa.consultar'), async (req, res, next) => {
 
 router.post('/', authorize('mesa.gestionar'), async (req, res, next) => {
   try {
-<<<<<<< HEAD
     const numero = Number(req.body.numero ?? req.body.nombre);
-=======
-    const numero = Number(req.body.numero);
->>>>>>> origin/feature/Airton-auxilio
     if (!Number.isInteger(numero) || numero <= 0) {
       return res.status(400).json({ error: 'numero debe ser entero > 0' });
     }
@@ -66,7 +62,6 @@ router.post('/', authorize('mesa.gestionar'), async (req, res, next) => {
   }
 });
 
-<<<<<<< HEAD
 // PATCH /:id — cambiar estado (liberar/ocupar/reservar).
 // El frontend anterior tenía botones sin handler porque no existía este endpoint.
 router.patch('/:id', authorize('mesa.gestionar'), async (req, res, next) => {
@@ -91,6 +86,4 @@ router.patch('/:id', authorize('mesa.gestionar'), async (req, res, next) => {
   } catch (e) { next(e); }
 });
 
-=======
->>>>>>> origin/feature/Airton-auxilio
 module.exports = { mesasRouter: router };

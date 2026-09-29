@@ -6,7 +6,6 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-<<<<<<< HEAD
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest"
@@ -16,18 +15,11 @@
     "bootstrap": "^5.3.8",
     "bootstrap-icons": "^1.13.1",
     "framer-motion": "^13.4.4",
-=======
-    "preview": "vite preview"
-  },
-  "dependencies": {
-    "@supabase/supabase-js": "^2.116.0",
->>>>>>> origin/feature/Airton-auxilio
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-router-dom": "^6.28.0"
   },
   "devDependencies": {
-<<<<<<< HEAD
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.1.0",
     "@testing-library/user-event": "^14.5.2",
@@ -35,9 +27,5 @@
     "jsdom": "^25.0.1",
     "vite": "^5.4.11",
     "vitest": "^2.1.8"
-=======
-    "@vitejs/plugin-react": "^4.3.4",
-    "vite": "^5.4.11"
->>>>>>> origin/feature/Airton-auxilio
   }
 }
