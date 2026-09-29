@@ -60,4 +60,20 @@ async function actualizarUmbral(umbralId, cambios, contexto) {
   return repo.buscarPorId(umbralId);
 }
 
+<<<<<<< HEAD
 module.exports = { haySolapeRangos, haySolapePeriodos, crearUmbral, actualizarUmbral };
+=======
+async function eliminarUmbral(umbralId, contexto) {
+  const actual = await repo.buscarPorId(umbralId);
+  if (!actual) throw new AppError(404, 'Umbral no encontrado');
+  await repo.actualizar(umbralId, { estado: 'inactivo' });
+  await registrarAuditoria({
+    entidad: 'umbral_clasificacion', entidadId: umbralId, accion: 'eliminar',
+    usuarioId: contexto.usuarioId, reqId: contexto.reqId,
+    detalle: { nombre: actual.nombre, nivel: actual.nivel },
+  });
+  return repo.buscarPorId(umbralId);
+}
+
+module.exports = { haySolapeRangos, haySolapePeriodos, crearUmbral, actualizarUmbral, eliminarUmbral };
+>>>>>>> origin/feature/Airton-auxilio

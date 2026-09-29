@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react';
 import { productosService, categoriasService } from '../../services/productosService.js';
+<<<<<<< HEAD
 import RequirePermiso from '../../components/common/RequirePermiso.jsx';
+=======
+>>>>>>> origin/feature/Airton-auxilio
 
 export default function Productos() {
   const [items, setItems] = useState([]);
@@ -26,6 +29,7 @@ export default function Productos() {
     <div>
       <h2>Productos</h2>
       {error && <p role="alert">{error}</p>}
+<<<<<<< HEAD
       <RequirePermiso permiso="producto.gestionar">
         <form onSubmit={create}>
           <input placeholder="Nombre" value={form.nombre} onChange={(e) => setForm({ ...form, nombre: e.target.value })} required />
@@ -38,6 +42,18 @@ export default function Productos() {
       <ul>
         {items.map((p) => (
           <li key={p.id_producto}>{p.nombre} — {p.precio} — stock {p.stock}{Number(p.stock) <= Number(p.stock_minimo) ? ' (BAJO)' : ''} <RequirePermiso permiso="producto.gestionar"><button onClick={() => inactivate(p.id_producto)}>Inactivar</button></RequirePermiso></li>
+=======
+      <form onSubmit={create}>
+        <input placeholder="Nombre" value={form.nombre} onChange={(e) => setForm({ ...form, nombre: e.target.value })} required />
+        <input placeholder="Precio" type="number" step="0.01" min="0.01" value={form.precio} onChange={(e) => setForm({ ...form, precio: e.target.value })} required />
+        <input placeholder="Stock" type="number" min="0" value={form.stock} onChange={(e) => setForm({ ...form, stock: e.target.value })} />
+        <input placeholder="Stock mínimo" type="number" min="0" value={form.stock_minimo} onChange={(e) => setForm({ ...form, stock_minimo: e.target.value })} />
+        <button type="submit">Crear</button>
+      </form>
+      <ul>
+        {items.map((p) => (
+          <li key={p.id_producto}>{p.nombre} — {p.precio} — stock {p.stock}{Number(p.stock) <= Number(p.stock_minimo) ? ' (BAJO)' : ''} <button onClick={() => inactivate(p.id_producto)}>Inactivar</button></li>
+>>>>>>> origin/feature/Airton-auxilio
         ))}
       </ul>
     </div>
@@ -59,12 +75,19 @@ export function Categorias() {
     <div>
       <h2>Categorías</h2>
       {error && <p role="alert">{error}</p>}
+<<<<<<< HEAD
       <RequirePermiso permiso="producto.gestionar">
         <form onSubmit={create}>
           <input placeholder="Nombre (único)" value={nombre} onChange={(e) => setNombre(e.target.value)} required />
           <button type="submit">Crear</button>
         </form>
       </RequirePermiso>
+=======
+      <form onSubmit={create}>
+        <input placeholder="Nombre (único)" value={nombre} onChange={(e) => setNombre(e.target.value)} required />
+        <button type="submit">Crear</button>
+      </form>
+>>>>>>> origin/feature/Airton-auxilio
       <ul>{items.map((c) => <li key={c.id_categoria}>{c.nombre} — {c.estado}</li>)}</ul>
     </div>
   );

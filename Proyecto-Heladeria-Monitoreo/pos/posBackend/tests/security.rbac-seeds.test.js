@@ -9,7 +9,11 @@
 const fs = require('fs');
 const path = require('path');
 
+<<<<<<< HEAD
 const MIGRATION = path.join(__dirname, '..', '..', '..', 'database', 'pos', 'migrations', '003-p4-authorize-seeds.sql');
+=======
+const MIGRATION = path.join(__dirname, '..', 'migrations', '003-p4-authorize-seeds.sql');
+>>>>>>> origin/feature/Airton-auxilio
 
 const PERMISOS_REQUERIDOS = [
   'pedido.consultar',

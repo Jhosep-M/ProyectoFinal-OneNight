@@ -8,7 +8,11 @@
 const fs = require('fs');
 const path = require('path');
 
+<<<<<<< HEAD
 const MIGRATION = path.join(__dirname, '..', '..', '..', 'database', 'pos', 'migrations', '004-p4-reconcile-002.sql');
+=======
+const MIGRATION = path.join(__dirname, '..', 'migrations', '004-p4-reconcile-002.sql');
+>>>>>>> origin/feature/Airton-auxilio
 
 describe('migracion 004-p4-reconcile-002', () => {
   test('el archivo existe', () => {

@@ -14,6 +14,16 @@ async function listarPorOrg(organizacionId) {
   });
 }
 
+<<<<<<< HEAD
+=======
+async function listarActivosPorOrg(organizacionId) {
+  return UmbralClasificacion.findAll({
+    where: { organizacion_id: organizacionId, estado: 'activo' },
+    order: [['creado_en', 'DESC']],
+  });
+}
+
+>>>>>>> origin/feature/Airton-auxilio
 async function buscarPorId(id) {
   return UmbralClasificacion.findByPk(id);
 }
@@ -29,4 +39,8 @@ async function actualizar(id, campos) {
   return u;
 }
 
+<<<<<<< HEAD
 module.exports = { listarActivos, listarPorOrg, buscarPorId, crear, actualizar };
+=======
+module.exports = { listarActivos, listarPorOrg, listarActivosPorOrg, buscarPorId, crear, actualizar };
+>>>>>>> origin/feature/Airton-auxilio

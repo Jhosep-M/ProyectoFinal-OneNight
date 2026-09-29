@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 .layout {
   display: flex;
   min-height: 100vh;
@@ -180,3 +181,30 @@
 .bg-soft-danger { background-color: #F5E0E0; }
 .bg-soft-warning { background-color: #F5E6D3; }
 .bg-soft-info { background-color: #E0EBF0; }
+=======
+body { font-family: system-ui, sans-serif; margin: 0; background: #fafafa; color: #222; }
+.shell .nav { display: flex; gap: 12px; align-items: center; padding: 10px 16px; background: #1f2937; color: #fff; }
+.shell .nav a { color: #e5e7eb; text-decoration: none; }
+.shell .nav .user { margin-left: auto; font-size: 0.85em; opacity: 0.8; }
+main { padding: 16px; max-width: 960px; margin: 0 auto; }
+.card { background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px; margin-bottom: 12px; }
+.row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+input, select, button { padding: 6px 8px; font-size: 0.95em; }
+button { cursor: pointer; }
+table { border-collapse: collapse; width: 100%; }
+th, td { border: 1px solid #e5e7eb; padding: 6px; text-align: left; font-size: 0.9em; }
+.error { color: #b91c1c; }
+.ok { color: #15803d; }
+.login { max-width: 400px; margin: 0 auto; background: #fff; border: 1px solid #e5e7eb; border-top: 4px solid #1f2937; border-radius: 8px; padding: 30px 28px; }
+.login-pantalla { display: flex; justify-content: center; align-items: center; min-height: 80vh; padding: 20px; }
+.login h1 { margin: 0; font-size: 1.4em; }
+.login .subtitulo { margin: 0 0 6px 0; font-size: 0.9em; color: #6b7280; }
+.login form { display: flex; flex-direction: column; gap: 14px; }
+.login label { display: flex; flex-direction: column; gap: 5px; font-size: 0.9em; color: #4b5563; }
+.login label input { width: 100%; box-sizing: border-box; padding: 9px 8px; font-size: 1em; }
+.login button[type="submit"] { padding: 10px; font-size: 1em; }
+.clave-fila { display: flex; gap: 6px; align-items: center; }
+.clave-fila input { flex: 1; }
+.ojo { background: #f3f4f6; color: #4b5563; border: 1px solid #d1d5db; border-radius: 4px; padding: 5px 8px; cursor: pointer; display: flex; align-items: center; }
+.ojo:hover { background: #e5e7eb; }
+>>>>>>> origin/feature/Airton-auxilio

@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react';
 import { inventarioService, proveedoresService } from '../../services/inventarioService.js';
+<<<<<<< HEAD
 import RequirePermiso from '../../components/common/RequirePermiso.jsx';
+=======
+>>>>>>> origin/feature/Airton-auxilio
 
 export default function Inventario() {
   const [insumos, setInsumos] = useState([]);
@@ -38,6 +41,7 @@ export default function Inventario() {
     <div>
       <h2>Insumos e inventario</h2>
       {error && <p role="alert">{error}</p>}
+<<<<<<< HEAD
       <RequirePermiso permiso="inventario.movimiento">
         <form onSubmit={create}>
           <input placeholder="Nombre" value={form.nombre} onChange={(e) => setForm({ ...form, nombre: e.target.value })} required />
@@ -58,6 +62,26 @@ export default function Inventario() {
           <button type="submit">Registrar movimiento</button>
         </form>
       </RequirePermiso>
+=======
+      <form onSubmit={create}>
+        <input placeholder="Nombre" value={form.nombre} onChange={(e) => setForm({ ...form, nombre: e.target.value })} required />
+        <input placeholder="Unidad (g, u, litros)" value={form.unidad_medida} onChange={(e) => setForm({ ...form, unidad_medida: e.target.value })} required />
+        <button type="submit">Crear insumo</button>
+      </form>
+      <form onSubmit={movimiento}>
+        <select value={sel} onChange={(e) => setSel(e.target.value)} required>
+          <option value="">Insumo…</option>
+          {insumos.map((i) => <option key={i.id_insumo} value={i.id_insumo}>{i.nombre} ({i.stock})</option>)}
+        </select>
+        <select value={mov.tipo} onChange={(e) => setMov({ ...mov, tipo: e.target.value })}>
+          <option value="ingreso">Ingreso</option>
+          <option value="salida">Salida</option>
+          <option value="ajuste">Ajuste</option>
+        </select>
+        <input placeholder="Cantidad" type="number" step="any" min="0.0001" value={mov.cantidad} onChange={(e) => setMov({ ...mov, cantidad: e.target.value })} required />
+        <button type="submit">Registrar movimiento</button>
+      </form>
+>>>>>>> origin/feature/Airton-auxilio
       <ul>{movs.map((m) => <li key={m.id_movimiento}>{m.tipo} {m.cantidad} — {m.motivo || ''}</li>)}</ul>
     </div>
   );
@@ -78,6 +102,7 @@ export function Proveedores() {
     <div>
       <h2>Proveedores</h2>
       {error && <p role="alert">{error}</p>}
+<<<<<<< HEAD
       <RequirePermiso permiso="inventario.movimiento">
         <form onSubmit={create}>
           <input placeholder="Nombre" value={form.nombre} onChange={(e) => setForm({ ...form, nombre: e.target.value })} required />
@@ -85,6 +110,13 @@ export function Proveedores() {
           <button type="submit">Crear</button>
         </form>
       </RequirePermiso>
+=======
+      <form onSubmit={create}>
+        <input placeholder="Nombre" value={form.nombre} onChange={(e) => setForm({ ...form, nombre: e.target.value })} required />
+        <input placeholder="NIT (único)" value={form.nit} onChange={(e) => setForm({ ...form, nit: e.target.value })} />
+        <button type="submit">Crear</button>
+      </form>
+>>>>>>> origin/feature/Airton-auxilio
       <ul>{items.map((p) => <li key={p.id_proveedor}>{p.nombre} — {p.nit || 's/n'} — {p.estado}</li>)}</ul>
     </div>
   );

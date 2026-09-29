@@ -21,7 +21,11 @@ build/
 .opencode/
 skills-lock.json
 .skills-lock.json
+<<<<<<< HEAD
 .codex 
+=======
+
+>>>>>>> origin/feature/Airton-auxilio
 
 
 # sistema

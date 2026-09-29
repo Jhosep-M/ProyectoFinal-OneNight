@@ -8,7 +8,14 @@ const ES_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 
 async function listar(req, res) {
   try {
+<<<<<<< HEAD
     const data = await repo.listarPorOrg(req.organizacionId);
+=======
+    const incluirInactivos = req.query.incluirInactivos === '1';
+    const data = incluirInactivos
+      ? await repo.listarPorOrg(req.organizacionId)
+      : await repo.listarActivosPorOrg(req.organizacionId);
+>>>>>>> origin/feature/Airton-auxilio
     return okList(res, data);
   } catch (e) {
     return fail(res, 500, 'Error listando metas', e.message);
@@ -44,4 +51,21 @@ async function actualizar(req, res) {
   }
 }
 
+<<<<<<< HEAD
 module.exports = { listar, crear, actualizar };
+=======
+async function eliminar(req, res) {
+  try {
+    if (!ES_UUID.test(req.params.id)) return fail(res, 400, 'Id inválido', 'el id debe ser un UUID');
+    const actual = await repo.buscarPorId(req.params.id);
+    if (!actual || !req.orgIds.includes(actual.organizacion_id)) return fail(res, 404, 'No encontrada');
+    const meta = await service.actualizarMeta(actual.id, { estado: 'inactivo' }, { usuarioId: req.user.id, reqId: req.id });
+    return ok(res, meta);
+  } catch (e) {
+    if (e instanceof AppError) return fail(res, e.status, e.error, e.detail);
+    return fail(res, 500, 'Error eliminando meta', e.message);
+  }
+}
+
+module.exports = { listar, crear, actualizar, eliminar };
+>>>>>>> origin/feature/Airton-auxilio

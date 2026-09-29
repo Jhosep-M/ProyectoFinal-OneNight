@@ -7,6 +7,16 @@ async function listarPorOrg(organizacionId) {
   });
 }
 
+<<<<<<< HEAD
+=======
+async function listarActivosPorOrg(organizacionId) {
+  return MetaReduccion.findAll({
+    where: { organizacion_id: organizacionId, estado: 'activo' },
+    order: [['creado_en', 'DESC']],
+  });
+}
+
+>>>>>>> origin/feature/Airton-auxilio
 async function buscarPorId(id) {
   return MetaReduccion.findByPk(id);
 }
@@ -24,4 +34,8 @@ async function actualizar(id, campos) {
   return m;
 }
 
+<<<<<<< HEAD
 module.exports = { listarPorOrg, buscarPorId, crear, actualizar };
+=======
+module.exports = { listarPorOrg, listarActivosPorOrg, buscarPorId, crear, actualizar };
+>>>>>>> origin/feature/Airton-auxilio
