@@ -1,0 +1,32 @@
+# =============================================================================
+# ConfigMaps — variables NO secretas por app (Persona 4 / Task 6)
+# Los secretos van en secrets.example.yaml -> Secret real vía gestor (nunca Git).
+# Aplicar: kubectl apply -f infrastructure/kubernetes/configmap.yaml
+# =============================================================================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: pos-config
+  namespace: heladeria
+data:
+  NODE_ENV: "production"
+  PORT: "3000"
+  CORS_ORIGIN: "https://pos.tu-dominio.com"
+  RATE_LIMIT_WINDOW_MS: "900000"
+  RATE_LIMIT_MAX: "100"
+  # Integración POS -> Monitoreo (nombre del Service K8s de monitoreo).
+  MONITOREO_URL: "http://monitoreo-backend.monitoreo.svc.cluster.local:4000/api/v1/integrations/consumption"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: monitoreo-config
+  namespace: monitoreo
+data:
+  NODE_ENV: "production"
+  PORT: "4000"
+  CORS_ORIGIN: "https://monitoreo.tu-dominio.com"
+  RATE_LIMIT_WINDOW_MS: "900000"
+  RATE_LIMIT_MAX: "100"
+  # Integración Monitoreo -> POS (nombre del Service K8s de POS).
+  POS_ALERTS_URL: "http://pos-backend.heladeria.svc.cluster.local:3000/api/v1/integrations/alerts"

@@ -1,0 +1,9 @@
+SET search_path = public;
+INSERT INTO permiso (nombre,descripcion,modulo) VALUES ('venta.crear','Crear ventas','ventas'),('venta.anular','Anular ventas','ventas'),('turno.abrir','Abrir turno','caja'),('turno.cerrar','Cerrar turno','caja'),('integracion.consultar','Ver cola','integracion'),('integracion.gestionar','Reintentar cola','integracion'),('alerta.recibir','Recibir alertas','integracion') ON CONFLICT (nombre) DO NOTHING;
+INSERT INTO rol (nombre,descripcion,estado) VALUES ('cajero','Caja y ventas','activo'),('mesero','Pedidos y mesas','activo'),('inventario','Stock','activo'),('supervisor','Supervisión','activo'),('admin','Admin','activo') ON CONFLICT (nombre) DO NOTHING;
+CREATE OR REPLACE FUNCTION usuario_tiene_permiso(p_uid UUID, p_perm TEXT) RETURNS BOOLEAN LANGUAGE sql STABLE SET search_path = public AS $$ SELECT EXISTS (SELECT 1 FROM usuario u JOIN rol r ON r.id_rol=u.rol_id JOIN rol_permiso rp ON rp.rol_id=r.id_rol JOIN permiso p ON p.id_permiso=rp.permiso_id WHERE u.id_usuario=p_uid AND u.estado='activo' AND r.estado='activo' AND p.nombre=p_perm); $$;
+-- REVOKE defensivo solo si la función existe:
+DO $$ DECLARE r RECORD; BEGIN FOR r IN SELECT 'registrar_venta' fn UNION ALL SELECT 'anular_venta' UNION ALL SELECT 'procesar_devolucion' UNION ALL SELECT 'cerrar_turno' LOOP IF EXISTS (SELECT 1 FROM pg_proc WHERE proname=r.fn AND pronamespace='public'::regnamespace) THEN EXECUTE format('REVOKE ALL ON FUNCTION public.%I FROM PUBLIC, anon, authenticated', r.fn); END IF; END LOOP; END $$;
+CREATE UNIQUE INDEX IF NOT EXISTS ux_entrega_alerta_id ON entrega_alerta(alerta_id);
+-- Alertas externas (Monitoreo→POS) no tienen turno: turno_id debe aceptar NULL.
+DO $$ BEGIN IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='alerta_pos' AND column_name='turno_id' AND is_nullable='NO') THEN ALTER TABLE alerta_pos ALTER COLUMN turno_id DROP NOT NULL; END IF; END $$;

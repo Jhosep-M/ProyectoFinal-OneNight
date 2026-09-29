@@ -1,0 +1,59 @@
+# =============================================================================
+# Monitoreo backend — Deployment (Persona 4 / Task 6)
+# 2 réplicas, probes sobre GET /health.
+# NOTA (P3 pendiente): el backend de Monitoreo DEBE exponer GET /health
+# -> { ok: true } (mismo contrato que POS). Sin ese endpoint los probes
+# fallarán y el Deployment no llegará a Ready.
+# =============================================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: monitoreo-backend
+  namespace: monitoreo
+  labels:
+    app: monitoreo-backend
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: monitoreo-backend
+  template:
+    metadata:
+      labels:
+        app: monitoreo-backend
+    spec:
+      containers:
+        - name: monitoreo-backend
+          image: monitoreo-backend:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 4000
+              name: http
+          envFrom:
+            - configMapRef:
+                name: monitoreo-config
+            - secretRef:
+                name: monitoreo-secrets
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 4000
+            initialDelaySeconds: 20
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 4000
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: "250m"
+              memory: "128Mi"
+            limits:
+              cpu: "1000m"
+              memory: "512Mi"

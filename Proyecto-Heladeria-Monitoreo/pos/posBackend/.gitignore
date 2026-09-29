@@ -1,0 +1,9 @@
+node_modules
+.env
+*.log
+.DS_Store
+.agents 
+.superpowers
+docs 
+.qodo
+.skills-lock.json

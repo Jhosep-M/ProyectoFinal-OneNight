@@ -1,0 +1,813 @@
+openapi: 3.1.0
+info:
+  title: API Monitoreo de Agua y Energía
+  version: 1.0.0
+  description: >
+    Backend del sistema de Monitoreo (separado del POS; integración solo por
+    contratos REST autenticados, AGENTS.md §3.1 y §6-§7).
+    Todos los endpoints bajo /api/v1 requieren JWT de Supabase (bearerAuth)
+    salvo indicación contraria. La autorización es por permisos RBAC más
+    aislamiento de tenant (scopeOrg vía query organizacionId).
+servers:
+  - url: http://localhost:4001/api/v1
+security:
+  - bearerAuth: []
+tags:
+  - name: Auth
+  - name: Organizaciones
+  - name: Medidores
+  - name: Recursos
+  - name: Usuarios
+  - name: Consumo
+  - name: Umbrales
+  - name: Metas
+  - name: Tarifas
+  - name: Recomendaciones
+  - name: Alertas
+  - name: Notificaciones
+  - name: Reportes
+  - name: Integraciones
+  - name: Integrations
+paths:
+  /health:
+    get:
+      servers:
+        - url: http://localhost:4001
+      security: []
+      tags: [Auth]
+      summary: Health check del backend (sin autenticación)
+      responses:
+        '200':
+          description: Servicio en línea
+  # ---------------------------------------------------------------- Auth
+  /auth/me:
+    get:
+      tags: [Auth]
+      summary: Perfil del usuario autenticado (derivado del JWT, nunca del body)
+      responses:
+        '200': { description: Usuario autenticado }
+        '401': { $ref: '#/components/responses/NoAutorizado' }
+  # ------------------------------------------------------ Organizaciones
+  /organizaciones:
+    get:
+      tags: [Organizaciones]
+      summary: Listar organizaciones (permiso organizacion.consultar)
+      responses:
+        '200': { description: Lista de organizaciones }
+        '401': { $ref: '#/components/responses/NoAutorizado' }
+        '403': { $ref: '#/components/responses/Prohibido' }
+    post:
+      tags: [Organizaciones]
+      summary: Crear organización (permiso organizacion.gestionar)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [nombre]
+              properties:
+                nombre: { type: string, minLength: 1, maxLength: 120 }
+                nit: { type: string, maxLength: 30 }
+      responses:
+        '201': { description: Organización creada }
+        '400': { $ref: '#/components/responses/SolicitudInvalida' }
+        '401': { $ref: '#/components/responses/NoAutorizado' }
+        '403': { $ref: '#/components/responses/Prohibido' }
+        '409':
+          description: NIT duplicado
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+  /organizaciones/{id}:
+    get:
+      tags: [Organizaciones]
+      summary: Obtener organización por id
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      responses:
+        '200': { description: Organización }
+        '401': { $ref: '#/components/responses/NoAutorizado' }
+        '403': { $ref: '#/components/responses/Prohibido' }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
+    patch:
+      tags: [Organizaciones]
+      summary: Actualizar organización (permiso organizacion.gestionar)
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                nombre: { type: string, minLength: 1, maxLength: 120 }
+                nit: { type: string, maxLength: 30 }
+      responses:
+        '200': { description: Organización actualizada }
+        '400': { $ref: '#/components/responses/SolicitudInvalida' }
+        '401': { $ref: '#/components/responses/NoAutorizado' }
+        '403': { $ref: '#/components/responses/Prohibido' }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
+        '409':
+          description: NIT duplicado
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+  # ------------------------------------------------------------ Medidores
+  /medidores:
+    get:
+      tags: [Medidores]
+      summary: Listar puntos de medición (permiso medidor.consultar, scope tenant)
+      parameters:
+        - $ref: '#/components/parameters/OrganizacionIdQuery'
+        - $ref: '#/components/parameters/PageQuery'
+        - $ref: '#/components/parameters/LimitQuery'
+      responses:
+        '200': { description: Lista de medidores }
+        '401': { $ref: '#/components/responses/NoAutorizado' }
+        '403': { $ref: '#/components/responses/Prohibido' }
+    post:
+      tags: [Medidores]
+      summary: Crear punto de medición (permiso medidor.gestionar)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [organizacionId, codigoMedidor]
+              properties:
+                organizacionId: { type: string, format: uuid }
+                codigoMedidor: { type: string, minLength: 1, maxLength: 60 }
+                nombre: { type: string, maxLength: 120 }
+      responses:
+        '201': { description: Medidor creado }
+        '400': { $ref: '#/components/responses/SolicitudInvalida' }
+        '401': { $ref: '#/components/responses/NoAutorizado' }
+        '403': { $ref: '#/components/responses/Prohibido' }
+        '409':
+          description: Código de medidor duplicado
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+  /medidores/{id}:
+    patch:
+      tags: [Medidores]
+      summary: Actualizar punto de medición (permiso medidor.gestionar)
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                nombre: { type: string, maxLength: 120 }
+                estado: { type: string, enum: [activo, inactivo] }
+      responses:
+        '200': { description: Medidor actualizado }
+        '400': { $ref: '#/components/responses/SolicitudInvalida' }
+        '401': { $ref: '#/components/responses/NoAutorizado' }
+        '403': { $ref: '#/components/responses/Prohibido' }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
+  # ------------------------------------------------------------ Recursos
+  /recursos:
+    get:
+      tags: [Recursos]
+      summary: Listar tipos de recurso (permiso recurso.gestionar)
+      responses:
+        '200': { description: Lista de recursos (agua, energia) }
+        '401': { $ref: '#/components/responses/NoAutorizado' }
+        '403': { $ref: '#/components/responses/Prohibido' }
+    post:
+      tags: [Recursos]
+      summary: Crear tipo de recurso (permiso recurso.gestionar)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [codigo]
+              properties:
+                codigo: { type: string, enum: [agua, energia] }
+                nombre: { type: string, maxLength: 120 }
+      responses:
+        '201': { description: Recurso creado }
+        '400': { $ref: '#/components/responses/SolicitudInvalida' }
+        '401': { $ref: '#/components/responses/NoAutorizado' }
+        '403': { $ref: '#/components/responses/Prohibido' }
+        '409':
+          description: Código de recurso duplicado
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+  # ------------------------------------------------------------ Usuarios
+  /usuarios:
+    get:
+      tags: [Usuarios]
+      summary: Listar usuarios del tenant (permiso usuario.gestionar, scope tenant)
+      parameters:
+        - $ref: '#/components/parameters/OrganizacionIdQuery'
+        - $ref: '#/components/parameters/PageQuery'
+        - $ref: '#/components/parameters/LimitQuery'
+      responses:
+        '200': { description: Lista de usuarios }
+        '401': { $ref: '#/components/responses/NoAutorizado' }
+        '403': { $ref: '#/components/responses/Prohibido' }
+  /usuarios-organizacion:
+    post:
+      tags: [Usuarios]
+      summary: Asociar usuario a organización (permiso usuario.gestionar)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [usuarioId, organizacionId]
+              properties:
+                usuarioId: { type: string, format: uuid }
+                organizacionId: { type: string, format: uuid }
+                rolId: { type: string, format: uuid }
+      responses:
+        '201': { description: Membresía creada }
+        '400': { $ref: '#/components/responses/SolicitudInvalida' }
+        '401': { $ref: '#/components/responses/NoAutorizado' }
+        '403': { $ref: '#/components/responses/Prohibido' }
+        '409':
+          description: Membresía duplicada
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+  /usuarios-organizacion/{id}:
+    patch:
+      tags: [Usuarios]
+      summary: Actualizar membresía usuario-organización (permiso usuario.gestionar)
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                rolId: { type: string, format: uuid }
+                estado: { type: string, enum: [activo, inactivo] }
+      responses:
+        '200': { description: Membresía actualizada }
+        '400': { $ref: '#/components/responses/SolicitudInvalida' }
+        '401': { $ref: '#/components/responses/NoAutorizado' }
+        '403': { $ref: '#/components/responses/Prohibido' }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
+  # -------------------------------------------------------------- Consumo
+  /consumo:
+    get:
+      tags: [Consumo]
+      summary: Consultar registros de consumo (permiso consumo.consultar, scope tenant)
+      parameters:
+        - $ref: '#/components/parameters/OrganizacionIdQueryRequired'
+        - $ref: '#/components/parameters/DesdeQuery'
+        - $ref: '#/components/parameters/HastaQuery'
+        - $ref: '#/components/parameters/PageQuery'
+        - $ref: '#/components/parameters/LimitQuery'
+      responses:
+        '200': { description: Registros de consumo paginados }
+        '400': { $ref: '#/components/responses/SolicitudInvalida' }
+        '401': { $ref: '#/components/responses/NoAutorizado' }
+        '403': { $ref: '#/components/responses/Prohibido' }
+  # ------------------------------------------------------------- Umbrales
+  /umbrales:
+    get:
+      tags: [Umbrales]
+      summary: Listar umbrales de clasificación (permiso umbral.consultar, scope tenant)
+      parameters:
+        - $ref: '#/components/parameters/OrganizacionIdQuery'
+        - $ref: '#/components/parameters/PageQuery'
+        - $ref: '#/components/parameters/LimitQuery'
+      responses:
+        '200': { description: Lista de umbrales }
+        '401': { $ref: '#/components/responses/NoAutorizado' }
+        '403': { $ref: '#/components/responses/Prohibido' }
+    post:
+      tags: [Umbrales]
+      summary: Crear umbral (permiso umbral.gestionar; limiteInferior < limiteSuperior, sin solape)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/Umbral' }
+      responses:
+        '201': { description: Umbral creado }
+        '400': { $ref: '#/components/responses/SolicitudInvalida' }
+        '401': { $ref: '#/components/responses/NoAutorizado' }
+        '403': { $ref: '#/components/responses/Prohibido' }
+        '409':
+          description: Umbral solapado o duplicado
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+  /umbrales/{id}:
+    patch:
+      tags: [Umbrales]
+      summary: Actualizar umbral (permiso umbral.gestionar)
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                limiteInferior: { type: number, minimum: 0 }
+                limiteSuperior: { type: number, exclusiveMinimum: 0 }
+                nivel: { type: string, enum: [normal, alerta, critico] }
+      responses:
+        '200': { description: Umbral actualizado }
+        '400': { $ref: '#/components/responses/SolicitudInvalida' }
+        '401': { $ref: '#/components/responses/NoAutorizado' }
+        '403': { $ref: '#/components/responses/Prohibido' }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
+  # ---------------------------------------------------------------- Metas
+  /metas:
+    get:
+      tags: [Metas]
+      summary: Listar metas de reducción (permiso meta.consultar, scope tenant)
+      parameters:
+        - $ref: '#/components/parameters/OrganizacionIdQuery'
+        - $ref: '#/components/parameters/PageQuery'
+        - $ref: '#/components/parameters/LimitQuery'
+      responses:
+        '200': { description: Lista de metas }
+        '401': { $ref: '#/components/responses/NoAutorizado' }
+        '403': { $ref: '#/components/responses/Prohibido' }
+    post:
+      tags: [Metas]
+      summary: Crear meta de reducción (permiso meta.gestionar; valida porcentajes y fechas)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/Meta' }
+      responses:
+        '201': { description: Meta creada }
+        '400': { $ref: '#/components/responses/SolicitudInvalida' }
+        '401': { $ref: '#/components/responses/NoAutorizado' }
+        '403': { $ref: '#/components/responses/Prohibido' }
+        '409':
+          description: Meta duplicada
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+  /metas/{id}:
+    patch:
+      tags: [Metas]
+      summary: Actualizar meta (permiso meta.gestionar)
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                porcentaje: { type: number, minimum: 0, maximum: 100 }
+                fechaInicio: { type: string, format: date }
+                fechaFin: { type: string, format: date }
+      responses:
+        '200': { description: Meta actualizada }
+        '400': { $ref: '#/components/responses/SolicitudInvalida' }
+        '401': { $ref: '#/components/responses/NoAutorizado' }
+        '403': { $ref: '#/components/responses/Prohibido' }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
+  # --------------------------------------------------------------- Tarifas
+  /tarifas:
+    get:
+      tags: [Tarifas]
+      summary: Listar tarifas (permiso tarifa.consultar, scope tenant; incluye globales)
+      parameters:
+        - $ref: '#/components/parameters/OrganizacionIdQuery'
+        - $ref: '#/components/parameters/PageQuery'
+        - $ref: '#/components/parameters/LimitQuery'
+      responses:
+        '200': { description: Lista de tarifas }
+        '401': { $ref: '#/components/responses/NoAutorizado' }
+        '403': { $ref: '#/components/responses/Prohibido' }
+    post:
+      tags: [Tarifas]
+      summary: Crear tarifa (permiso tarifa.gestionar; valida períodos; organizacionId ausente = global)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/Tarifa' }
+      responses:
+        '201': { description: Tarifa creada }
+        '400': { $ref: '#/components/responses/SolicitudInvalida' }
+        '401': { $ref: '#/components/responses/NoAutorizado' }
+        '403': { $ref: '#/components/responses/Prohibido' }
+        '409':
+          description: Tarifa duplicada o período en conflicto
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+  /tarifas/{id}:
+    patch:
+      tags: [Tarifas]
+      summary: Actualizar tarifa (permiso tarifa.gestionar)
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                valor: { type: number, exclusiveMinimum: 0 }
+                fechaInicio: { type: string, format: date }
+                fechaFin: { type: string, format: date }
+      responses:
+        '200': { description: Tarifa actualizada }
+        '400': { $ref: '#/components/responses/SolicitudInvalida' }
+        '401': { $ref: '#/components/responses/NoAutorizado' }
+        '403': { $ref: '#/components/responses/Prohibido' }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
+  # ------------------------------------------------------- Recomendaciones
+  /recomendaciones:
+    get:
+      tags: [Recomendaciones]
+      summary: Listar recomendaciones (permiso recomendacion.consultar, scope tenant)
+      parameters:
+        - $ref: '#/components/parameters/OrganizacionIdQuery'
+        - $ref: '#/components/parameters/PageQuery'
+        - $ref: '#/components/parameters/LimitQuery'
+      responses:
+        '200': { description: Lista de recomendaciones }
+        '401': { $ref: '#/components/responses/NoAutorizado' }
+        '403': { $ref: '#/components/responses/Prohibido' }
+    post:
+      tags: [Recomendaciones]
+      summary: Crear recomendación (permiso recomendacion.gestionar)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/Recomendacion' }
+      responses:
+        '201': { description: Recomendación creada }
+        '400': { $ref: '#/components/responses/SolicitudInvalida' }
+        '401': { $ref: '#/components/responses/NoAutorizado' }
+        '403': { $ref: '#/components/responses/Prohibido' }
+        '409':
+          description: Recomendación duplicada
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+  /recomendaciones/{id}:
+    patch:
+      tags: [Recomendaciones]
+      summary: Actualizar recomendación (permiso recomendacion.gestionar)
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                titulo: { type: string, maxLength: 200 }
+                descripcion: { type: string }
+                estado: { type: string, enum: [activo, inactivo] }
+      responses:
+        '200': { description: Recomendación actualizada }
+        '400': { $ref: '#/components/responses/SolicitudInvalida' }
+        '401': { $ref: '#/components/responses/NoAutorizado' }
+        '403': { $ref: '#/components/responses/Prohibido' }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
+  # ---------------------------------------------------------------- Alertas
+  /alertas:
+    get:
+      tags: [Alertas]
+      summary: Listar alertas (permiso alerta.consultar, scope tenant)
+      parameters:
+        - $ref: '#/components/parameters/OrganizacionIdQueryRequired'
+        - $ref: '#/components/parameters/DesdeQuery'
+        - $ref: '#/components/parameters/HastaQuery'
+        - in: query
+          name: nivel
+          required: false
+          schema: { type: string, enum: [alerta, critico] }
+          description: Filtra por nivel de la alerta
+        - $ref: '#/components/parameters/PageQuery'
+        - $ref: '#/components/parameters/LimitQuery'
+      responses:
+        '200': { description: Lista de alertas paginada }
+        '400': { $ref: '#/components/responses/SolicitudInvalida' }
+        '401': { $ref: '#/components/responses/NoAutorizado' }
+        '403': { $ref: '#/components/responses/Prohibido' }
+  # --------------------------------------------------------- Notificaciones
+  /notificaciones:
+    get:
+      tags: [Notificaciones]
+      summary: Listar notificaciones (permiso notificacion.consultar)
+      description: 'Sin paginado ni filtro por query: devuelve las suyas + broadcast de todas sus organizaciones.'
+      responses:
+        '200': { description: Lista de notificaciones }
+        '401': { $ref: '#/components/responses/NoAutorizado' }
+        '403': { $ref: '#/components/responses/Prohibido' }
+  /notificaciones/{id}:
+    patch:
+      tags: [Notificaciones]
+      summary: Marcar notificación como vista (permiso notificacion.consultar)
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [accion]
+              properties:
+                accion: { type: string, enum: [vista] }
+              example: { accion: vista }
+      responses:
+        '200': { description: Notificación actualizada }
+        '400': { $ref: '#/components/responses/SolicitudInvalida' }
+        '401': { $ref: '#/components/responses/NoAutorizado' }
+        '403': { $ref: '#/components/responses/Prohibido' }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
+  # --------------------------------------------------------------- Reportes
+  /reportes/consumo:
+    get:
+      tags: [Reportes]
+      summary: Reporte agregado de consumo por período (permiso reporte.consultar)
+      parameters:
+        - $ref: '#/components/parameters/OrganizacionIdQueryRequired'
+        - $ref: '#/components/parameters/DesdeQuery'
+        - $ref: '#/components/parameters/HastaQuery'
+        - $ref: '#/components/parameters/PageQuery'
+        - $ref: '#/components/parameters/LimitQuery'
+      responses:
+        '200': { description: Agregados de consumo }
+        '400': { $ref: '#/components/responses/SolicitudInvalida' }
+        '401': { $ref: '#/components/responses/NoAutorizado' }
+        '403': { $ref: '#/components/responses/Prohibido' }
+  /reportes/top-excesos:
+    get:
+      tags: [Reportes]
+      summary: Top de excesos sobre umbrales (permiso reporte.consultar)
+      parameters:
+        - $ref: '#/components/parameters/OrganizacionIdQueryRequired'
+        - $ref: '#/components/parameters/DesdeQuery'
+        - $ref: '#/components/parameters/HastaQuery'
+        - $ref: '#/components/parameters/LimiteQuery'
+      responses:
+        '200': { description: Ranking de excesos }
+        '400': { $ref: '#/components/responses/SolicitudInvalida' }
+        '401': { $ref: '#/components/responses/NoAutorizado' }
+        '403': { $ref: '#/components/responses/Prohibido' }
+  # ---------------------------------------------------------- Integraciones
+  /integraciones:
+    get:
+      tags: [Integraciones]
+      summary: Listar integraciones POS (permiso integracion.consultar, scope tenant; jamás expone apiKey)
+      parameters:
+        - $ref: '#/components/parameters/OrganizacionIdQueryRequired'
+        - $ref: '#/components/parameters/DesdeQuery'
+        - $ref: '#/components/parameters/HastaQuery'
+        - $ref: '#/components/parameters/PageQuery'
+        - $ref: '#/components/parameters/LimitQuery'
+      responses:
+        '200': { description: Lista de integraciones (solo hash, nunca la clave) }
+        '400': { $ref: '#/components/responses/SolicitudInvalida' }
+        '401': { $ref: '#/components/responses/NoAutorizado' }
+        '403': { $ref: '#/components/responses/Prohibido' }
+    post:
+      tags: [Integraciones]
+      summary: Crear integración (permiso integracion.gestionar; devuelve apiKey UNA sola vez)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/IntegracionCrear' }
+      responses:
+        '201':
+          description: Integración creada; apiKey en texto plano solo en esta respuesta
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/IntegracionCreada' }
+        '400': { $ref: '#/components/responses/SolicitudInvalida' }
+        '401': { $ref: '#/components/responses/NoAutorizado' }
+        '403': { $ref: '#/components/responses/Prohibido' }
+        '409':
+          description: Integración duplicada
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+  /integraciones/{id}:
+    patch:
+      tags: [Integraciones]
+      summary: Rotar clave o cambiar estado (permiso integracion.gestionar; rotar devuelve apiKey una vez)
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/IntegracionActualizar' }
+      responses:
+        '200': { description: Integración actualizada (con apiKey solo si se rotó) }
+        '400': { $ref: '#/components/responses/SolicitudInvalida' }
+        '401': { $ref: '#/components/responses/NoAutorizado' }
+        '403': { $ref: '#/components/responses/Prohibido' }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
+  # ------------------------------------------------- Integración con el POS
+  /integrations/consumption:
+    post:
+      tags: [Integrations]
+      summary: Recibir consumo reportado por el POS (idempotente)
+      description: >
+        Autenticación por API key propia (Authorization: Bearer <apiKey>,
+        validada contra su sha256), no JWT Supabase. Idempotente por
+        idempotencyKey y consumoExternoId: el reenvío devuelve 200 con
+        duplicado=true en lugar de crear otra fila.
+      security: []            # autenticación por API key propia, no JWT Supabase
+      parameters:
+        - in: header
+          name: Authorization
+          required: true
+          schema: { type: string, example: 'Bearer dev-monitoreo-integration-key' }
+          description: API key de la integración (solo su sha256 vive en BD)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ConsumoExterno' }
+      responses:
+        '201': { description: Recepción creada }
+        '200': { description: Duplicado (mismo idempotencyKey o consumoExternoId) }
+        '400': { description: Payload inválido }
+        '401': { description: API key inválida o ausente }
+        '403': { description: organizacionExternaId no coincide con la integración }
+  /integrations/alerts:
+    post:
+      tags: [Integrations]
+      summary: (Solo contrato — el receptor vive en el POS, P4 Paso 2)
+      security: []
+      responses:
+        '404': { description: No implementado en este backend }
+components:
+  securitySchemes:
+    bearerAuth: { type: http, scheme: bearer, bearerFormat: JWT }
+  parameters:
+    IdPath:
+      in: path
+      name: id
+      required: true
+      schema: { type: string, format: uuid }
+    OrganizacionIdQuery:
+      in: query
+      name: organizacionId
+      required: false
+      schema: { type: string, format: uuid }
+      description: Aislamiento de tenant (scopeOrg)
+    OrganizacionIdQueryRequired:
+      in: query
+      name: organizacionId
+      required: true
+      schema: { type: string, format: uuid }
+      description: Aislamiento de tenant (scopeOrg; requerido por rangoSchema)
+    DesdeQuery:
+      in: query
+      name: desde
+      required: false
+      schema: { type: string, pattern: '^\d{4}-\d{2}-\d{2}$', example: '2026-09-01' }
+      description: Fecha inicial YYYY-MM-DD (debe ser <= hasta)
+    HastaQuery:
+      in: query
+      name: hasta
+      required: false
+      schema: { type: string, pattern: '^\d{4}-\d{2}-\d{2}$', example: '2026-09-30' }
+      description: Fecha final YYYY-MM-DD
+    PageQuery:
+      in: query
+      name: page
+      required: false
+      schema: { type: integer, minimum: 1, default: 1 }
+    LimitQuery:
+      in: query
+      name: limit
+      required: false
+      schema: { type: integer, minimum: 1, maximum: 100, default: 50 }
+    LimiteQuery:
+      in: query
+      name: limite
+      required: false
+      schema: { type: integer, minimum: 1, maximum: 50, default: 10 }
+      description: Tamaño del ranking en top-excesos
+  responses:
+    SolicitudInvalida:
+      description: Payload o query inválidos (Zod)
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    NoAutorizado:
+      description: JWT ausente, inválido o expirado
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    Prohibido:
+      description: Sin permiso RBAC u organización ajena al tenant
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    NoEncontrado:
+      description: Recurso inexistente
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+  schemas:
+    ConsumoExterno:
+      type: object
+      required: [consumoExternoId, idempotencyKey, tipoRecurso, cantidad, unidadMedida, fechaConsumo]
+      properties:
+        consumoExternoId: { type: string, format: uuid }
+        idempotencyKey: { type: string, minLength: 8, maxLength: 120 }
+        tipoRecurso: { type: string, enum: [agua, energia] }
+        cantidad: { type: number, exclusiveMinimum: 0, description: 'Positiva, máximo 3 decimales' }
+        unidadMedida: { type: string, minLength: 1, maxLength: 20 }
+        fechaConsumo: { type: string, format: date-time }
+        origen: { type: string, minLength: 1, maxLength: 30, default: POS, example: POS }
+        organizacionExternaId: { type: string, format: uuid, description: 'Opcional: si se envía debe coincidir con la organización de la integración' }
+    Umbral:
+      type: object
+      required: [organizacionId, tipoRecurso, nivel, limiteInferior, limiteSuperior]
+      properties:
+        organizacionId: { type: string, format: uuid }
+        tipoRecurso: { type: string, enum: [agua, energia] }
+        nivel: { type: string, enum: [normal, alerta, critico] }
+        limiteInferior: { type: number, minimum: 0 }
+        limiteSuperior: { type: number, exclusiveMinimum: 0 }
+    Meta:
+      type: object
+      required: [organizacionId]
+      properties:
+        organizacionId: { type: string, format: uuid }
+        tipoRecurso: { type: string, enum: [agua, energia] }
+        porcentaje: { type: number, minimum: 0, maximum: 100 }
+        fechaInicio: { type: string, format: date }
+        fechaFin: { type: string, format: date }
+    Tarifa:
+      type: object
+      required: [tipoRecurso, valor]
+      properties:
+        organizacionId: { type: string, format: uuid, description: 'Ausente = tarifa global' }
+        tipoRecurso: { type: string, enum: [agua, energia] }
+        valor: { type: number, exclusiveMinimum: 0 }
+        fechaInicio: { type: string, format: date }
+        fechaFin: { type: string, format: date }
+    Recomendacion:
+      type: object
+      required: [organizacionId]
+      properties:
+        organizacionId: { type: string, format: uuid }
+        tipoRecurso: { type: string, enum: [agua, energia] }
+        titulo: { type: string, maxLength: 200 }
+        descripcion: { type: string }
+    IntegracionCrear:
+      type: object
+      required: [organizacionId, nombre]
+      properties:
+        organizacionId: { type: string, format: uuid }
+        nombre: { type: string, minLength: 1, maxLength: 120 }
+    IntegracionActualizar:
+      oneOf:
+        - type: object
+          required: [accion]
+          properties:
+            accion: { type: string, enum: [rotar] }
+        - type: object
+          required: [estado]
+          properties:
+            estado: { type: string, enum: [activo, inactivo] }
+    IntegracionCreada:
+      type: object
+      required: [integracion, apiKey]
+      properties:
+        integracion: { type: object, description: 'Integración creada (solo hash de clave, nunca el secreto)' }
+        apiKey: { type: string, description: 'Clave en texto plano: se muestra UNA sola vez, guárdala' }
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error: { type: string }
+        detail: {}

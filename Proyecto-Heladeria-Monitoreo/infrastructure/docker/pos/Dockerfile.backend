@@ -1,0 +1,29 @@
+# =============================================================================
+# ESPEJO — POS backend para builds centralizados (Persona 4 / Task 6)
+# Canónico: pos/posBackend/Dockerfile (misma contenido).
+# Uso recomendado (contexto = app):
+#   docker build -f pos/posBackend/Dockerfile -t pos-backend:local ./pos/posBackend
+# Uso alternativo con ESTE archivo (contexto = raíz del repo):
+#   docker build -f infrastructure/docker/pos/Dockerfile.backend \
+#     --build-context app=./pos/posBackend .
+# Si se duplica contenido, mantener sincronizado con el canónico.
+# =============================================================================
+FROM node:20-alpine AS base
+WORKDIR /app
+ENV NODE_ENV=production \
+    PORT=3000
+
+RUN apk add --no-cache wget
+
+COPY package.json package-lock.json* ./
+RUN npm ci --omit=dev --no-audit --no-fund
+
+COPY src ./src
+
+EXPOSE 3000
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
+  CMD wget -qO- http://127.0.0.1:3000/health | grep -q '"ok":true' || exit 1
+
+USER node
+CMD ["node", "src/server.js"]

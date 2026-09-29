@@ -1,0 +1,31 @@
+# =============================================================================
+# Monitoreo — Ingress con TLS (Persona 4 / Task 6)
+# Requiere Ingress Controller (p. ej. ingress-nginx) + cert-manager con
+# ClusterIssuer `letsencrypt-prod` y secreto TLS `monitoreo-tls`.
+# Ajustar `host:` al dominio real.
+# =============================================================================
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: monitoreo-ingress
+  namespace: monitoreo
+  annotations:
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - monitoreo.tu-dominio.com
+      secretName: monitoreo-tls
+  rules:
+    - host: monitoreo.tu-dominio.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: monitoreo-frontend
+                port:
+                  number: 80
