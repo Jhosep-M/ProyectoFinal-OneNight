@@ -1,0 +1,52 @@
+# =============================================================================
+# Monitoreo frontend (nginx) — Deployment (Persona 4 / Task 6)
+# Imagen: monitoreo-frontend:latest (monitoreo/frontend/Dockerfile, nginx :80).
+# Probes sobre / (root SPA).
+# =============================================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: monitoreo-frontend
+  namespace: monitoreo
+  labels:
+    app: monitoreo-frontend
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: monitoreo-frontend
+  template:
+    metadata:
+      labels:
+        app: monitoreo-frontend
+    spec:
+      containers:
+        - name: monitoreo-frontend
+          image: monitoreo-frontend:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 80
+              name: http
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 10
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "32Mi"
+            limits:
+              cpu: "500m"
+              memory: "128Mi"

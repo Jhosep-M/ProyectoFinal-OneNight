@@ -1,0 +1,24 @@
+:root { font-family: system-ui, sans-serif; color: #14213d; }
+body { margin: 0; background: #f7f9fb; }
+.layout { min-height: 100vh; display: flex; flex-direction: column; }
+.cabecera { display: flex; align-items: center; gap: 1.5rem; padding: 0.75rem 1.25rem; background: #14213d; color: #fff; }
+.cabecera nav { display: flex; gap: 1rem; flex: 1; }
+.cabecera a { color: #cbd5e1; text-decoration: none; }
+.cabecera a.activo { color: #fff; font-weight: 700; border-bottom: 2px solid #fca311; }
+.sesion { display: flex; gap: 0.75rem; align-items: center; }
+.contenido { padding: 1.25rem; max-width: 1100px; width: 100%; margin: 0 auto; }
+.tabla { width: 100%; border-collapse: collapse; background: #fff; }
+.tabla th, .tabla td { padding: 0.5rem 0.75rem; border-bottom: 1px solid #e2e8f0; text-align: left; }
+.tabla th { background: #eef2f7; }
+.badge { padding: 0.1rem 0.5rem; border-radius: 999px; font-size: 0.8rem; color: #fff; }
+.badge.normal { background: #2a9d8f; }
+.badge.alerta { background: #f4a261; }
+.badge.critico { background: #e63946; }
+.badge.sin_umbral { background: #6c757d; }
+.formulario { display: grid; gap: 0.6rem; max-width: 420px; background: #fff; padding: 1rem; border-radius: 8px; }
+.formulario input, .formulario select { padding: 0.45rem; }
+.error { color: #e63946; }
+.cargando { padding: 2rem; }
+.paginacion { display: flex; gap: 0.75rem; align-items: center; margin-top: 0.75rem; }
+.tarjetas { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; }
+.tarjeta { background: #fff; padding: 1rem; border-radius: 8px; }
