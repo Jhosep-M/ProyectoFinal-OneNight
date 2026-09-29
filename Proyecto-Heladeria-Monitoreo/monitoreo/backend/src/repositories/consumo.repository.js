@@ -1,8 +1,14 @@
 const { RegistroConsumo, TipoRecurso } = require('../models');
 const { Op } = require('sequelize');
 
-async function listar(organizacionId, { desde, hasta, page, limit }) {
+async function listar(organizacionId, { desde, hasta, page, limit, recurso, medidorId }) {
   const where = { organizacion_id: organizacionId };
+  if (recurso === 'agua' || recurso === 'energia') {
+    where.tipo_recurso = recurso;
+  }
+  if (medidorId) {
+    where.punto_medicion_id = medidorId;
+  }
   if (desde || hasta) {
     where.fecha_consumo = {
       ...(desde ? { [Op.gte]: new Date(`${desde}T00:00:00`) } : {}),

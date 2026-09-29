@@ -46,9 +46,9 @@ export default function Consumo() {
   return (
     <section>
       <h2>Consumo registrado ({datos.total ?? 0})</h2>
-      <form className="formulario" onSubmit={(e) => { e.preventDefault(); setPagina(1); cargar(); }}>
-        <label>Desde <input type="date" value={desde} onChange={(e) => setDesde(e.target.value)} /></label>
-        <label>Hasta <input type="date" value={hasta} onChange={(e) => setHasta(e.target.value)} /></label>
+      <form className="formulario" onSubmit={(e) => e.preventDefault()}>
+        <label>Desde <input type="date" value={desde} onChange={(e) => { setDesde(e.target.value); setPagina(1); }} /></label>
+        <label>Hasta <input type="date" value={hasta} onChange={(e) => { setHasta(e.target.value); setPagina(1); }} /></label>
         <label>Recurso
           <select value={recurso} onChange={(e) => { setRecurso(e.target.value); setPagina(1); }}>
             <option value="">Todos</option>
@@ -56,7 +56,6 @@ export default function Consumo() {
             <option value="energia">Energia</option>
           </select>
         </label>
-        <button type="submit">Filtrar</button>
       </form>
       {error && <p className="error">{error}</p>}
       {aviso && <p className="toast">{aviso}</p>}

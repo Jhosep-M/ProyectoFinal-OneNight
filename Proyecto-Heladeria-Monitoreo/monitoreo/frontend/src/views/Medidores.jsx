@@ -66,22 +66,6 @@ export default function Medidores() {
     }
   }
 
-  async function cambiarEstado(m) {
-    const nuevo = (m.estado ?? '').toLowerCase() === 'activo' ? 'inactivo' : 'activo';
-    setGuardando(true);
-    setError(null);
-    setAviso(null);
-    try {
-      await actualizar(m.id, { estado: nuevo });
-      setAviso(`Medidor ${m.codigo_medidor} ${nuevo === 'activo' ? 'activado' : 'desactivado'}`);
-      await cargar();
-    } catch (err) {
-      setError(err.detail ? `${err.message}: ${err.detail}` : err.message);
-    } finally {
-      setGuardando(false);
-    }
-  }
-
   async function enviar(e) {
     e.preventDefault();
     if (!form.nombre.trim()) {
@@ -94,6 +78,7 @@ export default function Medidores() {
     try {
       if (form.id) {
         await actualizar(form.id, {
+          codigoMedidor: form.codigoMedidor,
           nombre: form.nombre.trim(),
           estado: form.estado,
         });
@@ -155,7 +140,6 @@ export default function Medidores() {
           </thead>
           <tbody>
             {visibles.map((m) => {
-              const activo = (m.estado ?? '').toLowerCase() === 'activo';
               return (
                 <tr key={m.id}>
                   <td><code>{m.codigo_medidor}</code></td>
@@ -165,9 +149,6 @@ export default function Medidores() {
                   <td>
                     <span className="tabla-acciones">
                       <button type="button" onClick={() => editar(m)}>Editar</button>
-                      <button type="button" onClick={() => cambiarEstado(m)} disabled={guardando}>
-                        {activo ? 'Desactivar' : 'Activar'}
-                      </button>
                       <button type="button" className="peligro" onClick={(e) => { e.stopPropagation(); setPorEliminar(m); }}>Eliminar</button>
                     </span>
                   </td>
@@ -181,13 +162,11 @@ export default function Medidores() {
 
       <h2>{form.id ? 'Editar medidor' : 'Nuevo medidor'}</h2>
       <form className="formulario form-grid" onSubmit={enviar}>
-        {!form.id && (
-          <label>Codigo
-            <input placeholder="MED-001" value={form.codigoMedidor} required
-              pattern="MED-.*"
-              onChange={(e) => setForm({ ...form, codigoMedidor: e.target.value })} />
-          </label>
-        )}
+        <label>Codigo
+          <input placeholder="MED-001" value={form.codigoMedidor} required
+            pattern="MED-.*"
+            onChange={(e) => setForm({ ...form, codigoMedidor: e.target.value })} />
+        </label>
         <label>Nombre
           <input placeholder="Nombre" value={form.nombre} required
             onChange={(e) => setForm({ ...form, nombre: e.target.value })} />

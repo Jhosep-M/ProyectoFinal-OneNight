@@ -38,10 +38,19 @@ async function actualizar(req, res) {
   try {
     const medidor = ES_UUID.test(req.params.id) ? await repo.buscarPorId(req.params.id) : null;
     if (!medidor || !req.orgIds.includes(medidor.organizacion_id)) return fail(res, 404, 'No encontrada');
-    await repo.actualizar(medidor.id, req.body);
-    await registrarAuditoria({ entidad: 'punto_medicion', entidadId: medidor.id, accion: 'actualizar', usuarioId: req.user.id, reqId: req.id, detalle: req.body });
+    const campos = { ...req.body };
+    if (campos.codigoMedidor !== undefined) {
+      if (campos.codigoMedidor !== medidor.codigo_medidor && await repo.existeCodigo(campos.codigoMedidor)) {
+        return fail(res, 409, 'Código de medidor duplicado');
+      }
+      campos.codigo_medidor = campos.codigoMedidor;
+      delete campos.codigoMedidor;
+    }
+    await repo.actualizar(medidor.id, campos);
+    await registrarAuditoria({ entidad: 'punto_medicion', entidadId: medidor.id, accion: 'actualizar', usuarioId: req.user.id, reqId: req.id, detalle: campos });
     return ok(res, medidor);
   } catch (e) {
+    if (e.name === 'SequelizeUniqueConstraintError') return fail(res, 409, 'Código de medidor duplicado');
     return fail(res, 500, 'Error actualizando medidor', e.message);
   }
 }
