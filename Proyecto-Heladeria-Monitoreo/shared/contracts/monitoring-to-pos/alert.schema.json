@@ -1,0 +1,31 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://heladeria.local/contracts/alerts.v1.json",
+  "title": "alerts.v1",
+  "type": "object",
+  "required": ["alertaId", "nivel", "tipoRecurso", "mensaje", "fechaGeneracion"],
+  "properties": {
+    "alertaId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "nivel": {
+      "type": "string",
+      "enum": ["info", "advertencia", "critico"]
+    },
+    "tipoRecurso": {
+      "type": "string",
+      "enum": ["agua", "energia"]
+    },
+    "mensaje": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 500
+    },
+    "fechaGeneracion": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "additionalProperties": false
+}

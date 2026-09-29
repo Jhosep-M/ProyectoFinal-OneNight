@@ -1,0 +1,27 @@
+# =============================================================================
+# ESPEJO — Monitoreo backend para builds centralizados (Persona 4 / Task 6)
+# Canónico: monitoreo/backend/Dockerfile (mismo contenido).
+# Uso recomendado (contexto = app):
+#   docker build -f monitoreo/backend/Dockerfile -t monitoreo-backend:local ./monitoreo/backend
+# NOTA (P3 pendiente): src/ está vacío; válido cuando P3 complete
+# `node src/server.js` + GET /health -> { ok: true } en puerto 4000.
+# =============================================================================
+FROM node:20-alpine AS base
+WORKDIR /app
+ENV NODE_ENV=production \
+    PORT=4000
+
+RUN apk add --no-cache wget
+
+COPY package.json package-lock.json* ./
+RUN npm ci --omit=dev --no-audit --no-fund
+
+COPY src ./src
+
+EXPOSE 4000
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
+  CMD wget -qO- http://127.0.0.1:4000/health | grep -q '"ok":true' || exit 1
+
+USER node
+CMD ["node", "src/server.js"]

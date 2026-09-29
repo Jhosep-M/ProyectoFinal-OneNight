@@ -1,0 +1,28 @@
+# logs
+*.log
+logs/
+
+# env / secretos (se permite .env.example)
+.env
+.env.*
+!.env.example
+
+# dependencias
+node_modules/
+
+# artefactos de build (Vite / Node)
+dist/
+build/
+
+# skills / agentes / tooling local
+.superpowers/
+.agents/
+.qodo/
+.opencode/
+skills-lock.json
+.skills-lock.json
+
+
+
+# sistema
+.DS_Store

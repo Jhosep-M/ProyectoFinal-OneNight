@@ -1,0 +1,50 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://heladeria.local/contracts/consumption.v1.json",
+  "title": "consumption.v1",
+  "type": "object",
+  "required": [
+    "consumoExternoId",
+    "tipoRecurso",
+    "cantidad",
+    "unidadMedida",
+    "fechaConsumo",
+    "organizacionExternaId",
+    "origen"
+  ],
+  "properties": {
+    "consumoExternoId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "tipoRecurso": {
+      "type": "string",
+      "enum": ["agua", "energia"]
+    },
+    "cantidad": {
+      "type": "number",
+      "minimum": 0
+    },
+    "unidadMedida": {
+      "type": "string",
+      "enum": ["litros", "kWh"]
+    },
+    "fechaConsumo": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "organizacionExternaId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "origen": {
+      "const": "POS"
+    },
+    "idempotencyKey": {
+      "type": "string",
+      "minLength": 8,
+      "maxLength": 150
+    }
+  },
+  "additionalProperties": false
+}

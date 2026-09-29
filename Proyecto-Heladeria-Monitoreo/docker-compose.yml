@@ -1,0 +1,138 @@
+# =============================================================================
+# docker-compose.yml — Heladería POS + Monitoreo (Persona 4 / Task 6)
+# =============================================================================
+# Sin DB local: ambos backends usan Supabase/PostgreSQL gestionado
+# (DATABASE_URL / DATABASE_URL_MONITOREO). No hay servicio `db` a propósito.
+#
+# Puertos host:
+#   pos-backend         3000:3000  (GET /health -> { ok: true }, confirmado)
+#   monitoreo-backend   4000:4000  (GET /health, P3 pendiente — mismo contrato)
+#   pos-frontend        5173:80    (nginx sirve dist de Vite)
+#   monitoreo-frontend  5174:80    (nginx sirve dist de Vite)
+#
+# Uso:
+#   cp .env.example .env   # completar valores reales, nunca subir .env
+#   docker compose up --build
+# =============================================================================
+
+services:
+  pos-backend:
+    build:
+      context: ./pos/posBackend
+      dockerfile: Dockerfile
+    container_name: pos-backend
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: ${NODE_ENV:-production}
+      PORT: 3000
+      DATABASE_URL: ${DATABASE_URL}
+      SUPABASE_URL: ${SUPABASE_URL}
+      SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY}
+      SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY}
+      CORS_ORIGIN: ${CORS_ORIGIN}
+      RATE_LIMIT_WINDOW_MS: ${RATE_LIMIT_WINDOW_MS:-900000}
+      RATE_LIMIT_MAX: ${RATE_LIMIT_MAX:-100}
+      MONITOREO_URL: ${MONITOREO_URL:-http://monitoreo-backend:4000/api/v1/integrations/consumption}
+      MONITOREO_API_KEY: ${MONITOREO_API_KEY}
+      POS_ALERT_API_KEY: ${POS_ALERT_API_KEY}
+      ORGANIZACION_EXTERNA_ID: ${ORGANIZACION_EXTERNA_ID}
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3000/health"]
+      interval: 30s
+      timeout: 5s
+      start_period: 20s
+      retries: 3
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
+        reservations:
+          cpus: "0.25"
+          memory: 128M
+
+  monitoreo-backend:
+    build:
+      context: ./monitoreo/backend
+      dockerfile: Dockerfile
+    container_name: monitoreo-backend
+    ports:
+      - "4000:4000"
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: ${NODE_ENV:-production}
+      PORT: 4000
+      DATABASE_URL: ${DATABASE_URL_MONITOREO}
+      SUPABASE_URL: ${SUPABASE_URL}
+      SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY}
+      SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY}
+      CORS_ORIGIN: ${CORS_ORIGIN}
+      RATE_LIMIT_WINDOW_MS: ${RATE_LIMIT_WINDOW_MS:-900000}
+      RATE_LIMIT_MAX: ${RATE_LIMIT_MAX:-100}
+      POS_ALERTS_URL: ${POS_ALERTS_URL:-http://pos-backend:3000/api/v1/integrations/alerts}
+      POS_ALERT_API_KEY: ${POS_ALERT_API_KEY}
+    healthcheck:
+      # Requiere GET /health en Monitoreo (P3 pendiente — mismo contrato que POS).
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:4000/health"]
+      interval: 30s
+      timeout: 5s
+      start_period: 20s
+      retries: 3
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
+        reservations:
+          cpus: "0.25"
+          memory: 128M
+
+  pos-frontend:
+    build:
+      context: ./pos/frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_URL: ${VITE_API_URL_POS:-http://localhost:3000/api/v1}
+    container_name: pos-frontend
+    ports:
+      - "5173:80"
+    depends_on:
+      pos-backend:
+        condition: service_healthy
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 128M
+        reservations:
+          cpus: "0.10"
+          memory: 32M
+
+  monitoreo-frontend:
+    build:
+      context: ./monitoreo/frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_URL: ${VITE_API_URL_MONITOREO:-http://localhost:4000/api/v1}
+    container_name: monitoreo-frontend
+    ports:
+      - "5174:80"
+    depends_on:
+      monitoreo-backend:
+        condition: service_healthy
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 128M
+        reservations:
+          cpus: "0.10"
+          memory: 32M
