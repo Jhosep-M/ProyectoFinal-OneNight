@@ -7,7 +7,7 @@ import Skeleton from '../../components/ui/Skeleton.jsx';
 import { formatCurrency, formatTime } from '../../utils/format.js';
 import { listarTurnos } from '../../services/cajaService.js';
 import { listarVentas } from '../../services/ventasService.js';
-import { cerrarTurno } from '../../services/cajaService.js';
+import { cerrarTurno, abrirTurno } from '../../services/cajaService.js';
 
 const container = {
   hidden: { opacity: 0 },
@@ -20,10 +20,20 @@ const item = {
 };
 
 const ESTADOS = {
+  activa: { nombre: 'Completado', variante: 'success' },
   completado: { nombre: 'Completado', variante: 'success' },
+  anulada: { nombre: 'Anulado', variante: 'danger' },
   anulado: { nombre: 'Anulado', variante: 'danger' },
   pendiente: { nombre: 'Pendiente', variante: 'warning' },
 };
+
+// Normaliza filas de venta del backend (id_venta, NUMERIC como string).
+const normVenta = (v) => ({
+  ...v,
+  id: v.id_venta || v.id,
+  total: Number(v.total) || 0,
+  estado: v.estado === 'anulada' ? 'anulado' : v.estado === 'activa' ? 'completado' : v.estado,
+});
 
 export default function CajaPage() {
   const [turnos, setTurnos] = useState([]);
@@ -31,6 +41,9 @@ export default function CajaPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [cerrando, setCerrando] = useState(false);
+  const [montoInicial, setMontoInicial] = useState('');
+  const [abriendo, setAbriendo] = useState(false);
+  const [errorAbrir, setErrorAbrir] = useState(null);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -41,7 +54,7 @@ export default function CajaPage() {
           listarVentas(),
         ]);
         setTurnos(turnosData || []);
-        setVentas(ventasData || []);
+        setVentas((ventasData || []).map(normVenta));
       } catch (err) {
         setError('No se pudieron cargar los datos de caja');
       } finally {
@@ -51,11 +64,12 @@ export default function CajaPage() {
     fetchData();
   }, []);
 
-  const turnoActivo = turnos.find((t) => t.estado === 'abierto') || turnos[0] || null;
+  const turnoActivo = turnos.find((t) => t.estado === 'abierto') || null;
 
-  const ventasTurno = turnoActivo
-    ? ventas.filter((v) => v.turno_id === turnoActivo.id)
-    : ventas;
+  const turnoActivoId = turnoActivo?.id_turno || turnoActivo?.id || null;
+  const ventasTurno = turnoActivoId
+    ? ventas.filter((v) => (v.turno_id || v.turnoId) === turnoActivoId)
+    : [];
 
   const totalVentas = ventasTurno
     .filter((v) => v.estado !== 'anulado')
@@ -65,13 +79,28 @@ export default function CajaPage() {
     if (!turnoActivo) return;
     setCerrando(true);
     try {
-      await cerrarTurno(turnoActivo.id, totalVentas);
+      await cerrarTurno(turnoActivoId, totalVentas);
       const turnosData = await listarTurnos();
       setTurnos(turnosData || []);
     } catch (err) {
       console.error('Error al cerrar turno:', err);
     } finally {
       setCerrando(false);
+    }
+  };
+
+  const handleAbrirTurno = async () => {
+    setErrorAbrir(null);
+    setAbriendo(true);
+    try {
+      await abrirTurno(Number(montoInicial));
+      setMontoInicial('');
+      const turnosData = await listarTurnos();
+      setTurnos(turnosData || []);
+    } catch (err) {
+      setErrorAbrir(err.message);
+    } finally {
+      setAbriendo(false);
     }
   };
 
@@ -113,7 +142,11 @@ export default function CajaPage() {
               <>
                 <div className="mb-3">
                   <div className="text-muted small">Turno</div>
-                  <div className="fw-semibold">{turnoActivo.nombre || `Turno #${turnoActivo.id}`}</div>
+                  <div className="fw-semibold">{turnoActivo.nombre || `Turno #${String(turnoActivoId).slice(0, 8)}`}</div>
+                </div>
+                <div className="mb-3">
+                  <div className="text-muted small">Estado</div>
+                  <div className="fw-semibold">{turnoActivo.estado}</div>
                 </div>
                 <div className="mb-3">
                   <div className="text-muted small">Apertura</div>
@@ -164,6 +197,25 @@ export default function CajaPage() {
               <div className="text-center text-muted py-4">
                 <i className="bi bi-clock fs-1"></i>
                 <p className="mt-2">No hay un turno activo</p>
+                {errorAbrir && <div className="alert alert-danger">{errorAbrir}</div>}
+                <div className="d-flex gap-2 justify-content-center mt-3">
+                  <input
+                    placeholder="monto inicial"
+                    type="number"
+                    min="0"
+                    className="form-control"
+                    style={{ maxWidth: '160px' }}
+                    value={montoInicial}
+                    onChange={(e) => setMontoInicial(e.target.value)}
+                  />
+                  <Button
+                    variant="primary"
+                    onClick={handleAbrirTurno}
+                    disabled={abriendo || montoInicial === ''}
+                  >
+                    {abriendo ? 'Abriendo...' : 'Abrir'}
+                  </Button>
+                </div>
               </div>
             )}
           </Card>

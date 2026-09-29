@@ -5,14 +5,17 @@ import { AuthProvider } from '../../../context/AuthContext.jsx';
 import DashboardPage from '../DashboardPage.jsx';
 
 const mocks = vi.hoisted(() => ({
-  mockListarTurnos: vi.fn(),
   mockListarVentas: vi.fn(),
-  mockListarPedidos: vi.fn(),
+  mockListarMesas: vi.fn(),
 }));
 
-vi.mock('../../../services/cajaService.js', () => ({ listarTurnos: mocks.mockListarTurnos }));
 vi.mock('../../../services/ventasService.js', () => ({ listarVentas: mocks.mockListarVentas }));
-vi.mock('../../../services/pedidosService.js', () => ({ listarPedidos: mocks.mockListarPedidos }));
+vi.mock('../../../services/mesasService.js', () => ({
+  listarMesas: mocks.mockListarMesas,
+  verMesa: vi.fn(),
+  crearMesa: vi.fn(),
+  actualizarMesa: vi.fn(),
+}));
 
 vi.mock('../../../context/AuthContext.jsx', () => ({ useAuth: () => ({ session: { user: { email: 'c@h.com' } }, loading: false, signOut: vi.fn() }), AuthProvider: ({ children }) => children }));
 
@@ -29,36 +32,39 @@ function renderDashboard() {
 describe('DashboardPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mocks.mockListarTurnos.mockResolvedValue([
-      { id_turno: 't1', fecha_apertura: '2026-09-28T08:00:00Z', monto_inicial: 100, estado: 'abierto' },
-    ]);
     mocks.mockListarVentas.mockResolvedValue([
       { id_venta: 'v1', fecha: '2026-09-28T10:00:00Z', total: 150, estado: 'activa' },
     ]);
-    mocks.mockListarPedidos.mockResolvedValue([
-      { id_pedido: 'p1', mesa_id: 'mesa-1', estado: 'pendiente', total: 50 },
+    mocks.mockListarMesas.mockResolvedValue([
+      { id_mesa: 'm1', numero: 1, estado: 'ocupada' },
+      { id_mesa: 'm2', numero: 2, estado: 'libre' },
     ]);
   });
 
-  it('muestra turno activo', async () => {
+  it('muestra métricas del día', async () => {
     renderDashboard();
-    expect(await screen.findByText(/Turno abierto/)).toBeInTheDocument();
+    expect(await screen.findByText('Ventas del día')).toBeInTheDocument();
+    expect(screen.getByText('Pedidos')).toBeInTheDocument();
+    expect(screen.getByText('Mesas ocupadas')).toBeInTheDocument();
+    expect(screen.getByText('1/2')).toBeInTheDocument();
   });
 
-  it('muestra ventas de hoy', async () => {
+  it('muestra pedidos recientes', async () => {
     renderDashboard();
-    expect(await screen.findByText('150')).toBeInTheDocument();
+    expect(await screen.findByText('Pedidos recientes')).toBeInTheDocument();
+    expect(screen.getByText('1 pedidos')).toBeInTheDocument();
   });
 
-  it('muestra pedidos activos', async () => {
+  it('muestra vacío cuando no hay ventas', async () => {
+    mocks.mockListarVentas.mockResolvedValue([]);
+    mocks.mockListarMesas.mockResolvedValue([]);
     renderDashboard();
-    expect(await screen.findByText(/Pedidos activos/)).toBeInTheDocument();
-    expect(screen.getByText('pendiente')).toBeInTheDocument();
+    expect(await screen.findByText('No hay pedidos registrados')).toBeInTheDocument();
   });
 
   it('muestra error cuando carga falla', async () => {
-    mocks.mockListarTurnos.mockRejectedValueOnce(new Error('Error de red'));
+    mocks.mockListarVentas.mockRejectedValueOnce(new Error('Error de red'));
     renderDashboard();
-    expect(await screen.findByText(/Error de red/)).toBeInTheDocument();
+    expect(await screen.findByText(/No se pudieron cargar los datos/)).toBeInTheDocument();
   });
 });

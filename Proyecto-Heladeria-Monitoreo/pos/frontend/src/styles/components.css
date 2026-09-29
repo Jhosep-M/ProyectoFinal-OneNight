@@ -16,8 +16,8 @@
 .btn:disabled { opacity: 0.5; cursor: not-allowed; }
 .btn-sm { padding: 5px 10px; font-size: 0.8125rem; }
 
-.btn-primary { background: var(--accent); color: #fff; }
-.btn-primary:hover:not(:disabled) { background: var(--accent-hover); }
+.btn-primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+.btn-primary:hover:not(:disabled) { background: var(--accent-hover); border-color: var(--accent-hover); }
 
 .btn-secondary { background: var(--surface); color: var(--ink); border-color: var(--border); }
 .btn-secondary:hover:not(:disabled) { background: var(--surface-sunk); }
@@ -25,8 +25,11 @@
 .btn-danger { background: var(--error); color: #fff; }
 .btn-danger:hover:not(:disabled) { background: #991b1b; }
 
-.btn-ghost { background: transparent; color: var(--ink-muted); }
+.btn-ghost { background: transparent; border-color: transparent; color: var(--ink-muted); }
 .btn-ghost:hover:not(:disabled) { background: var(--surface-sunk); color: var(--ink); }
+/* Paginación deshabilitada: mantener borde y texto legible en vez de
+   desvanecerse sobre el fondo claro. */
+.btn-ghost:disabled { opacity: 1; color: var(--ink-faint); border-color: var(--border); background: transparent; }
 
 .btn-spinner {
   width: 14px;
@@ -64,6 +67,9 @@
   color: var(--ink-faint);
   cursor: not-allowed;
 }
+.input::placeholder, .textarea::placeholder { color: var(--ink-faint); opacity: 1; }
+/* Icono de calendario visible en tema claro */
+.input[type="datetime-local"], .input[type="date"] { color-scheme: light; }
 .input-error { border-color: var(--error); }
 .input-error:focus { box-shadow: 0 0 0 3px var(--error-soft); }
 .field-error { font-size: 0.75rem; color: var(--error); }
@@ -236,6 +242,15 @@
 /* Row helper */
 .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: flex-end; margin-bottom: 12px; }
 .row > * { flex: 0 0 auto; }
+
+/* Filtros: grilla responsive para que los Input no se compriman en .row */
+.filters-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; align-items: end; margin-bottom: 4px; }
+.filters-grid .field { margin-bottom: 0; min-width: 0; }
+.filters-grid .btn { justify-self: start; white-space: nowrap; }
+
+/* Paginación de listados */
+.pager { display: flex; align-items: center; gap: 12px; margin-top: 12px; flex-wrap: wrap; }
+.pager > span { color: var(--ink-muted); font-size: 0.875rem; }
 
 /* Legacy compat */
 .error { color: var(--error); }

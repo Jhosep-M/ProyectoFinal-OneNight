@@ -40,7 +40,7 @@ router.get('/:id', authorize('mesa.consultar'), async (req, res, next) => {
 
 router.post('/', authorize('mesa.gestionar'), async (req, res, next) => {
   try {
-    const numero = Number(req.body.numero);
+    const numero = Number(req.body.numero ?? req.body.nombre);
     if (!Number.isInteger(numero) || numero <= 0) {
       return res.status(400).json({ error: 'numero debe ser entero > 0' });
     }
@@ -60,6 +60,30 @@ router.post('/', authorize('mesa.gestionar'), async (req, res, next) => {
     }
     next(e);
   }
+});
+
+// PATCH /:id — cambiar estado (liberar/ocupar/reservar).
+// El frontend anterior tenía botones sin handler porque no existía este endpoint.
+router.patch('/:id', authorize('mesa.gestionar'), async (req, res, next) => {
+  try {
+    const estado = String(req.body.estado || '').trim().toLowerCase();
+    const validos = ['libre', 'disponible', 'ocupada', 'reservada'];
+    if (!validos.includes(estado)) {
+      return res.status(400).json({ error: 'estado debe ser libre, ocupada o reservada' });
+    }
+    const normalizado = estado === 'disponible' ? 'libre' : estado;
+    const [rows] = await sequelize.query(
+      `UPDATE mesa SET estado=:estado WHERE id_mesa=:id RETURNING *`,
+      { replacements: { estado: normalizado, id: req.params.id } }
+    );
+    if (!rows[0]) return res.status(404).json({ error: 'Mesa no encontrada' });
+    await auditLog({
+      usuario_id: req.user.id, accion: 'mesa.actualizar', entidad: 'mesa',
+      entidad_id: req.params.id, resultado: 'exito', detalle: { estado: normalizado },
+      ip: req.ip, userAgent: req.headers['user-agent'],
+    });
+    res.json(rows[0]);
+  } catch (e) { next(e); }
 });
 
 module.exports = { mesasRouter: router };

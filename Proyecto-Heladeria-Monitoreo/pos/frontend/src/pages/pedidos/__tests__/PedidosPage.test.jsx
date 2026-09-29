@@ -24,6 +24,7 @@ vi.mock('../../../services/mesasService.js', () => ({ listarMesas: mocks.mockLis
 vi.mock('../../../services/productosService.js', () => ({ productosService: { list: mocks.mockProductosList } }));
 
 vi.mock('../../../context/AuthContext.jsx', () => ({ useAuth: () => ({ session: { user: { email: 'c@h.com' } }, loading: false, signOut: vi.fn() }), AuthProvider: ({ children }) => children }));
+vi.mock('../../../context/PermisosContext.jsx', () => ({ usePermisos: () => ({ permisos: ['*'], loading: false, tienePermiso: () => true, recargar: vi.fn() }), PermisosProvider: ({ children }) => children }));
 
 function renderPedidos() {
   return render(

@@ -4,7 +4,7 @@ import Card from '../../components/ui/Card.jsx';
 import Badge from '../../components/ui/Badge.jsx';
 import Button from '../../components/ui/Button.jsx';
 import Skeleton from '../../components/ui/Skeleton.jsx';
-import { listarMesas, verMesa, crearMesa } from '../../services/mesasService.js';
+import { listarMesas, verMesa, crearMesa, actualizarMesa } from '../../services/mesasService.js';
 
 const container = {
   hidden: { opacity: 0 },
@@ -18,9 +18,18 @@ const item = {
 
 const ESTADOS_MESA = {
   libre: { nombre: 'Libre', variante: 'success' },
+  disponible: { nombre: 'Libre', variante: 'success' },
   ocupada: { nombre: 'Ocupada', variante: 'danger' },
   reservada: { nombre: 'Reservada', variante: 'warning' },
 };
+
+// Normaliza filas del backend (id_mesa/numero/estado) al shape que usa la UI.
+const normMesa = (m) => ({
+  ...m,
+  id: m.id_mesa || m.id,
+  numero: m.numero ?? m.nombre ?? m.id,
+  estado: m.estado === 'disponible' ? 'libre' : m.estado,
+});
 
 export default function MesasPage() {
   const [mesas, setMesas] = useState([]);
@@ -35,7 +44,7 @@ export default function MesasPage() {
       try {
         setLoading(true);
         const data = await listarMesas();
-        setMesas(data || []);
+        setMesas((data || []).map(normMesa));
       } catch (err) {
         setError('No se pudieron cargar las mesas');
       } finally {
@@ -47,13 +56,13 @@ export default function MesasPage() {
 
   const mesasFiltradas = filtro === 'todas'
     ? mesas
-    : mesas.filter((m) => m.estado === filtro);
+    : mesas.filter((m) => m.estado === filtro || (filtro === 'libre' && m.estado === 'disponible'));
 
   const handleSeleccionarMesa = async (mesa) => {
     setMesaSeleccionada(mesa);
     try {
-      const detalle = await verMesa(mesa.id);
-      if (detalle) setMesaSeleccionada(detalle);
+      const detalle = await verMesa(mesa.id_mesa || mesa.id);
+      if (detalle) setMesaSeleccionada(normMesa(detalle));
     } catch {
       // ya tenemos los datos básicos
     }
@@ -62,14 +71,29 @@ export default function MesasPage() {
   const handleNuevaMesa = async () => {
     setCreando(true);
     try {
-      const nueva = await crearMesa(`Mesa ${String(mesas.length + 1).padStart(2, '0')}`);
+      // El backend exige numero entero único: usar max+1, no "Mesa 01".
+      const maxNumero = mesas.reduce((max, m) => Math.max(max, Number(m.numero) || 0), 0);
+      const nueva = await crearMesa(maxNumero + 1);
       if (nueva) {
-        setMesas((prev) => [...prev, nueva]);
+        setMesas((prev) => [...prev, normMesa(nueva)]);
       }
     } catch (err) {
       console.error('Error al crear mesa:', err);
     } finally {
       setCreando(false);
+    }
+  };
+
+  const handleCambiarEstado = async (estado) => {
+    if (!mesaSeleccionada) return;
+    try {
+      const id = mesaSeleccionada.id_mesa || mesaSeleccionada.id;
+      const actualizada = await actualizarMesa(id, { estado });
+      const norm = normMesa(actualizada);
+      setMesas((prev) => prev.map((m) => ((m.id_mesa || m.id) === id ? norm : m)));
+      setMesaSeleccionada(norm);
+    } catch (err) {
+      console.error('Error al cambiar estado de mesa:', err);
     }
   };
 
@@ -194,9 +218,9 @@ export default function MesasPage() {
             </div>
 
             <div className="d-grid gap-2">
-              <Button variant="secondary" icon="bi-person">Asignar Mesero</Button>
-              <Button variant="danger" icon="bi-x-lg">Liberar Mesa</Button>
-              <Button variant="primary" icon="bi-arrow-left-right">Transferir</Button>
+              <Button variant="secondary" icon="bi-person" onClick={() => handleCambiarEstado('ocupada')}>Asignar Mesero</Button>
+              <Button variant="danger" icon="bi-x-lg" onClick={() => handleCambiarEstado('libre')}>Liberar Mesa</Button>
+              <Button variant="primary" icon="bi-arrow-left-right" onClick={() => handleCambiarEstado('reservada')}>Reservar</Button>
             </div>
           </Card>
         )}

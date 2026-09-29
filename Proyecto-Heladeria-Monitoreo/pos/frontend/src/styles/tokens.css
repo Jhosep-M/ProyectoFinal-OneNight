@@ -18,6 +18,30 @@
   --sidebar-active: #8B6914;
   --card-bg: #FFFFFF;
   --card-border: #D4C4B0;
+  /* Design-system aliases used by styles/components.css.
+     Mapean la paleta existente (--bs-*) a los nombres cortos que usan
+     botones, inputs, cards y tablas. Sin esto var(--accent) etc. quedaban
+     sin resolver y los controles se volvían invisibles (texto blanco
+     sobre fondo transparente, inputs sin borde). */
+  --surface: #FFFFFF;
+  --surface-sunk: #F5E6D3;
+  --ink: #2C1810;
+  --ink-muted: #5C4033;
+  --ink-faint: #A89080;
+  --border: #D4C4B0;
+  --accent: #8B6914;
+  --accent-hover: #6B4F0F;
+  --accent-soft: rgba(139, 105, 20, 0.15);
+  --radius: 0;
+  --radius-pill: 50rem;
+  --error: #8B1A1A;
+  --error-soft: #F5E0E0;
+  --success: #2D5016;
+  --success-soft: #E8F0E0;
+  --warning: #B8860B;
+  --warning-soft: #F5E6D3;
+  --info: #2C5F7C;
+  --info-soft: #E0EBF0;
   --bs-font-sans-serif: 'Source Sans 3', system-ui, sans-serif;
   --bs-font-serif: 'Playfair Display', Georgia, serif;
   --bs-font-mono: 'Source Serif 4', Georgia, serif;

@@ -35,7 +35,7 @@ const GRUPOS = [
 
 export default function Sidebar() {
   const { session, signOut } = useAuth();
-  const { tienePermiso } = usePermisos();
+  const { tienePermiso, loading } = usePermisos();
 
   return (
     <aside className="sidebar">
@@ -43,7 +43,12 @@ export default function Sidebar() {
         <span className="brand-name">Helados Pariente</span>
       </div>
       <nav className="sidebar-nav">
-        {GRUPOS.map((g) => (
+        {loading ? (
+          <div className="sidebar-group">
+            <div className="sidebar-group-title">Cargando permisos…</div>
+          </div>
+        ) : (
+        GRUPOS.map((g) => (
           <div key={g.titulo} className="sidebar-group">
             <div className="sidebar-group-title">{g.titulo}</div>
             {g.enlaces
@@ -59,7 +64,8 @@ export default function Sidebar() {
                 </NavLink>
               ))}
           </div>
-        ))}
+        ))
+        )}
       </nav>
       <div className="sidebar-footer">
         <div className="sidebar-user">

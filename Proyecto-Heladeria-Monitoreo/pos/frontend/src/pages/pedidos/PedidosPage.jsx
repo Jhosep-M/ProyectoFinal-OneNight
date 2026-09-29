@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { listarPedidos, crearPedido, actualizarPedido, cobrarPedido } from '../../services/pedidosService.js';
 import { listarMesas } from '../../services/mesasService.js';
+import { listarTurnos } from '../../services/cajaService.js';
+import { listarMetodosPago } from '../../services/ventasService.js';
 import { productosService } from '../../services/productosService.js';
 import Button from '../../components/common/Button.jsx';
 import Card from '../../components/common/Card.jsx';
@@ -10,10 +12,15 @@ import Input from '../../components/common/Input.jsx';
 import Select from '../../components/common/Select.jsx';
 import RequirePermiso from '../../components/common/RequirePermiso.jsx';
 
+// Estados reales del backend (validators/orders.js):
+// abierto → en_preparacion → listo → cobrado(cerrado). 'pendiente' se
+// conserva como alias por compatibilidad con datos viejos.
 const TONE_ESTADO = {
+  abierto: 'warning',
   pendiente: 'warning',
   en_preparacion: 'info',
   listo: 'success',
+  cerrado: 'neutral',
   cobrado: 'neutral',
   cancelado: 'error',
 };
@@ -65,11 +72,34 @@ export default function PedidosPage() {
     } catch (e) { setAlert({ tone: 'error', message: e.message }); }
   };
 
-  const cobrar = async (id) => {
-    const turnoId = window.prompt('Turno ID para cobrar:');
-    if (!turnoId) return;
+  const cobrar = async (pedido) => {
+    // Antes pedía turno_id con window.prompt y mandaba pagos: [] → 400 siempre.
+    // Ahora usa el turno abierto y el primer método de pago con el total real.
     try {
-      await cobrarPedido(id, { turno_id: turnoId, pagos: [] });
+      const [turnos, metodos] = await Promise.all([
+        listarTurnos().catch(() => []),
+        listarMetodosPago().catch(() => []),
+      ]);
+      const turno = (turnos || []).find((t) => t.estado === 'abierto');
+      if (!turno) {
+        setAlert({ tone: 'error', message: 'No hay turno abierto. Abre uno en Caja.' });
+        return;
+      }
+      const metodo = (metodos || [])[0];
+      const metodoId = metodo?.id_metodo || metodo?.id_metodo_pago || metodo?.id;
+      if (!metodoId) {
+        setAlert({ tone: 'error', message: 'No hay métodos de pago configurados.' });
+        return;
+      }
+      const monto = Number(pedido.total) || 0;
+      if (!(monto > 0)) {
+        setAlert({ tone: 'error', message: 'El pedido no tiene total para cobrar.' });
+        return;
+      }
+      await cobrarPedido(pedido.id_pedido, {
+        turno_id: turno.id_turno || turno.id,
+        pagos: [{ metodo_pago_id: metodoId, monto }],
+      });
       setAlert({ tone: 'success', message: 'Pedido cobrado' });
       recargar();
     } catch (e) { setAlert({ tone: 'error', message: e.message }); }
@@ -132,11 +162,11 @@ export default function PedidosPage() {
                   <td>{p.total}</td>
                     <td>
                       <RequirePermiso permiso="pedido.gestionar">
-                        {p.estado === 'pendiente' && <Button size="sm" variant="secondary" onClick={() => cambiarEstado(p.id_pedido, 'en_preparacion')}>Preparar</Button>}
+                        {(p.estado === 'abierto' || p.estado === 'pendiente') && <Button size="sm" variant="secondary" onClick={() => cambiarEstado(p.id_pedido, 'en_preparacion')}>Preparar</Button>}
                         {p.estado === 'en_preparacion' && <Button size="sm" variant="secondary" onClick={() => cambiarEstado(p.id_pedido, 'listo')}>Listo</Button>}
                       </RequirePermiso>
                       <RequirePermiso permiso="venta.crear">
-                        {p.estado === 'listo' && <Button size="sm" onClick={() => cobrar(p.id_pedido)}>Cobrar</Button>}
+                        {p.estado === 'listo' && <Button size="sm" onClick={() => cobrar(p)}>Cobrar</Button>}
                       </RequirePermiso>
                     </td>
                 </tr>

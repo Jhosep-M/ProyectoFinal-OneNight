@@ -7,6 +7,8 @@ import Skeleton from '../../components/ui/Skeleton.jsx';
 import { formatCurrency } from '../../utils/format.js';
 import { productosService, categoriasService } from '../../services/productosService.js';
 import { crearVenta } from '../../services/ventasService.js';
+import { listarTurnos } from '../../services/cajaService.js';
+import { listarMetodosPago } from '../../services/ventasService.js';
 
 const container = {
   hidden: { opacity: 0 },
@@ -21,8 +23,12 @@ const item = {
 export default function VentasPage() {
   const [productos, setProductos] = useState([]);
   const [categorias, setCategorias] = useState([]);
+  const [turnoActivo, setTurnoActivo] = useState(null);
+  const [metodosPago, setMetodosPago] = useState([]);
+  const [metodoPagoId, setMetodoPagoId] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [errorCobro, setErrorCobro] = useState(null);
   const [categoriaActiva, setCategoriaActiva] = useState('todos');
   const [ticket, setTicket] = useState([]);
   const [cobrando, setCobrando] = useState(false);
@@ -31,12 +37,19 @@ export default function VentasPage() {
     const fetchData = async () => {
       try {
         setLoading(true);
-        const [productosData, categoriasData] = await Promise.all([
+        const [productosData, categoriasData, turnosData, metodosData] = await Promise.all([
           productosService.list(),
           categoriasService.list(),
+          listarTurnos().catch(() => []),
+          listarMetodosPago().catch(() => []),
         ]);
-        setProductos(productosData || []);
-        setCategorias(categoriasData || []);
+        setProductos((productosData || []).map((p) => ({ ...p, id: p.id_producto || p.id })));
+        setCategorias((categoriasData || []).map((c) => ({ ...c, id: c.id_categoria || c.id })));
+        const abierto = (turnosData || []).find((t) => t.estado === 'abierto') || null;
+        setTurnoActivo(abierto);
+        const metodos = metodosData || [];
+        setMetodosPago(metodos);
+        if (metodos[0]) setMetodoPagoId(metodos[0].id_metodo || metodos[0].id);
       } catch (err) {
         setError('No se pudieron cargar los productos');
       } finally {
@@ -74,15 +87,30 @@ export default function VentasPage() {
 
   const handleCobrar = async () => {
     if (ticket.length === 0) return;
+    setErrorCobro(null);
+    if (!turnoActivo) {
+      setErrorCobro('No hay turno abierto. Abre un turno en Caja antes de cobrar.');
+      return;
+    }
+    if (!metodoPagoId) {
+      setErrorCobro('No hay método de pago disponible.');
+      return;
+    }
     setCobrando(true);
     try {
-      const items = ticket.map((i) => ({ producto_id: i.id, cantidad: i.cantidad, precio: i.precio }));
-      const payload = { items, pagos: [{ metodo: 'efectivo', monto: total }] };
-      console.log('crearVenta payload (pendiente turno_id):', payload);
+      // El backend exige turno_id UUID, items {producto_id UUID, cantidad}
+      // y pagos {metodo_pago_id UUID, monto}. Sin turno_id siempre daba 400.
+      const items = ticket.map((i) => ({ producto_id: i.id_producto || i.id, cantidad: i.cantidad }));
+      const payload = {
+        turno_id: turnoActivo.id_turno || turnoActivo.id,
+        items,
+        pagos: [{ metodo_pago_id: metodoPagoId, monto: total }],
+      };
       await crearVenta(payload);
       setTicket([]);
     } catch (err) {
       console.error('Error al cobrar:', err);
+      setErrorCobro(err.message);
     } finally {
       setCobrando(false);
     }
@@ -190,6 +218,19 @@ export default function VentasPage() {
             Ticket Actual
           </h5>
 
+          {!turnoActivo && !loading && (
+            <div className="alert alert-warning d-flex align-items-center gap-2" role="alert">
+              <i className="bi bi-exclamation-triangle-fill"></i>
+              <span>Sin turno abierto. Abre uno en Caja para poder cobrar.</span>
+            </div>
+          )}
+          {errorCobro && (
+            <div className="alert alert-danger d-flex align-items-center gap-2" role="alert">
+              <i className="bi bi-exclamation-triangle-fill"></i>
+              <span>{errorCobro}</span>
+            </div>
+          )}
+
           {ticket.length === 0 ? (
             <div className="text-center text-muted py-4">
               <i className="bi bi-cart fs-1"></i>
@@ -235,12 +276,26 @@ export default function VentasPage() {
               </div>
 
               <div className="d-grid gap-2">
+                {metodosPago.length > 0 && (
+                  <select
+                    className="form-select"
+                    value={metodoPagoId}
+                    onChange={(e) => setMetodoPagoId(e.target.value)}
+                    aria-label="Método de pago"
+                  >
+                    {metodosPago.map((m) => (
+                      <option key={m.id_metodo || m.id} value={m.id_metodo || m.id}>
+                        {m.nombre || 'Método de pago'}
+                      </option>
+                    ))}
+                  </select>
+                )}
                 <Button
                   variant="primary"
                   size="lg"
                   icon="bi-cash-stack"
                   onClick={handleCobrar}
-                  disabled={cobrando || ticket.length === 0}
+                  disabled={cobrando || ticket.length === 0 || !turnoActivo}
                 >
                   {cobrando ? 'Procesando...' : `Cobrar ${formatCurrency(total)}`}
                 </Button>
