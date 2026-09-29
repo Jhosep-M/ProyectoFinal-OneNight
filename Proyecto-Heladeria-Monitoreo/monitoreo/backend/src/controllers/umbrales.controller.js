@@ -8,7 +8,10 @@ const ES_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 
 async function listar(req, res) {
   try {
-    const data = await repo.listarPorOrg(req.organizacionId);
+    const incluirInactivos = req.query.incluirInactivos === '1';
+    const data = incluirInactivos
+      ? await repo.listarPorOrg(req.organizacionId)
+      : await repo.listarActivosPorOrg(req.organizacionId);
     return okList(res, data);
   } catch (e) {
     return fail(res, 500, 'Error listando umbrales', e.message);
@@ -44,4 +47,18 @@ async function actualizar(req, res) {
   }
 }
 
-module.exports = { listar, crear, actualizar };
+async function eliminar(req, res) {
+  try {
+    if (!ES_UUID.test(req.params.id)) return fail(res, 400, 'Id inválido', 'el id debe ser un UUID');
+    const actual = await repo.buscarPorId(req.params.id);
+    // Existente en org ajena o inexistente → 404 uniforme (no filtra existencia).
+    if (!actual || !req.orgIds.includes(actual.organizacion_id)) return fail(res, 404, 'No encontrado');
+    const umbral = await service.eliminarUmbral(actual.id, { usuarioId: req.user.id, reqId: req.id });
+    return ok(res, umbral);
+  } catch (e) {
+    if (e instanceof AppError) return fail(res, e.status, e.error, e.detail);
+    return fail(res, 500, 'Error eliminando umbral', e.message);
+  }
+}
+
+module.exports = { listar, crear, actualizar, eliminar };

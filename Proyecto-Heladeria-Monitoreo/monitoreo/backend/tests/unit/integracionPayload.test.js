@@ -2,7 +2,6 @@ require('../helpers/env');
 const { test } = require('node:test');
 const assert = require('node:assert');
 
-// Payload EXACTO que envía posBackend/src/jobs/colaWorker.js (ver nota de contrato abajo).
 const payloadRealDelPOS = {
   consumoExternoId: '9aaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
   idempotencyKey: '4f0c1a2e-7d3b-4f8a-9c2d-1b6e5a7f8c9d',
@@ -10,6 +9,7 @@ const payloadRealDelPOS = {
   cantidad: 125.5,
   unidadMedida: 'litros',
   fechaConsumo: '2026-09-21T18:00:00',
+  organizacionExternaId: '11111111-1111-4111-8111-111111111111',
   origen: 'POS',
 };
 

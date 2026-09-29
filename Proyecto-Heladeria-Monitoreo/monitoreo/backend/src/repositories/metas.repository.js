@@ -7,6 +7,13 @@ async function listarPorOrg(organizacionId) {
   });
 }
 
+async function listarActivosPorOrg(organizacionId) {
+  return MetaReduccion.findAll({
+    where: { organizacion_id: organizacionId, estado: 'activo' },
+    order: [['creado_en', 'DESC']],
+  });
+}
+
 async function buscarPorId(id) {
   return MetaReduccion.findByPk(id);
 }
@@ -24,4 +31,4 @@ async function actualizar(id, campos) {
   return m;
 }
 
-module.exports = { listarPorOrg, buscarPorId, crear, actualizar };
+module.exports = { listarPorOrg, listarActivosPorOrg, buscarPorId, crear, actualizar };

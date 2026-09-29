@@ -14,6 +14,13 @@ async function listarPorOrg(organizacionId) {
   });
 }
 
+async function listarActivosPorOrg(organizacionId) {
+  return UmbralClasificacion.findAll({
+    where: { organizacion_id: organizacionId, estado: 'activo' },
+    order: [['creado_en', 'DESC']],
+  });
+}
+
 async function buscarPorId(id) {
   return UmbralClasificacion.findByPk(id);
 }
@@ -29,4 +36,4 @@ async function actualizar(id, campos) {
   return u;
 }
 
-module.exports = { listarActivos, listarPorOrg, buscarPorId, crear, actualizar };
+module.exports = { listarActivos, listarPorOrg, listarActivosPorOrg, buscarPorId, crear, actualizar };

@@ -2,9 +2,9 @@ const { RecepcionConsumoPOS, ColaProcesamiento } = require('../models');
 const { Op } = require('sequelize');
 
 async function buscarDuplicado(idempotencyKey, consumoExternoId) {
-  return RecepcionConsumoPOS.findOne({
-    where: { [Op.or]: [{ idempotency_key: idempotencyKey }, { consumo_externo_id: consumoExternoId }] },
-  });
+  const conds = [{ consumo_externo_id: consumoExternoId }];
+  if (idempotencyKey) conds.push({ idempotency_key: idempotencyKey });
+  return RecepcionConsumoPOS.findOne({ where: { [Op.or]: conds } });
 }
 
 async function crearConCola(datos, transaction) {

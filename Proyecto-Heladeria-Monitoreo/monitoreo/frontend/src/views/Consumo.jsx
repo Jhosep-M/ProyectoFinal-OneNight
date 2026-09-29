@@ -9,16 +9,34 @@ export default function Consumo() {
   const [pagina, setPagina] = useState(1);
   const [datos, setDatos] = useState({ data: [], total: 0 });
   const [error, setError] = useState(null);
+  const [aviso, setAviso] = useState(null);
+  const [cargando, setCargando] = useState(false);
+  const [desde, setDesde] = useState('');
+  const [hasta, setHasta] = useState('');
+  const [recurso, setRecurso] = useState('');
+  const [sel, setSel] = useState(null);
 
   const cargar = useCallback(async () => {
     if (!orgSeleccionada) return;
+    if (desde && hasta && desde > hasta) {
+      setError('Rango de fechas invalido');
+      return;
+    }
     try {
       setError(null);
-      setDatos(await listar({ organizacionId: orgSeleccionada, page: pagina, limit: LIMIT }));
+      setAviso(null);
+      setCargando(true);
+      setDatos(await listar({ organizacionId: orgSeleccionada, page: pagina, limit: LIMIT, desde: desde || undefined, hasta: hasta || undefined, recurso: recurso || undefined }));
     } catch (e) {
-      setError(e.message);
+      if (e.status === 409) {
+        setAviso('Ya procesado, no duplicado');
+      } else {
+        setError(e.message);
+      }
+    } finally {
+      setCargando(false);
     }
-  }, [orgSeleccionada, pagina]);
+  }, [orgSeleccionada, pagina, desde, hasta, recurso]);
 
   useEffect(() => { cargar(); }, [cargar]);
   useEffect(() => { setPagina(1); }, [orgSeleccionada]);
@@ -27,30 +45,58 @@ export default function Consumo() {
 
   return (
     <section>
-      <h2>Consumo registrado</h2>
+      <h2>Consumo registrado ({datos.total ?? 0})</h2>
+      <form className="formulario" onSubmit={(e) => e.preventDefault()}>
+        <label>Desde <input type="date" value={desde} onChange={(e) => { setDesde(e.target.value); setPagina(1); }} /></label>
+        <label>Hasta <input type="date" value={hasta} onChange={(e) => { setHasta(e.target.value); setPagina(1); }} /></label>
+        <label>Recurso
+          <select value={recurso} onChange={(e) => { setRecurso(e.target.value); setPagina(1); }}>
+            <option value="">Todos</option>
+            <option value="agua">Agua</option>
+            <option value="energia">Energia</option>
+          </select>
+        </label>
+      </form>
       {error && <p className="error">{error}</p>}
+      {aviso && <p className="toast">{aviso}</p>}
+      {cargando && <p className="cargando">Cargando...</p>}
       <table className="tabla">
         <thead>
-          <tr><th>Fecha</th><th>Tipo</th><th>Cantidad</th><th>Unidad</th><th>Clasificación</th></tr>
+          <tr><th>Fecha</th><th>Tipo</th><th>Cantidad</th><th>Unidad</th><th>Clasificacion</th></tr>
         </thead>
         <tbody>
           {datos.data.map((r) => (
-            <tr key={r.id}>
+            <tr key={r.id} onClick={() => setSel(r)} style={{ cursor: 'pointer' }}>
               <td>{new Date(r.fecha_consumo).toLocaleString('es')}</td>
-              <td>{r.tipo_recurso}</td>
-              <td>{Number(r.cantidad).toLocaleString('es')}</td>
+              <td><span className={`badge ${r.tipo_recurso === 'agua' ? 'agua' : 'energia'}`}>{r.tipo_recurso === 'agua' ? 'AGUA' : 'ENERGÍA'}</span></td>
+              <td className="num">{r.cantidad == null ? '-' : Number(r.cantidad).toLocaleString('es', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
               <td>{r.unidad_medida}</td>
-              <td><span className={`badge ${r.clasificacion}`}>{r.clasificacion}</span></td>
+              <td><span className={`badge ${r.clasificacion}`}>{r.clasificacion ?? '-'}</span></td>
             </tr>
           ))}
-          {datos.data.length === 0 && !error && <tr><td colSpan="5">Sin registros</td></tr>}
+          {datos.data.length === 0 && !error && !cargando && <tr><td colSpan="5">Sin registros</td></tr>}
         </tbody>
       </table>
       <div className="paginacion">
-        <button type="button" disabled={pagina <= 1} onClick={() => setPagina((p) => p - 1)}>‹</button>
-        <span>Página {pagina} de {totalPaginas} ({datos.total ?? 0} registros)</span>
-        <button type="button" disabled={pagina >= totalPaginas} onClick={() => setPagina((p) => p + 1)}>›</button>
+        <button type="button" disabled={pagina <= 1} onClick={() => setPagina((p) => p - 1)}>Anterior</button>
+        <span>Pagina {pagina} de {totalPaginas}</span>
+        <button type="button" disabled={pagina >= totalPaginas} onClick={() => setPagina((p) => p + 1)}>Siguiente</button>
       </div>
+      {sel && (
+        <div className="detalle">
+          <h3>Detalle del registro</h3>
+          <dl>
+            <div><dt>Tipo</dt><dd>{sel.tipo_recurso} - {sel.cantidad == null ? '-' : Number(sel.cantidad).toLocaleString('es', { minimumFractionDigits: 2, maximumFractionDigits: 4 })} {sel.unidad_medida}</dd></div>
+            <div><dt>Fecha</dt><dd>{sel.fecha_consumo ? new Date(sel.fecha_consumo).toLocaleString('es') : '-'}</dd></div>
+            <div><dt>ID externo</dt><dd><code>{sel.consumoExternoId ?? sel.consumo_externo_id ?? '-'}</code></dd></div>
+            <div><dt>Idempotency key</dt><dd><code>{sel.idempotencyKey ?? sel.idempotency_key ?? '-'}</code></dd></div>
+            <div><dt>Organización externa</dt><dd><code>{sel.organizacionExternaId ?? sel.organizacion_externa_id ?? '-'}</code></dd></div>
+            <div><dt>Origen</dt><dd>{sel.origen ?? '-'}</dd></div>
+            <div><dt>Estado</dt><dd>{sel.estado ?? '-'}</dd></div>
+          </dl>
+          <button type="button" onClick={() => setSel(null)}>Cerrar</button>
+        </div>
+      )}
     </section>
   );
 }
