@@ -1,10 +1,13 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import Card from '../../components/ui/Card.jsx';
 import Badge from '../../components/ui/Badge.jsx';
 import Button from '../../components/ui/Button.jsx';
 import Skeleton from '../../components/ui/Skeleton.jsx';
-import { formatCurrency } from '../../utils/format.js';
+import { formatCurrency, formatTime } from '../../utils/format.js';
+import { IVA_BOLIVIA } from '../../utils/constants.js';
+import { resolveProductoImagen } from '../../utils/productoImagen.js';
 import { productosService, categoriasService } from '../../services/productosService.js';
 import { crearVenta } from '../../services/ventasService.js';
 import { listarTurnos } from '../../services/cajaService.js';
@@ -29,24 +32,42 @@ export default function VentasPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [errorCobro, setErrorCobro] = useState(null);
+  const [turnoError, setTurnoError] = useState(null);
+  const [recargandoTurno, setRecargandoTurno] = useState(false);
+  const [copiado, setCopiado] = useState(false);
   const [categoriaActiva, setCategoriaActiva] = useState('todos');
   const [ticket, setTicket] = useState([]);
   const [cobrando, setCobrando] = useState(false);
+
+  // El turno es automático: se detecta el abierto del cajero autenticado.
+  // No se pide UUID manual. Se separa su error del error de productos
+  // para no confundir "sin turno" con "sin permiso / sin conexión".
+  const cargarTurno = useCallback(async () => {
+    setTurnoError(null);
+    setRecargandoTurno(true);
+    try {
+      const turnosData = await listarTurnos();
+      const abierto = (turnosData || []).find((t) => t.estado === 'abierto') || null;
+      setTurnoActivo(abierto);
+    } catch (err) {
+      setTurnoActivo(null);
+      setTurnoError(err?.message || 'No se pudo cargar el turno');
+    } finally {
+      setRecargandoTurno(false);
+    }
+  }, []);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true);
-        const [productosData, categoriasData, turnosData, metodosData] = await Promise.all([
+        const [productosData, categoriasData, metodosData] = await Promise.all([
           productosService.list(),
           categoriasService.list(),
-          listarTurnos().catch(() => []),
           listarMetodosPago().catch(() => []),
         ]);
         setProductos((productosData || []).map((p) => ({ ...p, id: p.id_producto || p.id })));
         setCategorias((categoriasData || []).map((c) => ({ ...c, id: c.id_categoria || c.id })));
-        const abierto = (turnosData || []).find((t) => t.estado === 'abierto') || null;
-        setTurnoActivo(abierto);
         const metodos = metodosData || [];
         setMetodosPago(metodos);
         if (metodos[0]) setMetodoPagoId(metodos[0].id_metodo || metodos[0].id);
@@ -57,7 +78,24 @@ export default function VentasPage() {
       }
     };
     fetchData();
-  }, []);
+    cargarTurno();
+    // Revalida al volver de Caja (abrir turno en otra pestaña/ruta).
+    const onFocus = () => cargarTurno();
+    window.addEventListener('focus', onFocus);
+    return () => window.removeEventListener('focus', onFocus);
+  }, [cargarTurno]);
+
+  const copiarTurnoId = async () => {
+    const fullId = turnoActivo?.id_turno || turnoActivo?.id;
+    if (!fullId) return;
+    try {
+      await navigator.clipboard.writeText(fullId);
+      setCopiado(true);
+      setTimeout(() => setCopiado(false), 1500);
+    } catch {
+      setCopiado(false);
+    }
+  };
 
   const productosFiltrados = categoriaActiva === 'todos'
     ? productos
@@ -81,9 +119,12 @@ export default function VentasPage() {
     );
   };
 
-  const subtotal = ticket.reduce((sum, i) => sum + (i.precio || 0) * i.cantidad, 0);
-  const iva = subtotal * 0.16;
-  const total = subtotal + iva;
+  // Precios con IVA 13% incluido (Bolivia). Total = subtotal para que
+  // cuadre con registrar_venta(): pagos == subtotal - descuento.
+  const subtotal = ticket.reduce((sum, i) => sum + (Number(i.precio) || 0) * i.cantidad, 0);
+  const baseGravable = subtotal / (1 + IVA_BOLIVIA);
+  const iva = subtotal - baseGravable;
+  const total = subtotal;
 
   const handleCobrar = async () => {
     if (ticket.length === 0) return;
@@ -111,6 +152,8 @@ export default function VentasPage() {
     } catch (err) {
       console.error('Error al cobrar:', err);
       setErrorCobro(err.message);
+      // Si el turno se cerró en otro lado, revalida para mostrar el aviso correcto.
+      if (/turno/i.test(err.message || '')) cargarTurno();
     } finally {
       setCobrando(false);
     }
@@ -189,14 +232,28 @@ export default function VentasPage() {
                       style={{ cursor: 'pointer' }}
                       onClick={() => agregarProducto(p)}
                     >
-                      <div
-                        className="mb-2"
-                        style={{
-                          height: '80px',
-                          background: p.color || '#F5E6D3',
-                          borderBottom: '1px dotted #D4C4B0',
-                        }}
-                      ></div>
+                      {resolveProductoImagen(p) ? (
+                        <img
+                          src={resolveProductoImagen(p)}
+                          alt={p.nombre}
+                          loading="lazy"
+                          className="mb-2 w-100"
+                          style={{ height: '80px', objectFit: 'cover', borderBottom: '1px dotted #D4C4B0', background: '#F5E6D3' }}
+                          onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                        />
+                      ) : (
+                        <div
+                          className="mb-2 d-flex align-items-center justify-content-center"
+                          style={{
+                            height: '80px',
+                            background: p.color || '#F5E6D3',
+                            borderBottom: '1px dotted #D4C4B0',
+                          }}
+                          aria-hidden="true"
+                        >
+                          <i className="bi bi-image text-muted"></i>
+                        </div>
+                      )}
                       <h6 className="mb-1" style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>
                         {p.nombre}
                       </h6>
@@ -218,10 +275,64 @@ export default function VentasPage() {
             Ticket Actual
           </h5>
 
-          {!turnoActivo && !loading && (
-            <div className="alert alert-warning d-flex align-items-center gap-2" role="alert">
-              <i className="bi bi-exclamation-triangle-fill"></i>
-              <span>Sin turno abierto. Abre uno en Caja para poder cobrar.</span>
+          {turnoActivo && !loading && (
+            <div className="alert alert-success d-flex align-items-center justify-content-between gap-2 py-2" role="status">
+              <span className="d-flex align-items-center gap-2">
+                <i className="bi bi-check-circle-fill"></i>
+                <span>
+                  Turno #{String(turnoActivo.id_turno || turnoActivo.id).slice(0, 8)} abierto
+                  {(turnoActivo.fecha_apertura || turnoActivo.created_at) && (
+                    <> · {formatTime(turnoActivo.fecha_apertura || turnoActivo.created_at)}</>
+                  )}
+                </span>
+              </span>
+              <span className="d-flex gap-1">
+                <button
+                  type="button"
+                  className="btn btn-sm btn-outline-success"
+                  onClick={copiarTurnoId}
+                  title="Copiar UUID completo del turno para soporte/API"
+                >
+                  {copiado ? 'Copiado' : 'Copiar ID'}
+                </button>
+              </span>
+            </div>
+          )}
+          {turnoError && !loading && (
+            <div className="alert alert-danger d-flex align-items-center justify-content-between gap-2" role="alert">
+              <span className="d-flex align-items-center gap-2">
+                <i className="bi bi-exclamation-triangle-fill"></i>
+                <span>No se pudo cargar el turno: {turnoError}</span>
+              </span>
+              <button
+                type="button"
+                className="btn btn-sm btn-outline-danger"
+                onClick={cargarTurno}
+                disabled={recargandoTurno}
+              >
+                {recargandoTurno ? 'Cargando...' : 'Reintentar'}
+              </button>
+            </div>
+          )}
+          {!turnoActivo && !turnoError && !loading && (
+            <div className="alert alert-warning" role="alert">
+              <div className="d-flex align-items-center gap-2">
+                <i className="bi bi-exclamation-triangle-fill"></i>
+                <span>Sin turno abierto. Abre uno en Caja para poder cobrar.</span>
+              </div>
+              <div className="d-flex gap-2 mt-2">
+                <Link to="/caja" className="btn btn-sm btn-warning">
+                  Ir a Caja
+                </Link>
+                <button
+                  type="button"
+                  className="btn btn-sm btn-outline-secondary"
+                  onClick={cargarTurno}
+                  disabled={recargandoTurno}
+                >
+                  {recargandoTurno ? 'Buscando...' : 'Ya abrí turno, reintentar'}
+                </button>
+              </div>
             </div>
           )}
           {errorCobro && (
@@ -261,11 +372,11 @@ export default function VentasPage() {
               <div style={{ borderTop: '1px dotted #D4C4B0' }} className="pt-3 mb-3"></div>
 
               <div className="d-flex justify-content-between mb-1">
-                <span className="text-muted">Subtotal</span>
+                <span className="text-muted">Subtotal (IVA incluido)</span>
                 <span>{formatCurrency(subtotal)}</span>
               </div>
               <div className="d-flex justify-content-between mb-1">
-                <span className="text-muted">IVA (16%)</span>
+                <span className="text-muted">IVA (13% incluido)</span>
                 <span>{formatCurrency(iva)}</span>
               </div>
               <div className="d-flex justify-content-between mb-3">

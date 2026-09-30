@@ -112,9 +112,13 @@ Sistema de Punto de Venta para heladería/cafetería con gestión de ventas, caj
 │  2. CLIENTE SELECCIONA PRODUCTOS                            │
 │     • El frontend muestra catálogo de productos            │
 │     • Cada producto tiene: id, nombre, precio, stock        │
+│     • Guía cajero: NO pegar UUID. Ir a Caja > Abrir turno, │
+│       volver a Ventas: el turno se detecta solo y se muestra│
+│       como "Turno #abc12345 abierto".                       │
 │                                                             │
-│  3. CAJERO REGISTRA VENTA                                   │
-│     POST /api/v1/sales                                      │
+│  3. CAJERO REGISTRA VENTA (UI automática, API manual)       │
+│     UI: Ventas inyecta turno_id solo desde el turno abierto │
+│     POST /api/v1/sales (solo integraciones/tests)           │
 │     {                                                       │
 │       turno_id: "uuid",                                     │
 │       items: [{producto_id, cantidad}],                     │

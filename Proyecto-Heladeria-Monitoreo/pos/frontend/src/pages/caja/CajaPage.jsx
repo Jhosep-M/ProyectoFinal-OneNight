@@ -45,6 +45,18 @@ export default function CajaPage() {
   const [montoInicial, setMontoInicial] = useState('');
   const [abriendo, setAbriendo] = useState(false);
   const [errorAbrir, setErrorAbrir] = useState(null);
+  const [copiado, setCopiado] = useState(false);
+
+  const copiarId = async (id) => {
+    if (!id) return;
+    try {
+      await navigator.clipboard.writeText(id);
+      setCopiado(true);
+      setTimeout(() => setCopiado(false), 1500);
+    } catch {
+      setCopiado(false);
+    }
+  };
 
   useEffect(() => {
     const fetchData = async () => {
@@ -155,6 +167,17 @@ export default function CajaPage() {
                     Apertura {formatTime(turnoActivo.fecha_apertura || turnoActivo.created_at)}
                     {' · '}Cajero {turnoActivo.cajero || turnoActivo.usuario || '—'}
                     {' · '}{turnoActivo.estado}
+                  </div>
+                  <div className="d-flex align-items-center gap-2 mt-1">
+                    <code className="small text-muted">{String(turnoActivoId).slice(0, 8)}…</code>
+                    <button
+                      type="button"
+                      className="btn btn-sm btn-outline-secondary py-0"
+                      onClick={() => copiarId(turnoActivoId)}
+                      title="Copiar UUID completo del turno (soporte/API). En Ventas no necesitas pegarlo, se detecta solo."
+                    >
+                      {copiado ? 'Copiado' : 'Copiar ID'}
+                    </button>
                   </div>
                 </div>
 
