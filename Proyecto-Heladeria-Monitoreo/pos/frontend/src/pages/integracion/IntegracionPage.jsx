@@ -55,7 +55,7 @@ export default function IntegracionPage() {
       {alert && <Alert tone={alert.tone} message={alert.message} onClose={() => setAlert(null)} />}
 
       <Card>
-        <div className="row">
+        <div className="row-inline">
           <Select value={estado} onChange={(e) => setEstado(e.target.value)} style={{ width: 160 }}>
             <option value="">todos</option>
             <option value="pendiente">pendiente</option>

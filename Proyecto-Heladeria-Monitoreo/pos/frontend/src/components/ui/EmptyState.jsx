@@ -1,10 +1,12 @@
 export default function EmptyState({ icon = 'bi-inbox', title, description, action }) {
   return (
-    <div className="text-center py-5">
-      <i className={`bi ${icon} fs-1 text-muted mb-3`}></i>
-      <h5 className="text-muted">{title}</h5>
-      {description && <p className="text-muted">{description}</p>}
-      {action && <div className="mt-3">{action}</div>}
+    <div className="empty-state">
+      <div className="empty-icon-wrap" aria-hidden="true">
+        <i className={`bi ${icon} empty-icon`}></i>
+      </div>
+      <h3 className="h6 mb-1" style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>{title}</h3>
+      {description && <p className="small mb-0 mx-auto" style={{ maxWidth: '34ch' }}>{description}</p>}
+      {action && <div className="empty-action">{action}</div>}
     </div>
   );
 }

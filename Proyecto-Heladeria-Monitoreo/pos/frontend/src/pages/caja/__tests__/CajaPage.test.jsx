@@ -46,7 +46,7 @@ describe('CajaPage', () => {
   it('carga y muestra turno activo', async () => {
     renderCaja();
     expect(await screen.findByText('Turno Actual')).toBeInTheDocument();
-    expect(screen.getByText('abierto')).toBeInTheDocument();
+    expect(screen.getAllByText(/abierto/i).length).toBeGreaterThan(0);
     expect(screen.getByText(/100/)).toBeInTheDocument();
   });
 

@@ -13,17 +13,40 @@
   transition: background var(--duration) var(--ease-out), border-color var(--duration) var(--ease-out), color var(--duration) var(--ease-out);
   white-space: nowrap;
 }
-.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn:disabled { opacity: 0.55; cursor: not-allowed; }
 .btn-sm { padding: 5px 10px; font-size: 0.8125rem; }
+.btn-lg { padding: 12px 20px; font-size: 1rem; }
 
-.btn-primary { background: var(--accent); border-color: var(--accent); color: #fff; }
-.btn-primary:hover:not(:disabled) { background: var(--accent-hover); border-color: var(--accent-hover); }
+/* Botón primario dorado premium — autoritativo frente a Bootstrap.
+   Bootstrap solo setea variables; aquí fijamos el fondo real. */
+.btn-primary, .btn.btn-primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+  box-shadow: var(--shadow-sm);
+}
+.btn-primary:hover:not(:disabled), .btn.btn-primary:hover:not(:disabled) {
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
+  color: #fff;
+}
+.btn-primary:active:not(:disabled), .btn.btn-primary:active:not(:disabled) {
+  background: #5A420D;
+  border-color: #5A420D;
+}
 
-.btn-secondary { background: var(--surface); color: var(--ink); border-color: var(--border); }
-.btn-secondary:hover:not(:disabled) { background: var(--surface-sunk); }
+.btn-secondary, .btn.btn-secondary { background: var(--surface); color: var(--ink); border-color: var(--border); }
+.btn-secondary:hover:not(:disabled), .btn.btn-secondary:hover:not(:disabled) { background: var(--surface-sunk); color: var(--ink); }
 
-.btn-danger { background: var(--error); color: #fff; }
-.btn-danger:hover:not(:disabled) { background: #991b1b; }
+.btn-outline-secondary, .btn.btn-outline-secondary {
+  background: transparent;
+  color: var(--ink-muted);
+  border-color: var(--border);
+}
+.btn-outline-secondary:hover:not(:disabled) { background: var(--surface-sunk); color: var(--ink); border-color: var(--accent); }
+
+.btn-danger, .btn.btn-danger { background: var(--error); border-color: var(--error); color: #fff; }
+.btn-danger:hover:not(:disabled) { background: #6B1414; border-color: #6B1414; }
 
 .btn-ghost { background: transparent; border-color: transparent; color: var(--ink-muted); }
 .btn-ghost:hover:not(:disabled) { background: var(--surface-sunk); color: var(--ink); }
@@ -74,12 +97,14 @@
 .input-error:focus { box-shadow: 0 0 0 3px var(--error-soft); }
 .field-error { font-size: 0.75rem; color: var(--error); }
 
-/* Card */
+/* Card premium: radius suave + sombra con offset y blur */
 .card {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   margin-bottom: 16px;
+  box-shadow: var(--shadow-md);
+  overflow: hidden;
 }
 .card-header {
   display: flex;
@@ -92,14 +117,18 @@
 .card-actions { display: flex; gap: 8px; }
 .card-body { padding: 16px; }
 
-/* Badge */
+/* Badge — clases propias (no depender de bg-* de Bootstrap) */
 .badge {
   display: inline-flex;
   align-items: center;
-  padding: 2px 8px;
-  font-size: 0.75rem;
-  font-weight: 500;
+  gap: 4px;
+  padding: 3px 10px;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
   border-radius: var(--radius-pill);
+  font-variant-numeric: tabular-nums;
 }
 .badge-neutral { background: var(--surface-sunk); color: var(--ink-muted); }
 .badge-success { background: var(--success-soft); color: var(--success); }
@@ -147,16 +176,27 @@
 @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
 .mb-8 { margin-bottom: 8px; }
 
-/* EmptyState */
+/* EmptyState premium */
 .empty-state {
   text-align: center;
-  padding: 48px 20px;
+  padding: 40px 20px;
   color: var(--ink-muted);
 }
+.empty-icon-wrap {
+  width: 64px;
+  height: 64px;
+  margin: 0 auto 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--surface-sunk);
+  border: 1px solid var(--border);
+}
 .empty-icon {
-  font-size: 2.5rem;
-  color: var(--ink-faint);
-  margin-bottom: 8px;
+  font-size: 1.75rem;
+  color: var(--accent);
+  margin-bottom: 0;
 }
 .empty-state h3 { color: var(--ink); margin-bottom: 4px; }
 .empty-state p { margin-bottom: 16px; }
@@ -239,9 +279,65 @@
   border-top: 1px solid var(--border);
 }
 
-/* Row helper */
-.row { display: flex; gap: 8px; flex-wrap: wrap; align-items: flex-end; margin-bottom: 12px; }
-.row > * { flex: 0 0 auto; }
+/* Row-inline helper (formularios): NO usar .row para no pisar el grid de Bootstrap */
+.row-inline { display: flex; gap: 8px; flex-wrap: wrap; align-items: flex-end; margin-bottom: 12px; }
+.row-inline > * { flex: 0 0 auto; }
+
+/* KPIs de caja: número tabular, jerarquía clara */
+.kpi-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.kpi {
+  background: var(--surface-sunk);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  min-width: 0;
+}
+.kpi-label {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--ink-muted);
+  margin-bottom: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.kpi-value {
+  font-family: 'Source Serif 4', Georgia, serif;
+  font-weight: 700;
+  font-size: 1.15rem;
+  line-height: 1.2;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.kpi-value-accent { color: var(--accent); }
+
+/* Icono de apertura en círculo crema */
+.turno-empty-icon {
+  width: 72px;
+  height: 72px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--surface-sunk);
+  border: 1px dashed var(--accent);
+  color: var(--accent);
+  font-size: 2rem;
+}
+
+/* Caja lado a lado: turno fijo al hacer scroll en desktop, transacciones con altura mínima */
+@media (min-width: 992px) {
+  .caja-turno-sticky { position: sticky; top: 76px; }
+}
+.caja-transacciones { min-height: 420px; display: flex; flex-direction: column; }
+.caja-transacciones .table-responsive { flex: 1; }
+
+/* Tabla con numerales tabulares */
+.data-table td, .table td { font-variant-numeric: tabular-nums; }
 
 /* Filtros: grilla responsive para que los Input no se compriman en .row */
 .filters-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; align-items: end; margin-bottom: 4px; }

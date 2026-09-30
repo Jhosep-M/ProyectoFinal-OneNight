@@ -62,12 +62,12 @@ export default function ClientesPage() {
       <RequirePermiso permiso="cliente.gestionar">
         <Card title={editando ? 'Editar cliente' : 'Nuevo cliente'}>
           <form onSubmit={guardar}>
-            <div className="row">
+            <div className="row-inline">
               <Input placeholder="nombre" value={form.nombre} onChange={(e) => setForm({ ...form, nombre: e.target.value })} required />
               <Input placeholder="teléfono" value={form.telefono} onChange={(e) => setForm({ ...form, telefono: e.target.value })} />
               <Input placeholder="correo" type="email" value={form.correo} onChange={(e) => setForm({ ...form, correo: e.target.value })} />
             </div>
-            <div className="row">
+            <div className="row-inline">
               <Input type="number" min={0} placeholder="puntos" value={form.puntos_fidelidad} onChange={(e) => setForm({ ...form, puntos_fidelidad: e.target.value })} style={{ width: 90 }} />
               <Select value={form.estado} onChange={(e) => setForm({ ...form, estado: e.target.value })}>
                 <option value="activo">activo</option>

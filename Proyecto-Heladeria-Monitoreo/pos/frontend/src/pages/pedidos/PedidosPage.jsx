@@ -112,14 +112,14 @@ export default function PedidosPage() {
 
       <Card title="Nuevo pedido">
         <form onSubmit={crear}>
-          <div className="row">
+          <div className="row-inline">
             <Select value={mesaId} onChange={(e) => setMesaId(e.target.value)} required>
               <option value="">mesa…</option>
               {mesas.map((m) => <option key={m.id_mesa} value={m.id_mesa}>Mesa {m.numero}</option>)}
             </Select>
           </div>
           {items.map((it, k) => (
-            <div className="row" key={k}>
+            <div className="row-inline" key={k}>
               <Select
                 value={it.producto_id}
                 onChange={(e) => setItems(items.map((x, j) => (j === k ? { ...x, producto_id: e.target.value } : x)))}
@@ -141,7 +141,7 @@ export default function PedidosPage() {
               <Button type="button" variant="ghost" onClick={() => setItems(items.filter((_, j) => j !== k))}>−</Button>
             </div>
           ))}
-          <div className="row">
+          <div className="row-inline">
             <Button type="button" variant="secondary" onClick={() => setItems([...items, emptyItem()])}>+ producto</Button>
             <Button type="submit">Crear pedido</Button>
           </div>

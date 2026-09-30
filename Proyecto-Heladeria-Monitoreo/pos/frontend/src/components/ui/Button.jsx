@@ -3,10 +3,10 @@ import { motion } from 'framer-motion';
 const variantMap = {
   primary: 'btn-primary',
   secondary: 'btn-secondary',
-  success: 'btn-success',
   danger: 'btn-danger',
   outline: 'btn-outline-primary',
-  ghost: 'btn-link',
+  outlineSecondary: 'btn-outline-secondary',
+  ghost: 'btn-ghost',
 };
 
 const sizeMap = {
@@ -19,17 +19,23 @@ export default function Button({
   variant = 'primary',
   size = 'md',
   icon,
+  loading = false,
   children,
   className = '',
+  disabled,
   ...props
 }) {
+  const isDisabled = disabled || loading;
   return (
     <motion.button
-      whileTap={{ scale: 0.98 }}
-      className={`btn ${variantMap[variant]} ${sizeMap[size]} ${className}`}
+      whileTap={isDisabled ? undefined : { scale: 0.98 }}
+      className={`btn ${variantMap[variant] ?? 'btn-primary'} ${sizeMap[size]} ${className}`}
+      disabled={isDisabled}
+      aria-busy={loading || undefined}
       {...props}
     >
-      {icon && <i className={`bi ${icon} me-2`}></i>}
+      {loading && <span className="btn-spinner" aria-hidden="true" />}
+      {icon && !loading && <i className={`bi ${icon} me-2`} aria-hidden="true"></i>}
       {children}
     </motion.button>
   );
