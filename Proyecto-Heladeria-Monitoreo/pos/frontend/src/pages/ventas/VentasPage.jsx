@@ -12,6 +12,8 @@ import { productosService, categoriasService } from '../../services/productosSer
 import { crearVenta } from '../../services/ventasService.js';
 import { listarTurnos } from '../../services/cajaService.js';
 import { listarMetodosPago } from '../../services/ventasService.js';
+import ClienteSelector from '../../components/clientes/ClienteSelector.jsx';
+import Input from '../../components/common/Input.jsx';
 
 const container = {
   hidden: { opacity: 0 },
@@ -38,6 +40,9 @@ export default function VentasPage() {
   const [categoriaActiva, setCategoriaActiva] = useState('todos');
   const [ticket, setTicket] = useState([]);
   const [cobrando, setCobrando] = useState(false);
+  const [cliente, setCliente] = useState(null);
+  const [usarPuntos, setUsarPuntos] = useState(false);
+  const [puntosCaje, setPuntosCaje] = useState(0);
 
   // El turno es automático: se detecta el abierto del cajero autenticado.
   // No se pide UUID manual. Se separa su error del error de productos
@@ -70,7 +75,7 @@ export default function VentasPage() {
         setCategorias((categoriasData || []).map((c) => ({ ...c, id: c.id_categoria || c.id })));
         const metodos = metodosData || [];
         setMetodosPago(metodos);
-        if (metodos[0]) setMetodoPagoId(metodos[0].id_metodo || metodos[0].id);
+        if (metodos[0]) setMetodoPagoId(metodos[0].id_metodo_pago || metodos[0].id_metodo || metodos[0].id);
       } catch (err) {
         setError('No se pudieron cargar los productos');
       } finally {
@@ -137,18 +142,52 @@ export default function VentasPage() {
       setErrorCobro('No hay método de pago disponible.');
       return;
     }
+    const saldoPuntos = Number(cliente?.puntos_fidelidad) || 0;
+    const canje = usarPuntos ? Number(puntosCaje) || 0 : 0;
+    // 1 pt = $1. El PG 001 exige sum(pagos) == subtotal - descuento - canje
+    // y cada pago con monto > 0 estricto. Opción B (sin tocar SQL):
+    // el canje nunca puede cubrir el total; se exige al menos $0.01 de pago.
+    const montoAPagar = total - canje;
+    if (usarPuntos) {
+      if (!cliente) {
+        setErrorCobro('Selecciona un cliente para usar puntos.');
+        return;
+      }
+      if (canje <= 0) {
+        setErrorCobro('Indica cuántos puntos canjear.');
+        return;
+      }
+      if (canje > saldoPuntos) {
+        setErrorCobro(`No puedes canjear más de ${saldoPuntos} puntos disponibles.`);
+        return;
+      }
+      if (canje > total) {
+        setErrorCobro(`No puedes canjear más de ${total} puntos (total de la venta).`);
+        return;
+      }
+      if (montoAPagar < 0.01) {
+        setErrorCobro('El canje no puede cubrir el total, deja al menos $0.01.');
+        return;
+      }
+    }
     setCobrando(true);
     try {
       // El backend exige turno_id UUID, items {producto_id UUID, cantidad}
-      // y pagos {metodo_pago_id UUID, monto}. Sin turno_id siempre daba 400.
+      // y pagos {metodo_pago_id UUID, monto}. monto = total - canje (1pt=$1).
       const items = ticket.map((i) => ({ producto_id: i.id_producto || i.id, cantidad: i.cantidad }));
       const payload = {
         turno_id: turnoActivo.id_turno || turnoActivo.id,
         items,
-        pagos: [{ metodo_pago_id: metodoPagoId, monto: total }],
+        pagos: [{ metodo_pago_id: metodoPagoId, monto: montoAPagar }],
+        descuento: 0,
       };
+      payload.cliente_id = cliente?.id_cliente || undefined;
+      payload.puntos_canje = usarPuntos ? Number(puntosCaje) || 0 : 0;
       await crearVenta(payload);
       setTicket([]);
+      setCliente(null);
+      setUsarPuntos(false);
+      setPuntosCaje(0);
     } catch (err) {
       console.error('Error al cobrar:', err);
       setErrorCobro(err.message);
@@ -342,6 +381,36 @@ export default function VentasPage() {
             </div>
           )}
 
+          <ClienteSelector value={cliente} onSelect={setCliente} />
+          {cliente && (
+            <div className="mb-3">
+              <p className="mb-2">Puntos disponibles: {cliente.puntos_fidelidad ?? cliente.puntos ?? 0}</p>
+              <div className="form-check mb-2">
+                <input
+                  className="form-check-input"
+                  type="checkbox"
+                  id="usar-puntos"
+                  checked={usarPuntos}
+                  onChange={(e) => setUsarPuntos(e.target.checked)}
+                />
+                <label className="form-check-label" htmlFor="usar-puntos">
+                  Usar puntos
+                </label>
+              </div>
+              {usarPuntos && (
+                <Input
+                  label="Puntos a canjear"
+                  name="puntos-canje"
+                  type="number"
+                  min={0}
+                  max={Math.min(Number(cliente.puntos_fidelidad) || 0, total)}
+                  value={puntosCaje}
+                  onChange={(e) => setPuntosCaje(e.target.value)}
+                />
+              )}
+            </div>
+          )}
+
           {ticket.length === 0 ? (
             <div className="text-center text-muted py-4">
               <i className="bi bi-cart fs-1"></i>
@@ -395,7 +464,7 @@ export default function VentasPage() {
                     aria-label="Método de pago"
                   >
                     {metodosPago.map((m) => (
-                      <option key={m.id_metodo || m.id} value={m.id_metodo || m.id}>
+                      <option key={m.id_metodo_pago || m.id_metodo || m.id} value={m.id_metodo_pago || m.id_metodo || m.id}>
                         {m.nombre || 'Método de pago'}
                       </option>
                     ))}

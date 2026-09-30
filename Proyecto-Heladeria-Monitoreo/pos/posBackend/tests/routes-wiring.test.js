@@ -59,7 +59,9 @@ describe('routes sales -> ventaService', () => {
       items: [{ producto_id: UUID('b'), cantidad: 2 }],
       pagos: [{ metodo_pago_id: UUID('c'), monto: 15 }],
       userId: 'u-test',
+      cliente_id: undefined,
       descuento: 5,
+      puntos_canje: 0,
     });
   });
 

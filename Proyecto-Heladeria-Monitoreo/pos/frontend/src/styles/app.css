@@ -186,6 +186,22 @@
   color: #5C4033 !important;
 }
 
+.recetas-grid {
+  display: grid;
+  grid-template-columns: minmax(260px, 340px) 1fr;
+  gap: 16px;
+  align-items: start;
+}
+
+.receta-sel {
+  outline: 2px solid #C9A227;
+  outline-offset: -2px;
+}
+
+@media (max-width: 900px) {
+  .recetas-grid { grid-template-columns: 1fr; }
+}
+
 .bg-soft-primary { background-color: #F5E6D3; }
 .bg-soft-success { background-color: #E8F0E0; }
 .bg-soft-danger { background-color: #F5E0E0; }

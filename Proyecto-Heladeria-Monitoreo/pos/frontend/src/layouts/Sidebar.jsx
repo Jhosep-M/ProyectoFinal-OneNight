@@ -27,6 +27,7 @@ const GRUPOS = [
   {
     titulo: 'Sistema',
     enlaces: [
+      { to: '/admin/turnos', texto: 'Turnos', icono: 'bi-clock-history', permiso: 'turno.consultar.todos' },
       { to: '/integracion', texto: 'Integración', icono: 'bi-gear', permiso: 'integracion.consultar' },
       { to: '/auditoria', texto: 'Auditoría', icono: 'bi-shield', permiso: 'auditoria.consultar' },
       { to: '/usuarios', texto: 'Usuarios', icono: 'bi-person-gear', permiso: 'usuario.gestionar' },

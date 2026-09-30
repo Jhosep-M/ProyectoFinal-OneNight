@@ -6,9 +6,11 @@ import Button from '../../components/ui/Button.jsx';
 import Skeleton from '../../components/ui/Skeleton.jsx';
 import EmptyState from '../../components/ui/EmptyState.jsx';
 import { formatCurrency, formatTime } from '../../utils/format.js';
-import { listarTurnos } from '../../services/cajaService.js';
+import { listarMisTurnos } from '../../services/cajaService.js';
 import { listarVentas } from '../../services/ventasService.js';
 import { cerrarTurno, abrirTurno } from '../../services/cajaService.js';
+import { useAuth } from '../../context/AuthContext.jsx';
+import CerrarTurnoModal from './CerrarTurnoModal.jsx';
 
 const container = {
   hidden: { opacity: 0 },
@@ -37,11 +39,14 @@ const normVenta = (v) => ({
 });
 
 export default function CajaPage() {
-  const [turnos, setTurnos] = useState([]);
+  const { session } = useAuth ? useAuth() : { session: null };
+  const [misTurnos, setMisTurnos] = useState([]);
   const [ventas, setVentas] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [cerrando, setCerrando] = useState(false);
+  const [modalPropio, setModalPropio] = useState(false);
+  const [errorCerrar, setErrorCerrar] = useState(null);
   const [montoInicial, setMontoInicial] = useState('');
   const [abriendo, setAbriendo] = useState(false);
   const [errorAbrir, setErrorAbrir] = useState(null);
@@ -58,16 +63,21 @@ export default function CajaPage() {
     }
   };
 
+  // Solo mío: Caja nunca llama a /todos ni /permisos (ver TurnosAdminPage).
+  const recargar = async () => {
+    const [misData, ventasData] = await Promise.all([
+      listarMisTurnos(),
+      listarVentas(),
+    ]);
+    setMisTurnos(misData || []);
+    setVentas((ventasData || []).map(normVenta));
+  };
+
   useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true);
-        const [turnosData, ventasData] = await Promise.all([
-          listarTurnos(),
-          listarVentas(),
-        ]);
-        setTurnos(turnosData || []);
-        setVentas((ventasData || []).map(normVenta));
+        await recargar();
       } catch (err) {
         setError('No se pudieron cargar los datos de caja');
       } finally {
@@ -75,9 +85,13 @@ export default function CajaPage() {
       }
     };
     fetchData();
+    const id = setInterval(() => { recargar().catch(() => {}); }, 15000);
+    return () => clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const turnoActivo = turnos.find((t) => t.estado === 'abierto') || null;
+  // Opción A: mi turno activo (nunca un ajeno).
+  const turnoActivo = misTurnos.find((t) => t.estado === 'abierto') || null;
 
   const turnoActivoId = turnoActivo?.id_turno || turnoActivo?.id || null;
   const ventasTurno = turnoActivoId
@@ -88,15 +102,25 @@ export default function CajaPage() {
     .filter((v) => v.estado !== 'anulado')
     .reduce((sum, v) => sum + (v.total || 0), 0);
 
-  const handleCerrarTurno = async () => {
-    if (!turnoActivo) return;
+  const nombreCajero = (t) =>
+    t?.cajero_email || t?.cajero || t?.usuario || t?.usuario_email || session?.user?.email || '—';
+
+  const handleConfirmarCierrePropio = async ({ monto_final_real }) => {
+    if (!turnoActivo || !turnoActivoId) return;
     setCerrando(true);
+    setErrorCerrar(null);
     try {
-      await cerrarTurno(turnoActivoId, totalVentas);
-      const turnosData = await listarTurnos();
-      setTurnos(turnosData || []);
+      await cerrarTurno(turnoActivoId, { monto_final_real });
+      setModalPropio(false);
+      await recargar();
     } catch (err) {
-      console.error('Error al cerrar turno:', err);
+      const msg = String(err.message || '');
+      if (/409|abierto|ya cerrado/i.test(msg)) {
+        setErrorCerrar('El turno ya fue cerrado. Actualizando…');
+        await recargar();
+      } else {
+        setErrorCerrar(msg || 'No se pudo cerrar el turno');
+      }
     } finally {
       setCerrando(false);
     }
@@ -108,8 +132,7 @@ export default function CajaPage() {
     try {
       await abrirTurno(Number(montoInicial));
       setMontoInicial('');
-      const turnosData = await listarTurnos();
-      setTurnos(turnosData || []);
+      await recargar();
     } catch (err) {
       setErrorAbrir(err.message);
     } finally {
@@ -165,8 +188,8 @@ export default function CajaPage() {
                   <div className="fw-semibold">{turnoActivo.nombre || `Turno #${String(turnoActivoId).slice(0, 8)}`}</div>
                   <div className="text-muted small">
                     Apertura {formatTime(turnoActivo.fecha_apertura || turnoActivo.created_at)}
-                    {' · '}Cajero {turnoActivo.cajero || turnoActivo.usuario || '—'}
-                    {' · '}{turnoActivo.estado}
+                    {' · '}Cajero {nombreCajero(turnoActivo)}
+                    {' · '}{turnoActivo.estado} · tuyo
                   </div>
                   <div className="d-flex align-items-center gap-2 mt-1">
                     <code className="small text-muted">{String(turnoActivoId).slice(0, 8)}…</code>
@@ -210,13 +233,21 @@ export default function CajaPage() {
                   <Button
                     variant="primary"
                     icon="bi-lock"
-                    onClick={handleCerrarTurno}
+                    onClick={() => { setErrorCerrar(null); setModalPropio(true); }}
                     loading={cerrando}
                   >
                     {cerrando ? 'Cerrando...' : 'Cerrar Turno'}
                   </Button>
                   <span className="text-muted small text-center">Quedará registrado en auditoría con tu usuario y hora.</span>
                 </div>
+                <CerrarTurnoModal
+                  abierto={modalPropio}
+                  esAjeno={false}
+                  cargando={cerrando}
+                  error={errorCerrar}
+                  onCancelar={() => { setModalPropio(false); setErrorCerrar(null); }}
+                  onConfirmar={handleConfirmarCierrePropio}
+                />
               </>
             ) : (
               <div className="py-2">

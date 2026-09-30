@@ -12,12 +12,13 @@ import PedidosPage from '../pages/pedidos/PedidosPage.jsx';
 import MesasPage from '../pages/mesas/MesasPage.jsx';
 import ProductosPage, { Categorias as CategoriasPage } from '../pages/catalogo/Productos.jsx';
 import InventarioPage, { Proveedores as ProveedoresPage } from '../pages/catalogo/Inventario.jsx';
-import { Recetas as RecetasPage } from '../pages/catalogo/RecetasClientesPromos.jsx';
+import RecetasPage from '../pages/catalogo/RecetasPage.jsx';
 import ClientesPage from '../pages/clientes/ClientesPage.jsx';
 import PromocionesPage from '../pages/promociones/PromocionesPage.jsx';
 import UsuariosPage from '../pages/usuarios/UsuariosPage.jsx';
 import AuditoriaPage from '../pages/auditoria/AuditoriaPage.jsx';
 import IntegracionPage from '../pages/integracion/IntegracionPage.jsx';
+import TurnosAdminPage from '../pages/admin/TurnosAdminPage.jsx';
 
 export default function AppRoutes() {
   const location = useLocation();
@@ -34,6 +35,7 @@ export default function AppRoutes() {
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/ventas" element={<RequirePermiso permiso="venta.consultar"><VentasPage /></RequirePermiso>} />
           <Route path="/caja" element={<RequirePermiso permiso="turno.consultar"><CajaPage /></RequirePermiso>} />
+          <Route path="/admin/turnos" element={<RequirePermiso permiso="turno.consultar.todos"><TurnosAdminPage /></RequirePermiso>} />
           <Route path="/pedidos" element={<RequirePermiso permiso="pedido.consultar"><PedidosPage /></RequirePermiso>} />
           <Route path="/mesas" element={<RequirePermiso permiso="mesa.consultar"><MesasPage /></RequirePermiso>} />
           <Route path="/catalogo/productos" element={<RequirePermiso permiso="producto.consultar"><ProductosPage /></RequirePermiso>} />

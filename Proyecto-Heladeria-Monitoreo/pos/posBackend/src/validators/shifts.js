@@ -8,6 +8,8 @@ const abrirTurnoSchema = z.object({
 const cerrarTurnoSchema = z.object({
   monto_final_real: z.number().min(0, 'monto_final_real debe ser >= 0'),
   observacion: z.string().trim().max(200).nullable().optional(),
+  // Motivo exigido por UI cuando un admin cierra turno ajeno (auditoría).
+  motivo: z.string().trim().max(500).nullable().optional(),
 });
 
 // Aliases

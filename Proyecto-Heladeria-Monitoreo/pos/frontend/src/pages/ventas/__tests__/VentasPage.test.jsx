@@ -55,7 +55,7 @@ describe('VentasPage', () => {
       { id_turno: 'turno-123', estado: 'abierto' },
     ]);
     mocks.mockListarMetodos.mockResolvedValue([
-      { id_metodo: 'm1', nombre: 'Efectivo' },
+      { id_metodo_pago: 'm1', nombre: 'Efectivo' },
     ]);
   });
 
@@ -81,6 +81,22 @@ describe('VentasPage', () => {
     const payload = mocks.mockCrearVenta.mock.calls[0][0];
     expect(payload.pagos[0].metodo_pago_id).toBe('m1');
     expect(payload.pagos[0].monto).toBeGreaterThan(0);
+  });
+
+  it('toma el método de pago del campo real id_metodo_pago', async () => {
+    mocks.mockCrearVenta.mockResolvedValue({ venta_id: 'v3' });
+    renderVentas();
+    await userEvent.click(await screen.findByText('Helado Chocolate'));
+    const select = await screen.findByRole('combobox', { name: /Método de pago/i });
+    expect(select).toHaveValue('m1');
+    await userEvent.click(await screen.findByRole('button', { name: /Cobrar/ }));
+    await waitFor(() => {
+      expect(mocks.mockCrearVenta).toHaveBeenCalledWith(
+        expect.objectContaining({
+          pagos: [{ metodo_pago_id: 'm1', monto: 50 }],
+        })
+      );
+    });
   });
 
   it('sin turno abierto muestra aviso y deshabilita cobrar', async () => {

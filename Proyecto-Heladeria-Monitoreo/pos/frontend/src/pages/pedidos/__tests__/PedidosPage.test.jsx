@@ -53,7 +53,7 @@ describe('PedidosPage', () => {
     mocks.mockListarMesas.mockResolvedValue([{ id_mesa: 'm1', numero: '1' }]);
     mocks.mockProductosList.mockResolvedValue([{ id_producto: 'pr1', nombre: 'Helado' }]);
     mocks.mockListarTurnos.mockResolvedValue([{ id_turno: 't1', estado: 'abierto' }]);
-    mocks.mockListarMetodos.mockResolvedValue([{ id_metodo: 'mp1', nombre: 'Efectivo' }]);
+    mocks.mockListarMetodos.mockResolvedValue([{ id_metodo_pago: 'mp1', nombre: 'Efectivo' }]);
   });
 
   it('carga y muestra pedidos', async () => {

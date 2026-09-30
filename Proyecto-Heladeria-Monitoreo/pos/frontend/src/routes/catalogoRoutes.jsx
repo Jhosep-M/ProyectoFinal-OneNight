@@ -1,6 +1,9 @@
 import Productos, { Categorias } from '../pages/catalogo/Productos.jsx';
 import Inventario, { Proveedores } from '../pages/catalogo/Inventario.jsx';
-import { Recetas, Clientes, Promociones } from '../pages/catalogo/RecetasClientesPromos.jsx';
+import RecetasPage from '../pages/catalogo/RecetasPage.jsx';
+import { Clientes, Promociones } from '../pages/catalogo/RecetasClientesPromos.jsx';
+
+const Recetas = RecetasPage;
 
 // Rutas P2 (carpeta catalogo/). P1 usa carpeta ventas/.
 // Para montar: importar este arreglo en AppRoutes.jsx sin tocar rutas de ventas.
