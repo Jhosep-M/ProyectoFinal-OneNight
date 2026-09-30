@@ -120,6 +120,374 @@ El siguiente diccionario se genera de las sentencias `CREATE TABLE` disponibles 
 
 #### POS
 
+**alerta_pos** (fuente: `database/pos/migrations/AlertaPos.js`)
+
+| Columna | Tipo | Restricción |
+| --- | --- | --- |
+| id_alerta | UUID | PK |
+| turno_id | UUID | FK [ver asociación Sequelize] |
+| tipo | STRING | NN |
+| nivel | STRING | NN |
+| mensaje | TEXT | NN |
+| estado | STRING | — |
+| creado_en | DATE | — |
+| atendido_en | DATE | — |
+| atendido_por | UUID | — |
+
+**auditoria_accion** (fuente: `database/pos/migrations/AuditoriaAccion.js`)
+
+| Columna | Tipo | Restricción |
+| --- | --- | --- |
+| id_auditoria | UUID | PK |
+| usuario_id | UUID | FK [ver asociación Sequelize] |
+| accion | STRING | NN |
+| entidad | STRING | — |
+| entidad_id | UUID | FK [ver asociación Sequelize] |
+| resultado | STRING | — |
+| direccion_ip | STRING | — |
+| user_agent | STRING | — |
+| fecha | DATE | — |
+| detalle | TEXT | — |
+
+**categoria** (fuente: `database/pos/migrations/Categoria.js`)
+
+| Columna | Tipo | Restricción |
+| --- | --- | --- |
+| id_categoria | UUID | PK |
+| nombre | STRING | NN |
+| estado | STRING | — |
+
+**cliente** (fuente: `database/pos/migrations/Cliente.js`)
+
+| Columna | Tipo | Restricción |
+| --- | --- | --- |
+| id_cliente | UUID | PK |
+| nombre | STRING | NN |
+| telefono | STRING | — |
+| correo | STRING | — |
+| puntos_fidelidad | INTEGER | — |
+| estado | STRING | — |
+| creado_en | DATE | Generado por Sequelize |
+| actualizado_en | DATE | Generado por Sequelize |
+
+**cola_integracion** (fuente: `database/pos/migrations/ColaIntegracion.js`)
+
+| Columna | Tipo | Restricción |
+| --- | --- | --- |
+| id_cola | UUID | PK |
+| consumo_id | UUID | NN; FK [ver asociación Sequelize] |
+| operacion | STRING | NN |
+| idempotency_key | STRING | NN |
+| intentos | INTEGER | — |
+| estado | STRING | — |
+| respuesta | TEXT | — |
+| error | TEXT | — |
+| proximo_intento | DATE | — |
+| ultimo_intento | DATE | — |
+| creado_en | DATE | — |
+
+**configuracion_pos** (fuente: `database/pos/migrations/ConfiguracionPos.js`)
+
+| Columna | Tipo | Restricción |
+| --- | --- | --- |
+| id_configuracion | UUID | PK |
+| clave | STRING | NN |
+| valor | STRING | NN |
+| descripcion | TEXT | — |
+| actualizado_en | DATE | — |
+
+**consumo_reportado** (fuente: `database/pos/migrations/ConsumoReportado.js`)
+
+| Columna | Tipo | Restricción |
+| --- | --- | --- |
+| id_consumo | UUID | PK |
+| turno_id | UUID | NN; FK [ver asociación Sequelize] |
+| tipo_recurso | STRING | NN |
+| cantidad | DECIMAL | NN |
+| unidad_medida | STRING | NN |
+| fecha_consumo | DATE | — |
+| estado | STRING | — |
+| fecha_creacion | DATE | — |
+
+**detalle_pedido** (fuente: `database/pos/migrations/DetallePedido.js`)
+
+| Columna | Tipo | Restricción |
+| --- | --- | --- |
+| id_detalle_pedido | UUID | PK |
+| pedido_id | UUID | NN; FK [ver asociación Sequelize] |
+| producto_id | UUID | NN; FK [ver asociación Sequelize] |
+| cantidad | DECIMAL | NN |
+| precio_unitario | DECIMAL | NN |
+| observacion | TEXT | — |
+| subtotal | DECIMAL | NN |
+
+**detalle_venta** (fuente: `database/pos/migrations/DetalleVenta.js`)
+
+| Columna | Tipo | Restricción |
+| --- | --- | --- |
+| id_detalle_venta | UUID | PK |
+| venta_id | UUID | NN; FK [ver asociación Sequelize] |
+| producto_id | UUID | NN; FK [ver asociación Sequelize] |
+| cantidad | DECIMAL | NN |
+| precio_unitario | DECIMAL | NN |
+| descuento | DECIMAL | — |
+| subtotal | DECIMAL | NN |
+
+**devolucion** (fuente: `database/pos/migrations/Devolucion.js`)
+
+| Columna | Tipo | Restricción |
+| --- | --- | --- |
+| id_devolucion | UUID | PK |
+| venta_id | UUID | NN; FK [ver asociación Sequelize] |
+| producto_id | UUID | NN; FK [ver asociación Sequelize] |
+| autorizado_por_id | UUID | FK [ver asociación Sequelize] |
+| cantidad | DECIMAL | NN |
+| monto | DECIMAL | NN |
+| motivo | TEXT | — |
+| estado | STRING | — |
+| fecha | DATE | — |
+
+**entrega_alerta** (fuente: `database/pos/migrations/EntregaAlerta.js`)
+
+| Columna | Tipo | Restricción |
+| --- | --- | --- |
+| id_entrega | UUID | PK |
+| alerta_externa_id | UUID | NN; FK [ver asociación Sequelize] |
+| nivel | STRING | NN |
+| tipo | STRING | NN |
+| mensaje | TEXT | NN |
+| estado | STRING | — |
+| intentos | INTEGER | — |
+| fecha_recepcion | DATE | — |
+| fecha_procesamiento | DATE | — |
+
+**equipo_consumo** (fuente: `database/pos/migrations/EquipoConsumo.js`)
+
+| Columna | Tipo | Restricción |
+| --- | --- | --- |
+| id_equipo | UUID | PK |
+| nombre | STRING | NN |
+| tipo_recurso | STRING | NN |
+| consumo_por_hora | DECIMAL | NN |
+| unidad_medida | STRING | NN |
+| activo | BOOLEAN | — |
+| creado_en | DATE | Generado por Sequelize |
+| actualizado_en | DATE | Generado por Sequelize |
+
+**equipo_turno** (fuente: `database/pos/migrations/EquipoTurno.js`)
+
+| Columna | Tipo | Restricción |
+| --- | --- | --- |
+| id_equipo_turno | UUID | PK |
+| equipo_id | UUID | NN; FK [ver asociación Sequelize] |
+| turno_id | UUID | NN; FK [ver asociación Sequelize] |
+| hora_inicio | DATE | NN |
+| hora_fin | DATE | — |
+| estado | STRING | — |
+| creado_en | DATE | Generado por Sequelize |
+| actualizado_en | DATE | Generado por Sequelize |
+
+**insumo** (fuente: `database/pos/migrations/Insumo.js`)
+
+| Columna | Tipo | Restricción |
+| --- | --- | --- |
+| id_insumo | UUID | PK |
+| nombre | STRING | NN |
+| unidad_medida | STRING | — |
+| stock | DECIMAL | — |
+| stock_minimo | DECIMAL | — |
+| fecha_vencimiento | DATE | — |
+| estado | STRING | — |
+
+**mesa** (fuente: `database/pos/migrations/Mesa.js`)
+
+| Columna | Tipo | Restricción |
+| --- | --- | --- |
+| id_mesa | UUID | PK |
+| numero | INTEGER | NN |
+| estado | STRING | — |
+
+**metodo_pago** (fuente: `database/pos/migrations/MetodoPago.js`)
+
+| Columna | Tipo | Restricción |
+| --- | --- | --- |
+| id_metodo_pago | UUID | PK |
+| nombre | STRING | NN |
+| estado | STRING | — |
+
+**movimiento_inventario** (fuente: `database/pos/migrations/MovimientoInventario.js`)
+
+| Columna | Tipo | Restricción |
+| --- | --- | --- |
+| id_movimiento | UUID | PK |
+| insumo_id | UUID | FK [ver asociación Sequelize] |
+| proveedor_id | UUID | FK [ver asociación Sequelize] |
+| usuario_id | UUID | FK [ver asociación Sequelize] |
+| producto_id | UUID | FK [ver asociación Sequelize] |
+| venta_id | UUID | FK [ver asociación Sequelize] |
+| devolucion_id | UUID | FK [ver asociación Sequelize] |
+| tipo | STRING | NN |
+| cantidad | DECIMAL | NN |
+| motivo | STRING | — |
+| fecha | DATE | — |
+
+**movimiento_puntos** (fuente: `database/pos/migrations/MovimientoPuntos.js`)
+
+| Columna | Tipo | Restricción |
+| --- | --- | --- |
+| id_movimiento | UUID | PK |
+| cliente_id | UUID | NN; FK [ver asociación Sequelize] |
+| venta_id | UUID | FK [ver asociación Sequelize] |
+| puntos | INTEGER | NN |
+| tipo | STRING | NN |
+| motivo | STRING | — |
+| fecha | DATE | — |
+
+**pago** (fuente: `database/pos/migrations/Pago.js`)
+
+| Columna | Tipo | Restricción |
+| --- | --- | --- |
+| id_pago | UUID | PK |
+| venta_id | UUID | NN; FK [ver asociación Sequelize] |
+| metodo_pago_id | UUID | NN; FK [ver asociación Sequelize] |
+| monto | DECIMAL | NN |
+| referencia | STRING | — |
+| estado | STRING | — |
+| fecha | DATE | — |
+
+**pedido** (fuente: `database/pos/migrations/Pedido.js`)
+
+| Columna | Tipo | Restricción |
+| --- | --- | --- |
+| id_pedido | UUID | PK |
+| mesa_id | UUID | FK [ver asociación Sequelize] |
+| mesero_id | UUID | FK [ver asociación Sequelize] |
+| estado | STRING | — |
+| fecha | DATE | — |
+| fecha_cierre | DATE | — |
+
+**permiso** (fuente: `database/pos/migrations/Permiso.js`)
+
+| Columna | Tipo | Restricción |
+| --- | --- | --- |
+| id_permiso | UUID | PK |
+| nombre | STRING | NN |
+| descripcion | STRING | — |
+| modulo | STRING | — |
+
+**producto** (fuente: `database/pos/migrations/Producto.js`)
+
+| Columna | Tipo | Restricción |
+| --- | --- | --- |
+| id_producto | UUID | PK |
+| categoria_id | UUID | FK [ver asociación Sequelize] |
+| nombre | STRING | NN |
+| precio | DECIMAL | NN |
+| imagen_url | TEXT | — |
+| stock | DECIMAL | — |
+| stock_minimo | DECIMAL | — |
+| estado | STRING | — |
+| creado_en | DATE | Generado por Sequelize |
+| actualizado_en | DATE | Generado por Sequelize |
+
+**promocion** (fuente: `database/pos/migrations/Promocion.js`)
+
+| Columna | Tipo | Restricción |
+| --- | --- | --- |
+| id_promocion | UUID | PK |
+| nombre | STRING | NN |
+| porcentaje_descuento | DECIMAL | NN |
+| fecha_inicio | DATE | — |
+| fecha_fin | DATE | — |
+| estado | STRING | — |
+
+**promocion_producto** (fuente: `database/pos/migrations/PromocionProducto.js`)
+
+| Columna | Tipo | Restricción |
+| --- | --- | --- |
+| id_promocion_producto | UUID | PK |
+| promocion_id | UUID | NN; FK [ver asociación Sequelize] |
+| producto_id | UUID | NN; FK [ver asociación Sequelize] |
+
+**proveedor** (fuente: `database/pos/migrations/Proveedor.js`)
+
+| Columna | Tipo | Restricción |
+| --- | --- | --- |
+| id_proveedor | UUID | PK |
+| nombre | STRING | NN |
+| nit | STRING | — |
+| contacto | STRING | — |
+| telefono | STRING | — |
+| correo | STRING | — |
+| estado | STRING | — |
+
+**receta_insumo** (fuente: `database/pos/migrations/RecetaInsumo.js`)
+
+| Columna | Tipo | Restricción |
+| --- | --- | --- |
+| id_receta | UUID | PK |
+| producto_id | UUID | NN; FK [ver asociación Sequelize] |
+| insumo_id | UUID | NN; FK [ver asociación Sequelize] |
+| cantidad_requerida | DECIMAL | NN |
+
+**rol** (fuente: `database/pos/migrations/Rol.js`)
+
+| Columna | Tipo | Restricción |
+| --- | --- | --- |
+| id_rol | UUID | PK |
+| nombre | STRING | NN |
+| descripcion | STRING | — |
+| estado | STRING | — |
+
+**rol_permiso** (fuente: `database/pos/migrations/RolPermiso.js`)
+
+| Columna | Tipo | Restricción |
+| --- | --- | --- |
+| id_rol_permiso | UUID | PK |
+| rol_id | UUID | NN; FK [ver asociación Sequelize] |
+| permiso_id | UUID | NN; FK [ver asociación Sequelize] |
+
+**turno_caja** (fuente: `database/pos/migrations/TurnoCaja.js`)
+
+| Columna | Tipo | Restricción |
+| --- | --- | --- |
+| id_turno | UUID | PK |
+| usuario_id | UUID | NN; FK [ver asociación Sequelize] |
+| monto_inicial | DECIMAL | NN |
+| monto_final_esperado | DECIMAL | — |
+| monto_final_real | DECIMAL | — |
+| diferencia | DECIMAL | — |
+| fecha_apertura | DATE | — |
+| fecha_cierre | DATE | — |
+| estado | STRING | — |
+
+**users** (fuente: `database/pos/migrations/Usuario.js`)
+
+| Columna | Tipo | Restricción |
+| --- | --- | --- |
+| nombre | STRING | NN |
+| email | STRING | NN |
+| rol_id | UUID | FK [ver asociación Sequelize] |
+| estado | STRING | — |
+| creado_en | DATE | Generado por Sequelize |
+| actualizado_en | DATE | Generado por Sequelize |
+
+**venta** (fuente: `database/pos/migrations/Venta.js`)
+
+| Columna | Tipo | Restricción |
+| --- | --- | --- |
+| id_venta | UUID | PK |
+| turno_id | UUID | NN; FK [ver asociación Sequelize] |
+| cliente_id | UUID | FK [ver asociación Sequelize] |
+| pedido_id | UUID | FK [ver asociación Sequelize] |
+| subtotal | DECIMAL | — |
+| descuento | DECIMAL | — |
+| total | DECIMAL | NN |
+| estado | STRING | — |
+| motivo_anulacion | TEXT | — |
+| fecha | DATE | — |
+| idempotency_key | STRING | — |
+
 #### Monitoreo
 
 **organizacion** (fuente: `database/monitoreo/001_v1_0_monitoreo_ddl.sql`)

@@ -37,6 +37,31 @@ def sql_tables(folder):
 pos_tables=sql_tables(ROOT/'database/pos/migrations')
 mon_tables=sql_tables(ROOT/'database/monitoreo')
 
+def pos_model_tables(folder):
+    tables=[]
+    for f in sorted(folder.glob('*.js')):
+        if f.name == 'index.js': continue
+        text=f.read_text(encoding='utf-8', errors='ignore')
+        table=re.search(r"tableName:\s*'([^']+)'", text)
+        block=re.search(r"define\([^,]+,\s*\{(.*?)\}\s*,\s*\{", text, re.S)
+        if not table or not block: continue
+        cols=[]
+        for line in block.group(1).splitlines():
+            m=re.match(r"\s*(\w+):\s*\{\s*type:\s*DataTypes\.([A-Z]+(?:\([^)]*\))?)\b(.*)",line)
+            if not m: continue
+            col,typ,tail=m.groups(); flags=[]
+            if 'primaryKey: true' in tail: flags.append('PK')
+            if 'allowNull: false' in tail: flags.append('NN')
+            if col.endswith('_id') and col not in ('id_usuario','id_rol','id_permiso'): flags.append('FK [ver asociación Sequelize]')
+            cols.append((col,typ,'; '.join(flags) or '—'))
+        if 'timestamps: true' in text:
+            cols += [('creado_en','DATE','Generado por Sequelize'),('actualizado_en','DATE','Generado por Sequelize')]
+        if cols: tables.append((table.group(1),cols,f.name))
+    return tables
+
+if not pos_tables:
+    pos_tables=pos_model_tables(ROOT/'pos/posBackend/src/models')
+
 def md_table(headers, rows):
     out=['| '+' | '.join(headers)+' |','| '+' | '.join(['---']*len(headers))+' |']
     for row in rows: out.append('| '+' | '.join(str(v).replace('|','/') for v in row)+' |')
@@ -99,6 +124,7 @@ def set_cell(cell,text,bold=False,color=None):
     cell.vertical_alignment=WD_CELL_VERTICAL_ALIGNMENT.CENTER
 def add_table(doc, headers, rows):
     t=doc.add_table(rows=1,cols=len(headers)); t.style='Table Grid'; t.alignment=WD_TABLE_ALIGNMENT.CENTER
+    trPr=t.rows[0]._tr.get_or_add_trPr(); tblHeader=OxmlElement('w:tblHeader'); tblHeader.set(qn('w:val'),'true'); trPr.append(tblHeader)
     for c,h in zip(t.rows[0].cells,headers): shade(c); set_cell(c,h,True,(255,255,255))
     for ix,row in enumerate(rows):
         cells=t.add_row().cells
@@ -119,8 +145,13 @@ def write_docx():
     normal=d.styles['Normal']; normal.font.name='Times New Roman'; normal._element.rPr.rFonts.set(qn('w:hAnsi'),'Times New Roman'); normal.font.size=Pt(12)
     for name in ['Title','Heading 1','Heading 2','Heading 3']:
         s=d.styles[name]; s.font.name='Times New Roman'; s._element.rPr.rFonts.set(qn('w:hAnsi'),'Times New Roman'); s.font.color.rgb=RGBColor(0,0,0)
+    title_pr=d.styles['Title']._element.get_or_add_pPr(); title_border=title_pr.find(qn('w:pBdr'))
+    if title_border is not None: title_pr.remove(title_border)
     footer=sec.footer.paragraphs[0]; footer.alignment=WD_ALIGN_PARAGRAPH.CENTER; footer.add_run('Sistema Heladería Cafetería y Monitoreo')
-    p=d.add_paragraph(style='Title'); p.alignment=WD_ALIGN_PARAGRAPH.CENTER; p.add_run('Sistema de Gestión para Heladería Cafetería con Módulo Integrado de Monitoreo de Consumo de Agua y Energía')
+    p=d.add_paragraph(style='Title'); p.alignment=WD_ALIGN_PARAGRAPH.CENTER
+    pPr=p._p.get_or_add_pPr(); pBdr=pPr.find(qn('w:pBdr'))
+    if pBdr is not None: pPr.remove(pBdr)
+    p.add_run('Sistema de Gestión para Heladería Cafetería con Módulo Integrado de Monitoreo de Consumo de Agua y Energía')
     for x in ['Universidad: [PENDIENTE: universidad]','Facultad: [PENDIENTE: facultad]','Carrera: [PENDIENTE: carrera]','Asignatura: Programación Web II','Integrantes: [PENDIENTE: integrantes]','Docente: [PENDIENTE: docente]','Gestión y fecha: [PENDIENTE: gestión y fecha]']:
         p=d.add_paragraph(); p.alignment=WD_ALIGN_PARAGRAPH.CENTER; p.add_run(x)
     d.add_page_break(); add_heading(d,'Hoja de control documental'); add_table(d,['Versión','Fecha','Descripción del cambio','Responsable'],[['1.0',date.today().isoformat(),'Elaboración inicial basada en el repositorio','[PENDIENTE]']])
