@@ -55,9 +55,9 @@ describe('PedidosPage', () => {
     mocks.mockActualizarPedido.mockResolvedValue({});
     renderPedidos();
     await screen.findByText('pendiente');
-    await userEvent.click(screen.getByRole('button', { name: 'Preparar' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Listo' }));
     await waitFor(() => {
-      expect(mocks.mockActualizarPedido).toHaveBeenCalledWith('p1', { estado: 'en_preparacion' });
+      expect(mocks.mockActualizarPedido).toHaveBeenCalledWith('p1', { estado: 'listo' });
     });
   });
 
