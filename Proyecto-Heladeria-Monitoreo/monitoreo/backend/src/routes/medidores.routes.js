@@ -11,5 +11,6 @@ router.use(authenticateJWT);
 router.get('/', requirePermission('medidor.consultar'), scopeOrg, ctrl.listar);
 router.post('/', requirePermission('medidor.gestionar'), scopeOrg, validateBody(medidorSchema), ctrl.crear);
 router.patch('/:id', requirePermission('medidor.gestionar'), validateBody(medidorUpdateSchema), ctrl.actualizar);
+router.delete('/:id', requirePermission('medidor.gestionar'), scopeOrg, ctrl.eliminar);
 
 module.exports = { medidoresRouter: router };

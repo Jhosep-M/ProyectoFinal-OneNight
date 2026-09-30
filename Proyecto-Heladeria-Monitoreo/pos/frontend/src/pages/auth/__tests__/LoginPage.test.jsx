@@ -29,16 +29,16 @@ describe('LoginPage', () => {
 
   it('renderiza formulario', () => {
     renderLogin();
-    expect(screen.getByPlaceholderText('correo')).toBeInTheDocument();
-    expect(screen.getByPlaceholderText('contraseña')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Entrar' })).toBeInTheDocument();
+    expect(screen.getByPlaceholderText('tu@email.com')).toBeInTheDocument();
+    expect(screen.getByPlaceholderText('••••••••')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Ingresar' })).toBeInTheDocument();
   });
 
   it('submit llama signIn con credenciales', async () => {
     renderLogin();
-    await userEvent.type(screen.getByPlaceholderText('correo'), 'caja@heladeria.com');
-    await userEvent.type(screen.getByPlaceholderText('contraseña'), 'secreto');
-    const form = screen.getByRole('button', { name: 'Entrar' }).closest('form');
+    await userEvent.type(screen.getByPlaceholderText('tu@email.com'), 'caja@heladeria.com');
+    await userEvent.type(screen.getByPlaceholderText('••••••••'), 'secreto');
+    const form = screen.getByRole('button', { name: 'Ingresar' }).closest('form');
     fireEvent.submit(form);
     await waitFor(() => {
       expect(mocks.mockSignIn).toHaveBeenCalledWith('caja@heladeria.com', 'secreto');
@@ -48,10 +48,10 @@ describe('LoginPage', () => {
   it('muestra error cuando signIn falla', async () => {
     mocks.mockSignIn.mockRejectedValueOnce(new Error('Credenciales inválidas'));
     renderLogin();
-    await userEvent.type(screen.getByPlaceholderText('correo'), 'a@b.com');
-    await userEvent.type(screen.getByPlaceholderText('contraseña'), 'mala');
-    const form = screen.getByRole('button', { name: 'Entrar' }).closest('form');
+    await userEvent.type(screen.getByPlaceholderText('tu@email.com'), 'a@b.com');
+    await userEvent.type(screen.getByPlaceholderText('••••••••'), 'mala');
+    const form = screen.getByRole('button', { name: 'Ingresar' }).closest('form');
     fireEvent.submit(form);
-    expect(await screen.findByText('Credenciales inválidas')).toBeInTheDocument();
+    expect(await screen.findByText('Credenciales incorrectas')).toBeInTheDocument();
   });
 });

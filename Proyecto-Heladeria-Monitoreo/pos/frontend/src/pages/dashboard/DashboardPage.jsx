@@ -18,10 +18,21 @@ const item = {
 };
 
 const ESTADOS_VENTA = {
+  activa: { nombre: 'Completado', variante: 'success' },
   completado: { nombre: 'Completado', variante: 'success' },
   pendiente: { nombre: 'Pendiente', variante: 'warning' },
+  anulada: { nombre: 'Anulado', variante: 'danger' },
   anulado: { nombre: 'Anulado', variante: 'danger' },
 };
+
+// Las filas del backend usan id_venta, total como string (NUMERIC) y
+// estado 'activa'/'anulada'. Se normaliza para la UI.
+const normVenta = (v) => ({
+  ...v,
+  id: v.id_venta || v.id,
+  total: Number(v.total) || 0,
+  estado: v.estado === 'anulada' ? 'anulado' : v.estado === 'activa' ? 'completado' : v.estado,
+});
 
 export default function DashboardPage() {
   const [ventas, setVentas] = useState([]);
@@ -37,7 +48,7 @@ export default function DashboardPage() {
           listarVentas(),
           listarMesas(),
         ]);
-        setVentas(ventasData || []);
+        setVentas((ventasData || []).map(normVenta));
         setMesas(mesasData || []);
       } catch (err) {
         setError('No se pudieron cargar los datos del dashboard');

@@ -18,13 +18,40 @@
   --sidebar-active: #8B6914;
   --card-bg: #FFFFFF;
   --card-border: #D4C4B0;
+  /* Design-system aliases used by styles/components.css.
+     Mapean la paleta existente (--bs-*) a los nombres cortos que usan
+     botones, inputs, cards y tablas. Sin esto var(--accent) etc. quedaban
+     sin resolver y los controles se volvían invisibles (texto blanco
+     sobre fondo transparente, inputs sin borde). */
+  --surface: #FFFFFF;
+  --surface-sunk: #F5E6D3;
+  --ink: #2C1810;
+  --ink-muted: #5C4033;
+  --ink-faint: #7A6455;
+  --border: #D4C4B0;
+  --accent: #8B6914;
+  --accent-hover: #6B4F0F;
+  --accent-soft: rgba(139, 105, 20, 0.15);
+  --radius: 10px;
+  --radius-sm: 8px;
+  --radius-pill: 50rem;
+  --shadow-sm: 0 1px 2px rgba(44, 24, 16, 0.07);
+  --shadow-md: 0 1px 2px rgba(44, 24, 16, 0.06), 0 10px 28px rgba(44, 24, 16, 0.08);
+  --error: #8B1A1A;
+  --error-soft: #F5E0E0;
+  --success: #2D5016;
+  --success-soft: #E8F0E0;
+  --warning: #B8860B;
+  --warning-soft: #F5E6D3;
+  --info: #2C5F7C;
+  --info-soft: #E0EBF0;
   --bs-font-sans-serif: 'Source Sans 3', system-ui, sans-serif;
   --bs-font-serif: 'Playfair Display', Georgia, serif;
   --bs-font-mono: 'Source Serif 4', Georgia, serif;
-  --bs-border-radius: 0;
-  --bs-border-radius-sm: 0;
-  --bs-border-radius-lg: 0;
-  --bs-border-radius-xl: 0;
+  --bs-border-radius: 10px;
+  --bs-border-radius-sm: 8px;
+  --bs-border-radius-lg: 12px;
+  --bs-border-radius-xl: 14px;
   --bs-border-radius-pill: 50rem;
   --z-dropdown: 10;
   --z-sticky: 20;
@@ -67,6 +94,15 @@ a { color: var(--bs-primary); }
   outline: 2px solid var(--bs-primary);
   outline-offset: 2px;
 }
+
+/* Superficies del navegador con identidad premium */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: var(--bs-body-bg); }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 8px; border: 2px solid var(--bs-body-bg); }
+::-webkit-scrollbar-thumb:hover { background: var(--accent); }
+
+input, textarea, select { caret-color: var(--accent); }
+input[type="number"] { font-variant-numeric: tabular-nums; }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {

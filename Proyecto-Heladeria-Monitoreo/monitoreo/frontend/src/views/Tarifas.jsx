@@ -18,6 +18,7 @@ export default function Tarifas() {
   const [form, setForm] = useState(vacio);
   const [error, setError] = useState(null);
   const [guardando, setGuardando] = useState(false);
+  const [calc, setCalc] = useState({ cantidad: '', tarifaId: '' });
 
   const cargar = useCallback(async () => {
     if (!orgSeleccionada) return;
@@ -95,6 +96,22 @@ export default function Tarifas() {
           {data.length === 0 && <tr><td colSpan="4">Sin tarifas</td></tr>}
         </tbody>
       </table>
+
+      <h2>Calculadora de costo</h2>
+      <form className="formulario" onSubmit={(e) => e.preventDefault()}>
+        <label>Cantidad <input type="number" step="0.0001" min="0" value={calc.cantidad} onChange={(e) => setCalc({ ...calc, cantidad: e.target.value })} /></label>
+        <label>Tarifa
+          <select value={calc.tarifaId} onChange={(e) => setCalc({ ...calc, tarifaId: e.target.value })}>
+            <option value="">Seleccione...</option>
+            {data.map((t) => <option key={t.id} value={t.id}>{t.nombre} - {Number(t.monto).toFixed(4)}</option>)}
+          </select>
+        </label>
+        <p>Costo: {(() => {
+          const t = data.find((x) => String(x.id) === String(calc.tarifaId));
+          if (!t || !calc.cantidad) return '-';
+          return `${(Number(calc.cantidad) * Number(t.monto)).toLocaleString('es', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Bs`;
+        })()}</p>
+      </form>
     </section>
   );
 }

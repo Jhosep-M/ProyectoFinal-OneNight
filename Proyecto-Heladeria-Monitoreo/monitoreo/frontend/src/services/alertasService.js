@@ -7,3 +7,7 @@ export async function listar({ organizacionId, nivel, desde, hasta }) {
   if (hasta) q.set('hasta', hasta);
   return api.get(`/alertas?${q}`);
 }
+
+export async function acusar(id) { return api.post(`/alertas/${id}/acusar`, {}); }
+export async function resolver(id) { return api.post(`/alertas/${id}/resolver`, {}); }
+export async function reenviar(id) { return api.post(`/alertas/${id}/reenviar`, {}); }

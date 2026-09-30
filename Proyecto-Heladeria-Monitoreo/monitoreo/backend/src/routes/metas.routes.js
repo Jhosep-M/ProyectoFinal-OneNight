@@ -11,5 +11,6 @@ router.use(authenticateJWT);
 router.get('/', requirePermission('meta.consultar'), scopeOrg, ctrl.listar);
 router.post('/', requirePermission('meta.gestionar'), scopeOrg, validateBody(metaSchema), ctrl.crear);
 router.patch('/:id', requirePermission('meta.gestionar'), scopeOrg, validateBody(metaUpdateSchema), ctrl.actualizar);
+router.delete('/:id', requirePermission('meta.gestionar'), scopeOrg, ctrl.eliminar);
 
 module.exports = { metasRouter: router };

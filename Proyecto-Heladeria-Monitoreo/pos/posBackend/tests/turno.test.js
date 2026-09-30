@@ -58,21 +58,26 @@ describe('turnoService.cerrar', () => {
       consumoEnergiaId: 'bbbbbb22-2222-4222-8222-222222222222',
     };
     sequelize.query.mockResolvedValueOnce([[{ result: jsonb }]]);
-    const out = await turnoService.cerrar(TURNO_ID, 145);
+    const out = await turnoService.cerrar(TURNO_ID, 145, USER_ID);
     expect(out).toEqual(jsonb);
     const [sql, opts] = sequelize.query.mock.calls[0];
     expect(sql).toMatch(/cerrar_turno/);
-    expect(opts.replacements).toEqual({ id: TURNO_ID, monto: 145 });
+    expect(opts.replacements).toEqual({ id: TURNO_ID, monto: 145, uid: USER_ID });
   });
 
   test('rechaza monto_final_real negativo sin tocar la DB', async () => {
-    await expect(turnoService.cerrar(TURNO_ID, -1)).rejects.toThrow(/monto_final_real/i);
+    await expect(turnoService.cerrar(TURNO_ID, -1, USER_ID)).rejects.toThrow(/monto_final_real/i);
+    expect(sequelize.query).not.toHaveBeenCalled();
+  });
+
+  test('exige userId sin tocar la DB', async () => {
+    await expect(turnoService.cerrar(TURNO_ID, 100)).rejects.toThrow(/usuario obligatorio/i);
     expect(sequelize.query).not.toHaveBeenCalled();
   });
 
   test('propaga el error de turno no abierto de PG', async () => {
     sequelize.query.mockRejectedValueOnce(new Error('El turno no está abierto. Estado actual: cerrado'));
-    await expect(turnoService.cerrar(TURNO_ID, 100)).rejects.toThrow(/no está abierto/);
+    await expect(turnoService.cerrar(TURNO_ID, 100, USER_ID)).rejects.toThrow(/no está abierto/);
   });
 });
 

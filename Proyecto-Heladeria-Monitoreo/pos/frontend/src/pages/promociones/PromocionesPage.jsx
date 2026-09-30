@@ -90,7 +90,7 @@ export default function PromocionesPage() {
       <RequirePermiso permiso="promocion.gestionar">
         <Card title={editando ? 'Editar promoción' : 'Nueva promoción'}>
           <form onSubmit={guardar}>
-            <div className="row">
+            <div className="row-inline">
               <Input placeholder="nombre" value={form.nombre} onChange={(e) => setForm({ ...form, nombre: e.target.value })} required />
               <Input type="number" min={0} max={100} placeholder="descuento %" value={form.porcentaje_descuento} onChange={(e) => setForm({ ...form, porcentaje_descuento: e.target.value })} required style={{ width: 90 }} />
               <Select value={form.estado} onChange={(e) => setForm({ ...form, estado: e.target.value })}>
@@ -99,11 +99,11 @@ export default function PromocionesPage() {
                 <option value="finalizada">finalizada</option>
               </Select>
             </div>
-            <div className="row">
+            <div className="row-inline">
               <label>Inicio: <input type="date" className="input" value={form.fecha_inicio} onChange={(e) => setForm({ ...form, fecha_inicio: e.target.value })} /></label>
               <label>Fin: <input type="date" className="input" value={form.fecha_fin} onChange={(e) => setForm({ ...form, fecha_fin: e.target.value })} /></label>
             </div>
-            <div className="row">
+            <div className="row-inline">
               <span>Productos:</span>
               {productos.map((p) => (
                 <label key={p.id_producto} style={{ marginRight: 10 }}>
@@ -112,7 +112,7 @@ export default function PromocionesPage() {
                 </label>
               ))}
             </div>
-            <div className="row">
+            <div className="row-inline">
               <Button type="submit">{editando ? 'Guardar' : 'Crear'}</Button>
               {editando && <Button type="button" variant="secondary" onClick={cancelar}>Cancelar</Button>}
             </div>

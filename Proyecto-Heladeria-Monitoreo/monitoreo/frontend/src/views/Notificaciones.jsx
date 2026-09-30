@@ -22,13 +22,13 @@ export default function Notificaciones() {
       <h2>Notificaciones</h2>
       {error && <p className="error">{error}</p>}
       <table className="tabla">
-        <thead><tr><th>Creada</th><th>Estado</th><th>Alerta</th><th /></tr></thead>
+        <thead><tr><th>Fecha</th><th>Estado</th><th>Mensaje</th><th>Accion</th></tr></thead>
         <tbody>
           {data.map((n) => (
             <tr key={n.id}>
               <td>{new Date(n.creada_en).toLocaleString('es')}</td>
               <td>{n.estado}</td>
-              <td>{n.alerta?.mensaje}</td>
+              <td>{n.alerta?.mensaje ?? '-'}</td>
               <td>
                 {n.estado === 'pendiente' && (
                   <button type="button" onClick={() => ver(n.id)}>Marcar vista</button>

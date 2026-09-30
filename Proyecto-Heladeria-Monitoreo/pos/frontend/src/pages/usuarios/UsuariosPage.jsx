@@ -55,11 +55,11 @@ export default function UsuariosPage() {
 
       <Card title={editando ? 'Editar usuario' : 'Nuevo usuario'}>
         <form onSubmit={guardar}>
-          <div className="row">
+          <div className="row-inline">
             <Input placeholder="nombre" value={form.nombre} onChange={(e) => setForm({ ...form, nombre: e.target.value })} required />
             <Input placeholder="email" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required />
           </div>
-          <div className="row">
+          <div className="row-inline">
             <Input placeholder="rol_id (UUID, opcional)" value={form.rol_id} onChange={(e) => setForm({ ...form, rol_id: e.target.value })} />
             <Select value={form.estado} onChange={(e) => setForm({ ...form, estado: e.target.value })}>
               <option value="activo">activo</option>

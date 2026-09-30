@@ -7,11 +7,13 @@ import Alert from '../../components/alerts/Alert.jsx';
 import Select from '../../components/common/Select.jsx';
 import RequirePermiso from '../../components/common/RequirePermiso.jsx';
 
+// Estados reales de cola_integracion (DDL chk_cola_estado):
+// pendiente | procesando | enviado | error
 const TONE_ESTADO = {
   pendiente: 'warning',
+  procesando: 'info',
   enviado: 'success',
-  fallido: 'error',
-  reintentando: 'info',
+  error: 'error',
 };
 
 export default function IntegracionPage() {
@@ -53,13 +55,13 @@ export default function IntegracionPage() {
       {alert && <Alert tone={alert.tone} message={alert.message} onClose={() => setAlert(null)} />}
 
       <Card>
-        <div className="row">
+        <div className="row-inline">
           <Select value={estado} onChange={(e) => setEstado(e.target.value)} style={{ width: 160 }}>
             <option value="">todos</option>
             <option value="pendiente">pendiente</option>
+            <option value="procesando">procesando</option>
             <option value="enviado">enviado</option>
-            <option value="fallido">fallido</option>
-            <option value="reintentando">reintentando</option>
+            <option value="error">error</option>
           </Select>
           <span>Total: {total}</span>
         </div>
@@ -82,12 +84,12 @@ export default function IntegracionPage() {
                   <td>{c.intentos}</td>
                   <td>{c.proximo_intento ? new Date(c.proximo_intento).toLocaleString() : '—'}</td>
                    <td>
-                    <RequirePermiso permiso="integracion.gestionar">
-                      {(c.estado === 'fallido' || c.estado === 'pendiente') && (
-                        <Button size="sm" variant="secondary" onClick={() => reintentar(c.id_cola)}>Reintentar</Button>
-                      )}
-                    </RequirePermiso>
-                  </td>
+                     <RequirePermiso permiso="integracion.gestionar">
+                       {(c.estado === 'error' || c.estado === 'pendiente') && (
+                         <Button size="sm" variant="secondary" onClick={() => reintentar(c.id_cola)}>Reintentar</Button>
+                       )}
+                     </RequirePermiso>
+                   </td>
                 </tr>
               ))}
             </tbody>

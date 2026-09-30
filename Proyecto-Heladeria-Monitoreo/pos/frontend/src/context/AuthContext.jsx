@@ -23,10 +23,18 @@ export function AuthProvider({ children }) {
     if (error) throw error;
   }, []);
 
-  const signOut = useCallback(() => supabase.auth.signOut(), []);
+  const signOut = useCallback(async () => {
+    const { error } = await supabase.auth.signOut();
+    if (error) throw error;
+    setSession(null);
+  }, []);
+
+  // Opción A: ownership en UI. El userId se deriva del JWT (sub), nunca se inventa.
+  const userId = session?.user?.id || null;
+  const email = session?.user?.email || null;
 
   return (
-    <AuthCtx.Provider value={{ session, loading, signIn, signOut }}>
+    <AuthCtx.Provider value={{ session, loading, signIn, signOut, userId, user: session?.user || null, email }}>
       {children}
     </AuthCtx.Provider>
   );

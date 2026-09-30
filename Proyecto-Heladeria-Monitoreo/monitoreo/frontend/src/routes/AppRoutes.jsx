@@ -2,6 +2,7 @@ import { Navigate, Route, Routes } from 'react-router-dom';
 import ProtectedRoute from '../components/ProtectedRoute';
 import MainLayout from '../layouts/MainLayout';
 import Login from '../views/Login';
+import Dashboard from '../views/Dashboard';
 import Consumo from '../views/Consumo';
 import Alertas from '../views/Alertas';
 import Organizaciones from '../views/Organizaciones';
@@ -12,6 +13,7 @@ import Tarifas from '../views/Tarifas';
 import Recomendaciones from '../views/Recomendaciones';
 import Notificaciones from '../views/Notificaciones';
 import Reportes from '../views/Reportes';
+import Auditoria from '../views/Auditoria';
 
 export default function AppRoutes() {
   return (
@@ -19,7 +21,7 @@ export default function AppRoutes() {
       <Route path="/login" element={<Login />} />
       <Route element={<ProtectedRoute />}>
         <Route element={<MainLayout />}>
-          <Route path="/" element={<Navigate to="/consumo" replace />} />
+          <Route path="/" element={<Dashboard />} />
           <Route path="/consumo" element={<Consumo />} />
           <Route path="/alertas" element={<Alertas />} />
           <Route path="/organizaciones" element={<Organizaciones />} />
@@ -30,6 +32,7 @@ export default function AppRoutes() {
           <Route path="/recomendaciones" element={<Recomendaciones />} />
           <Route path="/notificaciones" element={<Notificaciones />} />
           <Route path="/reportes" element={<Reportes />} />
+          <Route path="/auditoria" element={<Auditoria />} />
         </Route>
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />

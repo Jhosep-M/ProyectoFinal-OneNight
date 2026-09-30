@@ -1,0 +1,12 @@
+- generic [ref=f5e5]:
+  - generic [ref=f5e6]:
+    - heading "Helados Pariente" [level=1] [ref=f5e7]
+    - generic [ref=f5e8]: Sistema de Punto de Venta
+  - generic [ref=f5e9]:
+    - generic [ref=f5e10]:
+      - generic [ref=f5e11]: Email
+      - textbox "tu@email.com" [ref=f5e13]
+    - generic [ref=f5e14]:
+      - generic [ref=f5e15]: Contraseña
+      - textbox "••••••••" [ref=f5e17]
+    - button "Ingresar" [ref=f5e18] [cursor=pointer]

@@ -14,7 +14,15 @@ router.get('/', authorize('mesa.consultar'), async (_req, res, next) => {
     const [rows] = await sequelize.query(
       `SELECT m.*,
         (SELECT COUNT(*)::int FROM pedido p
-          WHERE p.mesa_id = m.id_mesa AND p.estado NOT IN ('cerrado','cancelado')) AS pedidos_abiertos
+          WHERE p.mesa_id = m.id_mesa AND p.estado NOT IN ('cerrado','cancelado')) AS pedidos_abiertos,
+        COALESCE((SELECT SUM(dp.cantidad * dp.precio_unitario) FROM detalle_pedido dp
+          JOIN pedido p ON p.id_pedido = dp.pedido_id
+          WHERE p.mesa_id = m.id_mesa AND p.estado NOT IN ('cerrado','cancelado')), 0) AS cuenta_total,
+        (SELECT u.nombre FROM pedido p LEFT JOIN usuario u ON u.id_usuario = p.mesero_id
+          WHERE p.mesa_id = m.id_mesa AND p.estado NOT IN ('cerrado','cancelado')
+          ORDER BY p.fecha DESC LIMIT 1) AS mesero_nombre,
+        (SELECT MIN(p.fecha) FROM pedido p
+          WHERE p.mesa_id = m.id_mesa AND p.estado NOT IN ('cerrado','cancelado')) AS abierto_desde
        FROM mesa m ORDER BY numero`
     );
     res.json(rows);
@@ -28,7 +36,9 @@ router.get('/:id', authorize('mesa.consultar'), async (req, res, next) => {
     });
     if (!rows[0]) return res.status(404).json({ error: 'Mesa no encontrada' });
     const [pedidos] = await sequelize.query(
-      `SELECT p.*, u.nombre AS mesero_nombre FROM pedido p
+      `SELECT p.*, u.nombre AS mesero_nombre,
+        COALESCE((SELECT SUM(cantidad * precio_unitario) FROM detalle_pedido WHERE pedido_id = p.id_pedido), 0) AS total
+       FROM pedido p
        LEFT JOIN usuario u ON u.id_usuario = p.mesero_id
        WHERE p.mesa_id=:id AND p.estado NOT IN ('cerrado','cancelado')
        ORDER BY p.fecha DESC`,
@@ -40,7 +50,7 @@ router.get('/:id', authorize('mesa.consultar'), async (req, res, next) => {
 
 router.post('/', authorize('mesa.gestionar'), async (req, res, next) => {
   try {
-    const numero = Number(req.body.numero);
+    const numero = Number(req.body.numero ?? req.body.nombre);
     if (!Number.isInteger(numero) || numero <= 0) {
       return res.status(400).json({ error: 'numero debe ser entero > 0' });
     }
@@ -60,6 +70,30 @@ router.post('/', authorize('mesa.gestionar'), async (req, res, next) => {
     }
     next(e);
   }
+});
+
+// PATCH /:id — cambiar estado (liberar/ocupar/reservar).
+// El frontend anterior tenía botones sin handler porque no existía este endpoint.
+router.patch('/:id', authorize('mesa.gestionar'), async (req, res, next) => {
+  try {
+    const estado = String(req.body.estado || '').trim().toLowerCase();
+    const validos = ['libre', 'disponible', 'ocupada', 'reservada'];
+    if (!validos.includes(estado)) {
+      return res.status(400).json({ error: 'estado debe ser libre, ocupada o reservada' });
+    }
+    const normalizado = estado === 'disponible' ? 'libre' : estado;
+    const [rows] = await sequelize.query(
+      `UPDATE mesa SET estado=:estado WHERE id_mesa=:id RETURNING *`,
+      { replacements: { estado: normalizado, id: req.params.id } }
+    );
+    if (!rows[0]) return res.status(404).json({ error: 'Mesa no encontrada' });
+    await auditLog({
+      usuario_id: req.user.id, accion: 'mesa.actualizar', entidad: 'mesa',
+      entidad_id: req.params.id, resultado: 'exito', detalle: { estado: normalizado },
+      ip: req.ip, userAgent: req.headers['user-agent'],
+    });
+    res.json(rows[0]);
+  } catch (e) { next(e); }
 });
 
 module.exports = { mesasRouter: router };

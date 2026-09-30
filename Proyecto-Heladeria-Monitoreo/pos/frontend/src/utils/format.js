@@ -1,7 +1,7 @@
 export function formatCurrency(amount) {
-  return new Intl.NumberFormat('es-MX', {
+  return new Intl.NumberFormat('es-BO', {
     style: 'currency',
-    currency: 'MXN',
+    currency: 'BOB',
   }).format(amount);
 }
 
