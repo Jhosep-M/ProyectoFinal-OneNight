@@ -75,7 +75,9 @@ services:
       RATE_LIMIT_WINDOW_MS: ${RATE_LIMIT_WINDOW_MS:-900000}
       RATE_LIMIT_MAX: ${RATE_LIMIT_MAX:-100}
       POS_ALERTS_URL: ${POS_ALERTS_URL:-http://pos-backend:3000/api/v1/integrations/alerts}
-      POS_ALERT_API_KEY: ${POS_ALERT_API_KEY}
+      # El código de Monitoreo lee POS_ALERTS_API_KEY (plural). Mismo secreto que el
+      # POS valida como POS_ALERT_API_KEY (singular) — ver monitoreo/backend/src/config/environment.js.
+      POS_ALERTS_API_KEY: ${POS_ALERT_API_KEY}
     healthcheck:
       # Requiere GET /health en Monitoreo (P3 pendiente — mismo contrato que POS).
       test: ["CMD", "wget", "-qO-", "http://127.0.0.1:4000/health"]

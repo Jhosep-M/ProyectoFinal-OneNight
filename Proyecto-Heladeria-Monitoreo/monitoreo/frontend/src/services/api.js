@@ -1,6 +1,9 @@
 import { supabase } from './supabaseClient';
 
-const BASE = '/api/v1';
+// Base unificada: VITE_API_URL ya incluye /api/v1 (ej. https://api.../api/v1).
+// En dev el fallback '/api/v1' sigue funcionando con el proxy de vite.config.js.
+// Mismo contrato que pos/frontend/src/services/api.js.
+const BASE = (import.meta.env.VITE_API_URL || '/api/v1').replace(/\/$/, '');
 
 async function token() {
   const { data } = await supabase.auth.getSession();

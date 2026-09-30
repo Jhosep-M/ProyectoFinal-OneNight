@@ -121,6 +121,8 @@ pos/posBackend/src/
 | `CORS_ORIGIN` | Origen CORS permitido |
 | `RATE_LIMIT_*` | Configuración rate limit |
 | `MONITOREO_URL` | URL del backend Monitoreo |
-| `MONITOREO_API_KEY` | API key de Monitoreo |
-| `POS_ALERT_API_KEY` | API key para recibir alertas |
+| `MONITOREO_API_KEY` | API key de Monitoreo (POS → Monitoreo) |
+| `POS_ALERT_API_KEY` | API key que el POS valida al recibir alertas (singular) |
+| `POS_ALERTS_URL` | URL del POS para entrega de alertas (Monitoreo → POS) |
+| `POS_ALERTS_API_KEY` | API key con la que Monitoreo firma las alertas (plural; mismo valor que `POS_ALERT_API_KEY`) |
 | `ORGANIZACION_EXTERNA_ID` | ID de organización en Monitoreo |

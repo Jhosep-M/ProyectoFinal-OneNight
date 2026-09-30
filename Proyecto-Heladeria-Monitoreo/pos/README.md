@@ -725,6 +725,8 @@ Ver `.env.example` en cada módulo para la lista completa de variables requerida
 | `SUPABASE_SERVICE_ROLE_KEY` | Service role key (solo backend) |
 | `MONITOREO_URL` | URL del API de Monitoreo |
 | `MONITOREO_API_KEY` | API key para autenticación con Monitoreo |
+| `POS_ALERT_API_KEY` | API key que el POS valida al recibir alertas (mismo valor que `POS_ALERTS_API_KEY` de Monitoreo) |
+| `POS_ALERTS_URL` | URL del endpoint de alertas del POS (usado por Monitoreo) |
 | `ORGANIZACION_EXTERNA_ID` | ID de organización en Monitoreo |
 | `PORT` | Puerto del servidor |
 | `NODE_ENV` | Entorno (development/production) |
