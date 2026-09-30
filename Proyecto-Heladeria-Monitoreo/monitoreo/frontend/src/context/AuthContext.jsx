@@ -40,7 +40,14 @@ export function AuthProvider({ children }) {
     iniciarSesion: async (email, password) => {
       await authService.iniciarSesion(email, password); // onAuthStateChange actualiza el estado
     },
-    cerrarSesion: () => authService.cerrarSesion(),
+    cerrarSesion: async () => {
+      await authService.cerrarSesion();
+      // Limpieza sincrónica: no depender solo del evento onAuthStateChange
+      // para que la UI (ProtectedRoute) redirija de inmediato.
+      setSesion(null);
+      setPerfil(null);
+      setOrgSeleccionada(null);
+    },
   }), [sesion, perfil, orgSeleccionada, cargando]);
 
   return <AuthContext.Provider value={valor}>{children}</AuthContext.Provider>;

@@ -7,7 +7,7 @@
   "scripts": {
     "dev": "node src/server.js",
     "start": "node src/server.js",
-    "test": "node --test tests/"
+    "test": "jest"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.116.0",

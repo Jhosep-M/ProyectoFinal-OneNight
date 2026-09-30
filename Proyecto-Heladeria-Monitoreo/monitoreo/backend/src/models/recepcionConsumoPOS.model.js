@@ -11,7 +11,8 @@ const RecepcionConsumoPOS = sequelize.define('RecepcionConsumoPOS', {
   tipo_recurso: { type: DataTypes.STRING(10), allowNull: false,
     validate: { isIn: [['agua', 'energia']] } },
   cantidad: { type: DataTypes.DECIMAL(14, 3), allowNull: false,
-    validate: { min: 0.001 } },
+    // Contrato consumption.v1: minimum 0 (turno sin equipos activos es válido).
+    validate: { min: 0 } },
   unidad_medida: { type: DataTypes.STRING(20), allowNull: false },
   fecha_consumo: { type: DataTypes.DATE, allowNull: false },
   origen: { type: DataTypes.STRING(20), allowNull: false, defaultValue: 'POS' },

@@ -15,7 +15,7 @@ router.get('/', authorize('producto.consultar'), async (_req, res) => {
 router.post('/', authorize('producto.gestionar'), async (req, res, next) => {
   try {
     const parsed = createProductSchema.parse(req.body);
-    const [rows] = await sequelize.query(`INSERT INTO producto (categoria_id, nombre, precio, stock, stock_minimo) VALUES (:cat, :nom, :pre, :stock, :min) RETURNING *`, { replacements: { cat: parsed.categoria_id || null, nom: parsed.nombre, pre: parsed.precio, stock: parsed.stock ?? 0, min: parsed.stock_minimo ?? 0 } });
+    const [rows] = await sequelize.query(`INSERT INTO producto (categoria_id, nombre, precio, imagen_url, stock, stock_minimo) VALUES (:cat, :nom, :pre, :img, :stock, :min) RETURNING *`, { replacements: { cat: parsed.categoria_id || null, nom: parsed.nombre, pre: parsed.precio, img: parsed.imagen_url || null, stock: parsed.stock ?? 0, min: parsed.stock_minimo ?? 0 } });
     await auditLog({ usuario_id: req.user.id, accion: 'producto.crear', entidad: 'producto', entidad_id: rows[0].id_producto, resultado: 'exito', detalle: parsed, ip: req.ip, userAgent: req.headers['user-agent'] });
     res.status(201).json(rows[0]);
   } catch (e) {
@@ -39,6 +39,7 @@ router.patch('/:id', authorize('producto.gestionar'), async (req, res, next) => 
     if (parsed.categoria_id !== undefined) { sets.push('categoria_id=:cat'); repl.cat = parsed.categoria_id; }
     if (parsed.nombre !== undefined) { sets.push('nombre=:nom'); repl.nom = parsed.nombre; }
     if (parsed.precio !== undefined) { sets.push('precio=:pre'); repl.pre = parsed.precio; }
+    if (parsed.imagen_url !== undefined) { sets.push('imagen_url=:img'); repl.img = parsed.imagen_url; }
     if (parsed.stock !== undefined) { sets.push('stock=:stock'); repl.stock = parsed.stock; }
     if (parsed.stock_minimo !== undefined) { sets.push('stock_minimo=:min'); repl.min = parsed.stock_minimo; }
     if (parsed.estado !== undefined) { sets.push('estado=:estado'); repl.estado = parsed.estado; }

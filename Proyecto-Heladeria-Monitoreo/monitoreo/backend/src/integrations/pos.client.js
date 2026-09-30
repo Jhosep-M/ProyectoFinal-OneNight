@@ -8,15 +8,19 @@ async function enviarAlertaPOS(alerta) {
   const controlador = new AbortController();
   const reloj = setTimeout(() => controlador.abort(), env.deliveryTimeoutMs);
   try {
+    // Contrato alerts.v1: el receptor POS autentica por header `x-api-key`
+    // (pos/posBackend/src/routes/integrations.js) y exige nivel del enum
+    // (info|advertencia|critico). Mapeamos el nivel interno ('alerta'->'advertencia').
+    const nivelContrato = alerta.nivel === 'alerta' ? 'advertencia' : alerta.nivel;
     const respuesta = await fetch(env.posAlertsUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${env.posAlertsApiKey}`,
+        'x-api-key': env.posAlertsApiKey,
       },
       body: JSON.stringify({
         alertaId: alerta.id,
-        nivel: alerta.nivel,
+        nivel: nivelContrato,
         tipoRecurso: alerta.tipo_recurso,
         mensaje: alerta.mensaje,
         fechaGeneracion: new Date(alerta.fecha_generacion).toISOString(),

@@ -55,7 +55,6 @@ function createApp() {
   app.use('/api/v1/notificaciones', notificacionesRouter);
   app.use('/api/v1/reportes', reportesRouter);
   app.use('/api/v1/integraciones', integracionesRouter);
-  // resto de routers de negocio se montan en Tasks 5-9.
 
   app.use(notFound);
   app.use(errorHandler);

@@ -5,6 +5,7 @@ module.exports = (sequelize) => sequelize.define('Producto', {
   categoria_id: { type: DataTypes.UUID, field: 'categoria_id' },
   nombre: { type: DataTypes.STRING, allowNull: false, field: 'nombre' },
   precio: { type: DataTypes.DECIMAL(14,2), allowNull: false, field: 'precio' },
+  imagen_url: { type: DataTypes.TEXT, allowNull: true, field: 'imagen_url' },
   stock: { type: DataTypes.DECIMAL(14,2), defaultValue: 0, field: 'stock' },
   stock_minimo: { type: DataTypes.DECIMAL(14,2), defaultValue: 0, field: 'stock_minimo' },
   estado: { type: DataTypes.STRING, defaultValue: 'activo', field: 'estado' },

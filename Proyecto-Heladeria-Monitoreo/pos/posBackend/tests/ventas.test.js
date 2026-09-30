@@ -1,9 +1,11 @@
 'use strict';
 
 /* Bloque 1 — Ventas: service delega a PG public.registrar_venta / anular_venta.
- * Firmas PG reales (verificadas en Supabase):
+ * Firmas PG reales (verificadas en Supabase tras fix de deriva):
  *   registrar_venta(p_usuario_id uuid, p_turno_id uuid, p_cliente_id uuid,
- *                   p_items jsonb, p_descuento numeric, p_pagos jsonb)
+ *                   p_items jsonb, p_descuento numeric, p_pagos jsonb,
+ *                   p_idempotency_key text DEFAULT NULL,
+ *                   p_puntos_canje integer DEFAULT 0)
  *   anular_venta(p_venta_id uuid, p_usuario_id uuid, p_motivo varchar)
  * Sin DB ni red real.
  */
@@ -27,7 +29,7 @@ describe('ventaService.crear — delegacion a registrar_venta', () => {
     sequelize.query.mockResolvedValue([[{ venta_id: VENTA_ID }]]);
   });
 
-  test('envia posicionales como (uid, turno, cliente, items, desc, pagos)', async () => {
+  test('envia posicionales como (uid, turno, cliente, items, desc, pagos, NULL, canje)', async () => {
     const items = [{ producto_id: PRODUCTO_ID, cantidad: 2 }];
     const pagos = [{ metodo_pago_id: METODO_ID, monto: 20.5 }];
     const out = await ventaService.crear({ turno_id: TURNO_ID, items, pagos, userId: USER_ID });
@@ -41,10 +43,11 @@ describe('ventaService.crear — delegacion a registrar_venta', () => {
       .split(')')[0]
       .split(',')
       .map((s) => s.trim().replace(/^:/, '').replace(/::jsonb$/, ''));
-    expect(positional).toEqual(['uid', 'turno', 'cliente', 'items', 'desc', 'pagos']);
+    expect(positional).toEqual(['uid', 'turno', 'cliente', 'items', 'desc', 'pagos', 'NULL', 'canje']);
     expect(opts.replacements.uid).toBe(USER_ID);
     expect(opts.replacements.turno).toBe(TURNO_ID);
     expect(opts.replacements.cliente).toBeNull();
+    expect(opts.replacements.canje).toBe(0);
     expect(JSON.parse(opts.replacements.items)).toEqual(items);
     expect(JSON.parse(opts.replacements.pagos)).toEqual(pagos);
   });
@@ -60,6 +63,20 @@ describe('ventaService.crear — delegacion a registrar_venta', () => {
     });
     const [, opts] = sequelize.query.mock.calls[0];
     expect(opts.replacements.cliente).toBe(cliente);
+  });
+
+  test('propaga puntos_canje cuando se informa', async () => {
+    const cliente = '66666666-6666-4666-8666-666666666666';
+    await ventaService.crear({
+      turno_id: TURNO_ID,
+      items: [{ producto_id: PRODUCTO_ID, cantidad: 1 }],
+      pagos: [{ metodo_pago_id: METODO_ID, monto: 5 }],
+      userId: USER_ID,
+      cliente_id: cliente,
+      puntos_canje: 5,
+    });
+    const [, opts] = sequelize.query.mock.calls[0];
+    expect(opts.replacements.canje).toBe(5);
   });
 });
 

@@ -31,5 +31,12 @@ export const api = {
   get: (ruta) => solicitud('GET', ruta),
   post: (ruta, cuerpo) => solicitud('POST', ruta, cuerpo),
   patch: (ruta, cuerpo) => solicitud('PATCH', ruta, cuerpo),
+<<<<<<< HEAD
+<<<<<<< HEAD
+=======
   delete: (ruta) => solicitud('DELETE', ruta),
+>>>>>>> origin/feature/Airton-auxilio
+=======
+  delete: (ruta) => solicitud('DELETE', ruta),
+>>>>>>> develop
 };

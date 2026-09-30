@@ -30,13 +30,11 @@ test('consumptionSchema acepta el payload del contrato AGENTS.md con organizacio
   assert.strictEqual(r.success, true);
 });
 
-test('consumptionSchema rechaza tipos de recurso desconocidos, cantidades inválidas y fechas basura', () => {
+test('consumptionSchema rechaza tipos de recurso desconocidos, cantidades negativas y fechas basura', () => {
   const { consumptionSchema } = require('../../src/validators/integracion.validator');
   const casos = [
     { ...payloadRealDelPOS, tipoRecurso: 'gas' },
     { ...payloadRealDelPOS, cantidad: -1 },
-    { ...payloadRealDelPOS, cantidad: 0 },
-    { ...payloadRealDelPOS, cantidad: 1.2345 }, // NUMERIC(14,3): máx 3 decimales
     { ...payloadRealDelPOS, fechaConsumo: 'ayer' },
     { ...payloadRealDelPOS, idempotencyKey: '' },
     { ...payloadRealDelPOS, consumoExternoId: 'no-es-uuid' },
@@ -45,6 +43,12 @@ test('consumptionSchema rechaza tipos de recurso desconocidos, cantidades invál
   for (const c of casos) {
     assert.strictEqual(consumptionSchema.safeParse(c).success, false, `debía rechazar: ${JSON.stringify(c)}`);
   }
+});
+
+test('contrato: cantidad 0 y 4 decimales se aceptan (mínimo 0, sin tope de decimales)', () => {
+  const { consumptionSchema } = require('../../src/validators/integracion.validator');
+  assert.strictEqual(consumptionSchema.safeParse({ ...payloadRealDelPOS, cantidad: 0 }).success, true);
+  assert.strictEqual(consumptionSchema.safeParse({ ...payloadRealDelPOS, cantidad: 20.0027 }).success, true);
 });
 
 test('consumptionSchema hace strip de campos desconocidos inyectados', () => {

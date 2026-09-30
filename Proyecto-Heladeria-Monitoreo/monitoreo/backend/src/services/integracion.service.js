@@ -18,7 +18,8 @@ async function recibirConsumo(payload, integracion, reqId) {
         idempotency_key: idempotencyKey,
         organizacion_id: integracion.organizacion_id,
         tipo_recurso: payload.tipoRecurso,
-        cantidad: payload.cantidad,
+        // La BD persiste NUMERIC(14,3): redondeo determinista a 3 decimales.
+        cantidad: Number(payload.cantidad.toFixed(3)),
         unidad_medida: payload.unidadMedida,
         fecha_consumo: payload.fechaConsumo,
         origen: payload.origen,

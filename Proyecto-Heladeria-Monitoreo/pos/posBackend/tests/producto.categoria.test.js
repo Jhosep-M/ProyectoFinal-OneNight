@@ -1,50 +1,52 @@
-const { describe, it } = require('node:test');
-const assert = require('node:assert/strict');
-
 const { createProductSchema, updateProductSchema } = require('../src/validators/product');
+const { createCategorySchema, updateCategorySchema } = require('../src/validators/category');
+const { canInactivateProduct, canInactivateCategory } = require('../src/services/productoService');
 
 describe('Step1 producto - validacion existente', () => {
   it('rechaza nombre vacio y precio negativo', () => {
-    assert.throws(() => createProductSchema.parse({ nombre: '', precio: -5 }));
+    expect(() => createProductSchema.parse({ nombre: '', precio: -5 })).toThrow();
   });
 
   it('update parcial exige al menos un campo', () => {
-    assert.throws(() => updateProductSchema.parse({}));
+    expect(() => updateProductSchema.parse({})).toThrow();
   });
 
   it('acepta producto valido con stock_minimo', () => {
     const p = createProductSchema.parse({ nombre: 'Helado Vainilla', precio: 12.5, stock: 10, stock_minimo: 2 });
-    assert.equal(p.nombre, 'Helado Vainilla');
-    assert.equal(p.stock_minimo, 2);
+    expect(p.nombre).toBe('Helado Vainilla');
+    expect(p.stock_minimo).toBe(2);
+  });
+
+  it('acepta imagen_url opcional (Storage o URL)', () => {
+    const p = createProductSchema.parse({ nombre: 'Cono Simple', precio: 12, imagen_url: 'cono-simple.jpg' });
+    expect(p.imagen_url).toBe('cono-simple.jpg');
+    const q = updateProductSchema.parse({ imagen_url: 'https://ejemplo.com/foto.jpg' });
+    expect(q.imagen_url).toContain('foto.jpg');
   });
 });
 
 describe('Step1 categoria - schemas nuevos', () => {
   it('crea categoria valida y rechaza nombre vacio', () => {
-    const { createCategorySchema } = require('../src/validators/category');
     const c = createCategorySchema.parse({ nombre: 'Helados' });
-    assert.equal(c.nombre, 'Helados');
-    assert.throws(() => createCategorySchema.parse({ nombre: '' }));
+    expect(c.nombre).toBe('Helados');
+    expect(() => createCategorySchema.parse({ nombre: '' })).toThrow();
   });
 
   it('update categoria parcial exige al menos un campo', () => {
-    const { updateCategorySchema } = require('../src/validators/category');
-    assert.throws(() => updateCategorySchema.parse({}));
+    expect(() => updateCategorySchema.parse({})).toThrow();
     const ok = updateCategorySchema.parse({ estado: 'inactivo' });
-    assert.equal(ok.estado, 'inactivo');
+    expect(ok.estado).toBe('inactivo');
   });
 });
 
 describe('Step1 reglas inactivar (no delete fisico)', () => {
   it('bloquea inactivar producto con ventas', () => {
-    const { canInactivateProduct } = require('../src/services/productoService');
-    assert.equal(canInactivateProduct({ detalleCount: 2 }), false);
-    assert.equal(canInactivateProduct({ detalleCount: 0 }), true);
+    expect(canInactivateProduct({ detalleCount: 2 })).toBe(false);
+    expect(canInactivateProduct({ detalleCount: 0 })).toBe(true);
   });
 
   it('bloquea inactivar categoria con productos', () => {
-    const { canInactivateCategory } = require('../src/services/productoService');
-    assert.equal(canInactivateCategory({ productCount: 1 }), false);
-    assert.equal(canInactivateCategory({ productCount: 0 }), true);
+    expect(canInactivateCategory({ productCount: 1 })).toBe(false);
+    expect(canInactivateCategory({ productCount: 0 })).toBe(true);
   });
 });
