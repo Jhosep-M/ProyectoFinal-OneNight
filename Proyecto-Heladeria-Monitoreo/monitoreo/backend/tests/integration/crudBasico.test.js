@@ -1,6 +1,7 @@
 require('../helpers/env');
 const { test, before, after } = require('node:test');
 const assert = require('node:assert');
+const crypto = require('node:crypto');
 const { dbTest } = require('../helpers/env');
 
 const ADMIN = '77777777-7777-4777-8777-777777777777';
@@ -75,6 +76,31 @@ dbTest('POST /medidores con código repetido → 409', async () => {
   assert.strictEqual(r1.status, 201);
   const r2 = await fetch(`${base}/api/v1/medidores`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...payload, nombre: 'Dos' }) });
   assert.strictEqual(r2.status, 409, 'codigo_medidor UNIQUE');
+});
+
+dbTest('DELETE /medidores borra físico sin usos; con consumos → 409', async () => {
+  const { TipoRecurso } = require('../../src/models');
+  const { sequelize: sq } = require('../../src/config/database');
+  const tr = await TipoRecurso.findOne({ where: { codigo: 'agua' } });
+  const crear = (codigo) => fetch(`${base}/api/v1/medidores`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ organizacionId: ORG, tipoRecursoId: tr.id, codigoMedidor: codigo, nombre: codigo }),
+  }).then((r) => r.json());
+  // Sin usos: borrado físico (desaparece del listado).
+  const m1 = await crear('MED-DEL-01');
+  const del = await fetch(`${base}/api/v1/medidores/${m1.id}`, { method: 'DELETE' });
+  assert.strictEqual(del.status, 200);
+  const [gone] = await sq.query(`SELECT count(*)::int n FROM punto_medicion WHERE id = :id`, { replacements: { id: m1.id } });
+  assert.strictEqual(gone[0].n, 0, 'borrado físico, no inactivación');
+  // Con consumos: 409 y la fila sobrevive.
+  const m2 = await crear('MED-DEL-02');
+  await sq.query(
+    `INSERT INTO recepcion_consumo_pos (consumo_externo_id, idempotency_key, organizacion_id, punto_medicion_id, tipo_recurso, cantidad, unidad_medida, fecha_consumo, origen)
+     VALUES (:e, :k, :org, :med, 'agua', 10, 'litros', now(), 'POS')`,
+    { replacements: { e: crypto.randomUUID(), k: crypto.randomUUID(), org: ORG, med: m2.id } },
+  );
+  const del2 = await fetch(`${base}/api/v1/medidores/${m2.id}`, { method: 'DELETE' });
+  assert.strictEqual(del2.status, 409, 'con consumos asociados no se borra');
 });
 
 dbTest('GET /medidores de una org ajena → 403 (scopeOrg)', async () => {

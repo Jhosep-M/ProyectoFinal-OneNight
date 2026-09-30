@@ -59,9 +59,14 @@ async function eliminar(req, res) {
   try {
     const medidor = ES_UUID.test(req.params.id) ? await repo.buscarPorId(req.params.id) : null;
     if (!medidor || !req.orgIds.includes(medidor.organizacion_id)) return fail(res, 404, 'No encontrada');
-    await repo.actualizar(medidor.id, { estado: 'inactivo' });
-    await registrarAuditoria({ entidad: 'punto_medicion', entidadId: medidor.id, accion: 'eliminar', usuarioId: req.user.id, reqId: req.id, detalle: { codigo: medidor.codigo_medidor } });
-    return ok(res, medidor);
+    // Borrado físico: bloqueado si tiene consumos asociados (FK + historia).
+    const usos = await repo.contarUsos(medidor.id);
+    if (usos > 0) {
+      return fail(res, 409, 'No se puede eliminar: tiene consumos asociados', `${usos} registro(s). Inactívalo en su lugar.`);
+    }
+    await repo.eliminarFisico(medidor.id);
+    await registrarAuditoria({ entidad: 'punto_medicion', entidadId: medidor.id, accion: 'eliminar_fisico', usuarioId: req.user.id, reqId: req.id, detalle: { codigo: medidor.codigo_medidor } });
+    return ok(res, { id: medidor.id });
   } catch (e) {
     return fail(res, 500, 'Error eliminando medidor', e.message);
   }

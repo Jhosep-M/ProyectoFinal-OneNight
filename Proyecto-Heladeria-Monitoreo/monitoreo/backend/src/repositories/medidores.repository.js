@@ -43,4 +43,23 @@ async function actualizar(id, campos) {
   return p;
 }
 
-module.exports = { listarPorOrg, listarActivosPorOrg, buscarPorId, existeCodigo, crear, actualizar };
+// Conteo de consumos que referencian al medidor (recepción + registro).
+// Si > 0 el borrado físico se bloquea con 409 (la FK lo impediría igual).
+async function contarUsos(id) {
+  const { sequelize } = require('../config/database');
+  const [r] = await sequelize.query(
+    `SELECT (SELECT COUNT(*)::int FROM recepcion_consumo_pos WHERE punto_medicion_id = :id)
+          + (SELECT COUNT(*)::int FROM registro_consumo WHERE punto_medicion_id = :id) AS usos`,
+    { replacements: { id } },
+  );
+  return r[0]?.usos ?? 0;
+}
+
+async function eliminarFisico(id) {
+  const p = await PuntoMedicion.findByPk(id);
+  if (!p) return null;
+  await p.destroy();
+  return p;
+}
+
+module.exports = { listarPorOrg, listarActivosPorOrg, buscarPorId, existeCodigo, crear, actualizar, contarUsos, eliminarFisico };

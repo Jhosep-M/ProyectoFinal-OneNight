@@ -1,0 +1,351 @@
+/* Presentación Heladería Central — una sola pantalla, tipografía protagonista.
+   Paleta: crema, naranja Valentino #ed8723, cacao #3f1e0b. Sin hovers, sin neón. */
+:root {
+  --crema: #fffdf9;
+  --naranja: #ed8723;
+  --cacao: #3f1e0b;
+  --tinta-suave: #7a5c44;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  color: var(--cacao);
+  background: var(--crema);
+  line-height: 1.5;
+}
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(680px 680px at 6% 4%, rgba(237, 135, 35, 0.22), transparent 70%),
+    radial-gradient(720px 720px at 96% 10%, rgba(142, 209, 252, 0.28), transparent 70%),
+    radial-gradient(760px 560px at 88% 46%, rgba(247, 168, 196, 0.22), transparent 70%),
+    radial-gradient(820px 620px at 50% 58%, rgba(201, 154, 91, 0.28), transparent 70%),
+    radial-gradient(600px 600px at 2% 94%, rgba(159, 220, 184, 0.22), transparent 70%),
+    radial-gradient(660px 660px at 97% 90%, rgba(237, 135, 35, 0.18), transparent 70%),
+    linear-gradient(180deg, #fffdf9 0%, #fdf6ec 45%, #f9f0fb 100%);
+}
+
+.presentacion {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 28px 28px 20px;
+}
+
+.marca { display: flex; align-items: center; gap: 12px; }
+.marca-sigla {
+  width: 44px; height: 44px; border-radius: 14px;
+  background: var(--naranja); color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 800; font-size: 1.05rem;
+}
+.marca-nombre { font-size: 1.05rem; font-weight: 600; }
+.marca-nombre em { font-style: normal; color: var(--tinta-suave); font-weight: 400; }
+
+.portada {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 1.15fr 0.85fr;
+  gap: 40px;
+  align-items: center;
+  padding: 24px 0 90px;
+  position: relative;
+}
+/* Ola de chocolate derretido al pie de la portada */
+.ola { position: absolute; left: 50%; transform: translateX(-50%); bottom: -10px; width: 100vw; height: 70px; pointer-events: none; }
+.ola svg { width: 100%; height: 100%; display: block; }
+.ola path { fill: #8a5a3b; opacity: 0.22; }
+.portada-texto h1 {
+  font-size: clamp(3rem, 9vw, 6.5rem);
+  line-height: 0.98;
+  letter-spacing: -0.03em;
+  margin: 0 0 20px;
+  font-weight: 800;
+}
+.portada-texto p {
+  font-size: clamp(1.05rem, 2vw, 1.3rem);
+  color: var(--tinta-suave);
+  max-width: 26rem;
+  margin: 0 0 28px;
+}
+.portada-datos {
+  display: flex; flex-wrap: wrap; gap: 8px 28px;
+  font-size: 0.95rem; font-weight: 600;
+}
+
+.portada-arte { position: relative; height: 380px; }
+/* Hero fotográfico con transición cruzada */
+.foto-hero {
+  position: absolute; left: 20px; top: 0;
+  width: min(340px, 80%); height: 370px;
+  object-fit: cover; object-position: center 30%;
+  border-radius: 170px 170px 24px 24px;
+  box-shadow: 0 18px 40px rgba(63, 30, 11, 0.22);
+  opacity: 0;
+}
+.foto-hero.visible { opacity: 1; }
+.foto-hero.entrada { animation: zoom-suave 1.4s ease both; }
+@keyframes zoom-suave { from { transform: scale(0.94); } to { transform: scale(1); } }
+/* Galería: cada foto transiciona al entrar en pantalla, escalonadas */
+.galeria figure {
+  margin: 0;
+  opacity: 0; transform: translateY(22px) scale(0.98);
+  transition: opacity 0.6s ease, transform 0.6s ease;
+}
+.galeria.visible figure { opacity: 1; transform: none; }
+.galeria.visible figure:nth-child(2) { transition-delay: 0.1s; }
+.galeria.visible figure:nth-child(3) { transition-delay: 0.2s; }
+.galeria.visible figure:nth-child(4) { transition-delay: 0.3s; }
+.galeria.visible figure:nth-child(5) { transition-delay: 0.4s; }
+.galeria.visible figure:nth-child(6) { transition-delay: 0.5s; }
+/* Galería de productos */
+.galeria { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+.galeria figure { margin: 0; }
+.galeria img {
+  width: 100%; height: 220px; object-fit: cover;
+  border-radius: 14px; display: block;
+  box-shadow: 0 8px 20px rgba(63, 30, 11, 0.12);
+}
+.galeria figcaption { margin-top: 8px; font-weight: 700; }
+@media (max-width: 760px) { .galeria { grid-template-columns: repeat(2, 1fr); } .galeria img { height: 160px; } }
+.bola { position: absolute; border-radius: 50%; overflow: hidden; }
+.bola::after {
+  content: ""; position: absolute; left: 18%; top: 9%;
+  width: 34%; height: 22%; border-radius: 50%;
+  background: rgba(255, 255, 255, 0.45);
+  transform: rotate(-24deg);
+}
+.bola-1 { width: 190px; height: 190px; background: #f5a94e; left: 70px; top: 10px; animation: flotar 6s ease-in-out infinite; }
+.bola-2 { width: 140px; height: 140px; background: #6b4226; left: 210px; top: 100px; animation: flotar 7s ease-in-out infinite reverse; }
+.cono {
+  position: absolute; left: 130px; top: 230px;
+  width: 0; height: 0;
+  border-left: 65px solid transparent;
+  border-right: 65px solid transparent;
+  border-top: 140px solid #d9a066;
+}
+/* Cereza sobre la bola + barquillo clavado */
+.cereza-top {
+  position: absolute; left: 128px; top: -6px;
+  width: 30px; height: 30px; border-radius: 50%;
+  background: #c0392b;
+}
+.cereza-top::after {
+  content: ""; position: absolute; left: 14px; top: -16px;
+  width: 4px; height: 20px; border-radius: 3px;
+  background: #5a7a3a; transform: rotate(14deg);
+}
+.barquillo-arte {
+  position: absolute; left: 232px; top: 30px;
+  width: 24px; height: 130px; border-radius: 12px;
+  background: repeating-linear-gradient(45deg, #e3c98f 0 10px, #b98d55 10px 14px);
+  transform: rotate(24deg);
+  animation: flotar 8s ease-in-out infinite reverse;
+}
+/* Cinta infinita de sabores */
+.cinta { overflow: hidden; background: #3f1e0b; padding: 12px 0; margin: 8px 0 0; }
+.cinta-pista { display: flex; align-items: center; gap: 28px; width: max-content; animation: cinta 28s linear infinite; }
+.cinta-pista span { color: #f7ecd8; font-weight: 700; white-space: nowrap; letter-spacing: 0.02em; }
+.cinta-pista i { width: 8px; height: 8px; border-radius: 50%; background: var(--naranja); flex: none; }
+@keyframes cinta { to { transform: translateX(-50%); } }
+@keyframes flotar { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-12px); } }
+
+.portada-texto { position: relative; }
+.pie { font-size: 0.85rem; color: var(--tinta-suave); margin-top: 40px; }
+
+/* Tableta de chocolate: segmentos mate en cacao, detrás del texto */
+.tableta {
+  background:
+    repeating-linear-gradient(90deg, #6b4226 0 34px, #4a2c1a 34px 40px),
+    repeating-linear-gradient(0deg, #6b4226 0 34px, #4a2c1a 34px 40px);
+  background-blend-mode: multiply;
+  background-color: #5a3a26;
+  border-radius: 22px;
+  opacity: 0.14;
+  pointer-events: none;
+}
+.tableta-hero {
+  position: absolute;
+  width: min(420px, 90%);
+  height: 300px;
+  left: -40px;
+  top: -30px;
+  transform: rotate(-6deg);
+  z-index: -1;
+}
+.bloque { position: relative; }
+.bloque h2 { position: relative; display: inline-block; }
+.tableta-titulo {
+  position: absolute;
+  width: 190px;
+  height: 64px;
+  left: -24px;
+  top: -8px;
+  transform: rotate(-3deg);
+  z-index: -1;
+  border-radius: 14px;
+}
+
+/* Bloques de contenido: listas tipográficas, sin tarjetas */
+.bloque { padding: 40px 0 8px; }
+.bloque h2 {
+  font-size: clamp(1.8rem, 4vw, 2.6rem);
+  letter-spacing: -0.02em;
+  margin: 0 0 20px;
+  font-weight: 800;
+  position: relative; display: inline-block;
+  padding-left: 18px;
+}
+.bloque h2::before {
+  content: ""; position: absolute; left: 0; top: 6px; bottom: 6px;
+  width: 7px; border-radius: 4px; background: var(--naranja);
+}
+/* Acento propio por sección (portada es la section 1) */
+main > section.bloque:nth-of-type(2) h2::before { background: #e75480; }
+main > section.bloque:nth-of-type(3) h2::before { background: #ed8723; }
+main > section.bloque:nth-of-type(4) h2::before { background: #8a5a3b; }
+main > section.bloque:nth-of-type(5) h2::before { background: #5b7fc0; }
+main > section.bloque:nth-of-type(6) h2::before { background: #5fb98a; }
+.lista-sabores { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, 1fr); gap: 4px 40px; }
+.lista-sabores li { padding: 12px 0; border-bottom: 1px solid var(--borde); }
+.lista-sabores strong { display: block; font-size: 1.05rem; padding-left: 22px; position: relative; }
+.lista-sabores strong::before { content: ""; position: absolute; left: 0; top: 5px; width: 13px; height: 13px; border-radius: 50%; background: #ccc; }
+.lista-sabores li:nth-child(1) strong::before { background: #5a3a26; }
+.lista-sabores li:nth-child(2) strong::before { background: #f7a8c4; }
+.lista-sabores li:nth-child(3) strong::before { background: #9fdcb8; }
+.lista-sabores li:nth-child(4) strong::before { background: #c99a5b; }
+.lista-sabores li:nth-child(5) strong::before { background: #f2d38a; }
+.lista-sabores li:nth-child(6) strong::before { background: #fdf3df; border: 1px solid #e0cdb4; }
+.lista-sabores span { color: var(--tinta-suave); font-size: 0.95rem; }
+.lista-precios { margin: 0; }
+.lista-precios div {
+  display: flex; justify-content: space-between; align-items: baseline; gap: 16px;
+  padding: 12px 0; border-bottom: 1px solid var(--borde);
+}
+.lista-precios dt { font-size: 1.05rem; font-weight: 600; }
+.lista-precios dd { margin: 0; font-weight: 800; color: var(--naranja); white-space: nowrap; }
+.nota { color: var(--tinta-suave); font-size: 0.95rem; }
+.lista-sucursales { list-style: none; margin: 0; padding: 0; }
+.lista-sucursales li { padding: 12px 0; border-bottom: 1px solid var(--borde); }
+.lista-sucursales strong { display: block; font-size: 1.05rem; }
+.lista-sucursales li:nth-child(1) strong { color: #e75480; }
+.lista-sucursales li:nth-child(2) strong { color: #ed8723; }
+.lista-sucursales li:nth-child(3) strong { color: #5b7fc0; }
+/* Entrada de ítems (la anima GSAP; sin JS quedan visibles) */
+.lista-sabores li, .lista-precios div, .lista-sucursales li { opacity: 1; }
+.lista-sucursales span { color: var(--tinta-suave); }
+@media (max-width: 760px) {
+  .lista-sabores { grid-template-columns: 1fr; }
+}
+
+/* Decoración de fondo: paletas, mini bolas y chispas en pastel mate */
+.decor { position: fixed; inset: 0; z-index: -1; pointer-events: none; overflow: hidden; }
+.decor span { position: absolute; display: block; }
+.paleta { width: 54px; height: 96px; border-radius: 27px 27px 12px 12px; opacity: 0.5; }
+.paleta::after { content: ""; position: absolute; left: 50%; bottom: -26px; width: 8px; height: 28px; margin-left: -4px; border-radius: 4px; background: #d9b98f; }
+.paleta-1 { background: #f7a8c4; left: 4%; top: 58%; transform: rotate(-12deg); animation: flotar 8s ease-in-out infinite; }
+.paleta-2 { background: #a9d6ef; right: 5%; top: 16%; transform: rotate(10deg); animation: flotar 9s ease-in-out infinite reverse; }
+.mini-bola { border-radius: 50%; opacity: 0.55; }
+.mini-1 { width: 46px; height: 46px; background: #8a5a3b; left: 44%; top: 8%; animation: flotar 7s ease-in-out infinite; }
+.mini-2 { width: 30px; height: 30px; background: #f5a94e; left: 88%; top: 62%; animation: flotar 6s ease-in-out infinite reverse; }
+.mini-3 { width: 24px; height: 24px; background: #9fdcb8; left: 8%; top: 30%; animation: flotar 8s ease-in-out infinite; }
+.chispa { width: 22px; height: 7px; border-radius: 4px; opacity: 0.45; animation: titilar 3.5s ease-in-out infinite; }
+.chispa-2, .chispa-4, .chispa-6 { animation-delay: 1.2s; }
+.chispa-3, .chispa-5 { animation-delay: 2.1s; }
+@keyframes titilar { 0%, 100% { opacity: 0.45; } 50% { opacity: 0.15; } }
+.chispa-1 { background: #e75480; left: 22%; top: 18%; transform: rotate(24deg); }
+.chispa-2 { background: #5b7fc0; left: 70%; top: 30%; transform: rotate(-18deg); }
+.chispa-3 { background: #c99a5b; left: 58%; top: 82%; transform: rotate(40deg); }
+.chispa-4 { background: #5fb98a; left: 30%; top: 78%; transform: rotate(-30deg); }
+.chispa-5 { background: #f5a94e; left: 82%; top: 44%; transform: rotate(12deg); }
+.chispa-6 { background: #8a5a3b; left: 12%; top: 46%; transform: rotate(-45deg); }
+/* Barquillos: palito beige con rayas cacao */
+.barquillo {
+  width: 26px; height: 130px; border-radius: 13px; opacity: 0.5;
+  background: repeating-linear-gradient(45deg, #e3c98f 0 10px, #b98d55 10px 14px);
+}
+.barquillo-1 { left: 6%; top: 12%; transform: rotate(18deg); animation: flotar 9s ease-in-out infinite; }
+.barquillo-2 { right: 7%; top: 48%; transform: rotate(-14deg); animation: flotar 8s ease-in-out infinite reverse; }
+/* Cerezas mate */
+.cereza { width: 26px; height: 26px; border-radius: 50%; background: #c0392b; opacity: 0.5; }
+.cereza-1 { left: 36%; top: 6%; animation: flotar 7s ease-in-out infinite; }
+.cereza-2 { left: 76%; top: 76%; animation: flotar 8s ease-in-out infinite reverse; }
+.cereza-3 { left: 16%; top: 68%; width: 18px; height: 18px; animation: flotar 6s ease-in-out infinite; }
+/* Trozos de galleta */
+.galleta { width: 44px; height: 44px; border-radius: 10px; background: #c99a5b; opacity: 0.45; }
+.galleta-1 { left: 64%; top: 10%; transform: rotate(20deg); animation: flotar 9s ease-in-out infinite; }
+.galleta-2 { left: 50%; top: 90%; transform: rotate(-12deg); animation: flotar 7s ease-in-out infinite reverse; }
+
+@media (max-width: 760px) {
+  .portada { grid-template-columns: 1fr; gap: 8px; }
+  .portada-arte { height: 260px; }
+  .bola-1 { width: 130px; height: 130px; left: 30px; }
+  .bola-2 { width: 95px; height: 95px; left: 130px; top: 70px; }
+  .cono { left: 65px; top: 160px; border-left-width: 45px; border-right-width: 45px; border-top-width: 95px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .bola-1, .bola-2, .paleta, .mini-bola, .barquillo, .cereza, .galleta, .barquillo-arte { animation: none; }
+  .cinta-pista { animation: none; }
+  .chispa { animation: none; opacity: 0.45; }
+  .portada-texto h1, .portada-texto p, .portada-datos { animation: none; }
+  .foto-hero.entrada { animation: none; }
+  .lista-sabores li, .lista-precios div, .lista-sucursales li { opacity: 1; transform: none; transition: none; }
+  .galeria figure { opacity: 1; transform: none; transition: none; }
+}
+
+/* ===== Legibilidad minimalista: sin cajas, solo texto + acentos ===== */
+:root {
+  --tinta-suave: #5b4633; /* antes #7a5c44: ahora cumple AA sobre pastel */
+}
+/* Contenido siempre sobre las decoraciones (ya están en z-index negativo) */
+.presentacion > header, .presentacion > main, .presentacion > footer { position: relative; }
+body { overflow-x: clip; text-shadow: 0 1px 0 rgba(255, 255, 255, 0.5); }
+
+/* Sabores y Menú: listas limpias, precio separado a la derecha */
+.lista-sabores, .lista-precios { background: none; border: none; box-shadow: none; padding: 0; }
+.lista-precios div:hover { background: none; }
+.lista-precios dd { padding-left: 16px; }
+
+/* Sucursales: solo barra lateral de color, sin tarjeta */
+.lista-sucursales li {
+  background: none;
+  border: none;
+  border-left: 5px solid transparent;
+  border-radius: 0;
+  box-shadow: none;
+  padding: 10px 0 10px 16px;
+  margin-bottom: 8px;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+.lista-sucursales li:nth-child(1) { border-left-color: #e75480; }
+.lista-sucursales li:nth-child(2) { border-left-color: #ed8723; }
+.lista-sucursales li:nth-child(3) { border-left-color: #5b7fc0; }
+
+/* Nota, contacto y pie: texto directo */
+.nota, .bloque p {
+  background: none;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  padding: 0;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+.portada-texto p, .portada-datos { background: none; border: none; box-shadow: none; padding: 0; -webkit-backdrop-filter: none; backdrop-filter: none; }
+
+/* Pie: texto apenas más oscuro para AA */
+.pie { color: #54402e; }
+
+@media (max-width: 760px) {
+  .lista-sabores, .lista-precios { padding-left: 0; padding-right: 0; }
+  .nota, .bloque p { padding: 0; }
+}
