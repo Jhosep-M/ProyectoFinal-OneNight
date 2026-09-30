@@ -1,0 +1,117 @@
+# =============================================================================
+# render.yaml — Blueprint Render para los BACKENDS (POS + Monitoreo)
+# =============================================================================
+# Crea los dos servicios web (Docker, plan free) y sus variables de entorno.
+#
+# Los FRONTENDS NO van aquí: se despliegan en Vercel (ver vercel.json en cada
+# pos/frontend y monitoreo/frontend).
+#
+# Uso:
+#   1. Sube este archivo + los cambios de código a GitHub (rama principal).
+#   2. Render Dashboard -> New -> Blueprint -> conecta el repo.
+#      (El repo raíz es D:\Proyecto; este render.yaml vive en su raíz.)
+#   3. Render pedirá los valores marcados con `sync: false` (secretos).
+#   4. Tras el primer deploy, revisa que los nombres de servicio no hayan
+#      recibido sufijo (p.ej. -abc1). Si lo recibieron, actualiza las dos URLs
+#      cruzadas (MONITOREO_URL y POS_ALERTS_URL) y haz redeploy.
+#   5. Cuando existan los dominios de Vercel, ponlos en CORS_ORIGIN de ambos
+#      servicios y vuelve a desplegar.
+#
+# Valores que hay que tener a mano (nunca en Git):
+#   - DATABASE_URL de cada proyecto Supabase (usar el POOLER, Session mode 5432):
+#       POS:       postgresql://postgres.lltmyookhktzycxlprlx:<PWD>@aws-0-<REGION>.pooler.supabase.com:5432/postgres
+#       Monitoreo: postgresql://postgres.jbafjkcblplghcqakrwj:<PWD>@aws-0-<REGION>.pooler.supabase.com:5432/postgres
+#   - SUPABASE_ANON_KEY y SUPABASE_SERVICE_ROLE_KEY de cada proyecto.
+#   - MONITOREO_API_KEY: la apiKey que devuelve la UI de Monitoreo al crear una
+#       Integración (se muestra UNA sola vez) para la organización objetivo.
+#   - ORGANIZACION_EXTERNA_ID: el id (uuid) de esa organización en monitoreo.organizacion.
+#   - POS_ALERTS_API_KEY (en Monitoreo): un secreto aleatorio propio; el POS lo
+#       recibe automáticamente como POS_ALERT_API_KEY vía fromService.
+# =============================================================================
+
+services:
+  # ---------------------------------------------------------------------------
+  # Monitoreo — backend (Node/Express, puerto 4000)
+  # ---------------------------------------------------------------------------
+  - type: web
+    name: heladeria-monitoreo-backend
+    runtime: docker
+    rootDir: Proyecto-Heladeria-Monitoreo/monitoreo/backend
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /health
+    plan: free
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: "4000"
+      - key: MONITOREO_DB_SCHEMA
+        value: monitoreo
+      - key: DATABASE_URL
+        sync: false          # pooler Supabase (Monitoreo), Session mode 5432
+      - key: SUPABASE_URL
+        value: https://jbafjkcblplghcqakrwj.supabase.co
+      - key: SUPABASE_ANON_KEY
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false          # solo backend, nunca al frontend
+      - key: CORS_ORIGIN
+        sync: false          # dominio(s) de Vercel del frontend Monitoreo
+      - key: RATE_LIMIT_WINDOW_MS
+        value: "900000"
+      - key: RATE_LIMIT_MAX
+        value: "100"
+      - key: POS_ALERTS_URL
+        # Si el servicio pos-backend recibe sufijo, corregir aquí:
+        value: https://heladeria-pos-backend.onrender.com/api/v1/integrations/alerts
+      - key: POS_ALERTS_API_KEY
+        sync: false          # secreto compartido; el POS lo hereda vía fromService
+
+  # ---------------------------------------------------------------------------
+  # POS — backend (Node/Express, puerto 3000)
+  # ---------------------------------------------------------------------------
+  - type: web
+    name: heladeria-pos-backend
+    runtime: docker
+    rootDir: Proyecto-Heladeria-Monitoreo/pos/posBackend
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /health
+    plan: free
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: "3000"
+      - key: DATABASE_URL
+        sync: false          # pooler Supabase (POS), Session mode 5432
+      - key: SUPABASE_URL
+        value: https://lltmyookhktzycxlprlx.supabase.co
+      - key: SUPABASE_ANON_KEY
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false          # solo backend, nunca al frontend
+      - key: CORS_ORIGIN
+        sync: false          # dominio(s) de Vercel del frontend POS
+      - key: RATE_LIMIT_WINDOW_MS
+        value: "900000"
+      - key: RATE_LIMIT_MAX
+        value: "100"
+      # El pooler de Supabase suele requerir no validar la cadena de CA propia.
+      - key: DB_SSL_REJECT_UNAUTHORIZED
+        value: "false"
+      - key: MONITOREO_URL
+        # Si el servicio monitoreo-backend recibe sufijo, corregir aquí.
+        # Debe ser https en producción (validado al arrancar).
+        value: https://heladeria-monitoreo-backend.onrender.com/api/v1/integrations/consumption
+      - key: MONITOREO_API_KEY
+        sync: false          # apiKey generada en la UI de Monitoreo (Integración)
+      # Mismo secreto que POS_ALERTS_API_KEY de Monitoreo, sin pedirlo dos veces.
+      - key: POS_ALERT_API_KEY
+        fromService:
+          type: web
+          name: heladeria-monitoreo-backend
+          envVarKey: POS_ALERTS_API_KEY
+      - key: ORGANIZACION_EXTERNA_ID
+        sync: false          # uuid de la organización en monitoreo.organizacion
