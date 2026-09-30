@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { listarPedidos, crearPedido, actualizarPedido, cobrarPedido } from '../../services/pedidosService.js';
+import { listarPedidos, crearPedido, actualizarPedido, cobrarPedido, verPedido } from '../../services/pedidosService.js';
 import { listarMesas } from '../../services/mesasService.js';
 import { listarTurnos } from '../../services/cajaService.js';
 import { listarMetodosPago } from '../../services/ventasService.js';
@@ -55,6 +55,11 @@ export default function PedidosPage() {
   const [creando, setCreando] = useState(false);
   const [filtroEstado, setFiltroEstado] = useState('todos');
   const [busqueda, setBusqueda] = useState('');
+  const [cuentaExpandida, setCuentaExpandida] = useState(false);
+  const [detallesCuenta, setDetallesCuenta] = useState({});
+  const [cargandoDetalle, setCargandoDetalle] = useState(false);
+  const [cobrandoCuenta, setCobrandoCuenta] = useState(false);
+  const [progresoCuenta, setProgresoCuenta] = useState(null);
 
   const productosById = useMemo(() => {
     const map = new Map();
@@ -111,8 +116,29 @@ export default function PedidosPage() {
     return {
       n: deMesa.length,
       total: deMesa.reduce((acc, p) => acc + (Number(p.total) || 0), 0),
+      pedidos: deMesa,
     };
   }, [pedidos, mesaId]);
+
+  // Productos agregados de la cuenta (suma por producto_id desde detalles cargados).
+  const productosCuenta = useMemo(() => {
+    const agg = new Map();
+    for (const p of cuentaMesa?.pedidos || []) {
+      const det = detallesCuenta[p.id_pedido]?.detalles || p.detalles || [];
+      for (const d of det) {
+        const key = String(d.producto_id || d.producto_nombre || 'item');
+        const cur = agg.get(key) || {
+          nombre: d.producto_nombre || productosById.get(String(d.producto_id || ''))?.nombre || 'Producto',
+          cantidad: 0,
+          subtotal: 0,
+        };
+        cur.cantidad += Number(d.cantidad) || 0;
+        cur.subtotal += (Number(d.cantidad) || 0) * (Number(d.precio_unitario ?? d.precio) || 0);
+        agg.set(key, cur);
+      }
+    }
+    return [...agg.values()];
+  }, [cuentaMesa, detallesCuenta, productosById]);
 
   const coincideFiltro = (p) => {
     if (filtroEstado === 'todos') return true;
@@ -261,6 +287,92 @@ export default function PedidosPage() {
     } catch (e) { setAlert({ tone: 'error', message: e.message }); }
   };
 
+  const cargarDetalleCuenta = async () => {
+    const lista = cuentaMesa?.pedidos || [];
+    const faltantes = lista.filter((p) => !detallesCuenta[p.id_pedido] && !p.detalles);
+    if (faltantes.length === 0) return;
+    setCargandoDetalle(true);
+    try {
+      const res = await Promise.all(
+        faltantes.map(async (p) => {
+          try {
+            const full = await verPedido(p.id_pedido);
+            return [p.id_pedido, full];
+          } catch {
+            return [p.id_pedido, null];
+          }
+        })
+      );
+      setDetallesCuenta((prev) => {
+        const next = { ...prev };
+        for (const [id, full] of res) {
+          if (full) next[id] = full;
+        }
+        return next;
+      });
+    } finally {
+      setCargandoDetalle(false);
+    }
+  };
+
+  const toggleCuenta = async () => {
+    const next = !cuentaExpandida;
+    setCuentaExpandida(next);
+    if (next) await cargarDetalleCuenta();
+  };
+
+  // Cobrar cuenta completa: cobra cada pedido abierto en secuencia con el mismo turno.
+  // La mesa queda libre sola al cobrar el último (backend). Si falla uno, se detiene
+  // y deja el resto pendiente con mensaje de reintento.
+  const cobrarCuenta = async () => {
+    const lista = (cuentaMesa?.pedidos || []).filter((p) => esAbierto(p.estado) || esListo(p.estado));
+    if (lista.length === 0 || cobrandoCuenta) return;
+    setAlert(null);
+    setCobrandoCuenta(true);
+    setProgresoCuenta({ done: 0, total: lista.length });
+    try {
+      const [turnos, metodos] = await Promise.all([
+        listarTurnos().catch(() => []),
+        listarMetodosPago().catch(() => []),
+      ]);
+      const turno = (turnos || []).find((t) => t.estado === 'abierto');
+      if (!turno) {
+        setAlert({ tone: 'error', message: 'No hay turno abierto. Abre uno en Caja.' });
+        return;
+      }
+      const metodo = (metodos || [])[0];
+      const metodoId = metodo?.id_metodo || metodo?.id_metodo_pago || metodo?.id;
+      if (!metodoId) {
+        setAlert({ tone: 'error', message: 'No hay métodos de pago configurados.' });
+        return;
+      }
+      let ok = 0;
+      let fail = null;
+      for (const p of lista) {
+        try {
+          await cobrarPedido(p.id_pedido, {
+            turno_id: turno.id_turno || turno.id,
+            pagos: [{ metodo_pago_id: metodoId, monto: Number(p.total) || 0 }],
+          });
+          ok += 1;
+          setProgresoCuenta({ done: ok, total: lista.length });
+        } catch (e) {
+          fail = { pedido: p, message: e.message };
+          break;
+        }
+      }
+      if (!fail) {
+        setAlert({ tone: 'success', message: `Cuenta cobrada: ${ok}/${lista.length} pedidos — ${fmtMoney(cuentaMesa.total)}` });
+      } else {
+        setAlert({ tone: 'error', message: `Se cobraron ${ok}/${lista.length}. Falló ${shortId(fail.pedido.id_pedido)}: ${fail.message}. Reintenta los restantes.` });
+      }
+      recargar();
+    } finally {
+      setCobrandoCuenta(false);
+      setProgresoCuenta(null);
+    }
+  };
+
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: 12, flexWrap: 'wrap', marginBottom: 4 }}>
@@ -279,11 +391,63 @@ export default function PedidosPage() {
 
       {mesaId && cuentaMesa && cuentaMesa.n > 0 && (
         <Card title={`${mesaLabel({ mesa_id: mesaId, mesa_numero: mesasById.get(String(mesaId))?.numero })} — cuenta abierta`}>
-          <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+          <div
+            role="button"
+            tabIndex={0}
+            onClick={toggleCuenta}
+            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleCuenta(); } }}
+            aria-expanded={cuentaExpandida}
+            style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap', width: '100%', textAlign: 'left', cursor: 'pointer', padding: 0 }}
+            title="Presiona para ver todos los productos de la cuenta"
+          >
             <span style={{ fontSize: '1.25rem', fontWeight: 700 }}>{fmtMoney(cuentaMesa.total)}</span>
-            <span style={{ opacity: 0.7 }}>{cuentaMesa.n} pedido(s) sin cobrar. Cada pedido se suma a esta cuenta; al cobrar el último, la mesa queda libre sola.</span>
-            <Button variant="secondary" size="sm" onClick={() => navigate('/mesas')}>Volver a mesas</Button>
+            <span style={{ opacity: 0.7 }}>{cuentaMesa.n} pedido(s) sin cobrar. Toca para ver todos los productos; al cobrar el último, la mesa queda libre sola.</span>
+            <span style={{ marginLeft: 'auto', display: 'flex', gap: 8 }} onClick={(e) => e.stopPropagation()}>
+              <Button variant="secondary" size="sm" onClick={() => navigate('/mesas')}>Volver a mesas</Button>
+            </span>
           </div>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
+            <Button variant="secondary" size="sm" onClick={toggleCuenta}>
+              {cuentaExpandida ? 'Ocultar detalle' : 'Ver detalle'}
+            </Button>
+            <Button size="sm" onClick={cobrarCuenta} loading={cobrandoCuenta} disabled={cobrandoCuenta || cuentaMesa.n === 0}>
+              {cobrandoCuenta && progresoCuenta
+                ? `Cobrando ${progresoCuenta.done + 1}/${progresoCuenta.total}…`
+                : `Cobrar cuenta ${fmtMoney(cuentaMesa.total)} (${cuentaMesa.n})`}
+            </Button>
+          </div>
+          {cuentaExpandida && (
+            <div style={{ marginTop: 12 }}>
+              {cargandoDetalle ? (
+                <p style={{ opacity: 0.7 }}>Cargando productos…</p>
+              ) : productosCuenta.length > 0 ? (
+                <table className="data-table">
+                  <thead>
+                    <tr><th>Producto</th><th>Cant.</th><th style={{ textAlign: 'right' }}>Subtotal</th></tr>
+                  </thead>
+                  <tbody>
+                    {productosCuenta.map((it, i) => (
+                      <tr key={i}>
+                        <td>{it.nombre}</td>
+                        <td>{it.cantidad}</td>
+                        <td style={{ textAlign: 'right' }}>{fmtMoney(it.subtotal)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {cuentaMesa.pedidos.map((p) => (
+                    <div key={p.id_pedido} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem' }}>
+                      <span>Pedido {shortId(p.id_pedido)} · {p.mesero_nombre || 'Sin mesero'} · {p.estado}</span>
+                      <strong>{fmtMoney(p.total)}</strong>
+                    </div>
+                  ))}
+                  <span style={{ opacity: 0.7, fontSize: '0.85rem' }}>Toca Ver detalle para cargar los productos de cada pedido.</span>
+                </div>
+              )}
+            </div>
+          )}
         </Card>
       )}
 
@@ -313,8 +477,11 @@ export default function PedidosPage() {
                 </option>
               ))}
             </Select>
-            <div style={{ fontSize: '0.9rem', paddingBottom: 8 }}>
-              Total estimado: <strong>{fmtMoney(totalNuevo)}</strong>
+            <div className="field" aria-hidden="true">
+              <label aria-hidden="true">&nbsp;</label>
+              <div style={{ fontSize: '0.875rem', padding: '8px 0', border: '1px solid transparent' }}>
+                Total estimado: <strong>{fmtMoney(totalNuevo)}</strong>
+              </div>
             </div>
           </div>
 
@@ -348,18 +515,24 @@ export default function PedidosPage() {
                   required
                   style={{ width: 90 }}
                 />
-                <div style={{ minWidth: 90, fontSize: '0.9rem', paddingBottom: 8 }}>
-                  {prod ? fmtMoney(sub) : '—'}
+                <div className="field" aria-hidden="true">
+                  <label aria-hidden="true">&nbsp;</label>
+                  <div style={{ minWidth: 90, fontSize: '0.875rem', padding: '8px 0', border: '1px solid transparent' }}>
+                    {prod ? fmtMoney(sub) : '—'}
+                  </div>
                 </div>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  onClick={() => setItems(items.filter((_, j) => j !== k))}
-                  disabled={items.length === 1}
-                  title="Quitar producto"
-                >
-                  −
-                </Button>
+                <div className="field" aria-hidden="true">
+                  <label aria-hidden="true">&nbsp;</label>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    onClick={() => setItems(items.filter((_, j) => j !== k))}
+                    disabled={items.length === 1}
+                    title="Quitar producto"
+                  >
+                    −
+                  </Button>
+                </div>
               </div>
             );
           })}
@@ -431,8 +604,11 @@ export default function PedidosPage() {
                       )}
                     </RequirePermiso>
                     <RequirePermiso permiso="venta.crear">
-                      {(esAbierto(p.estado) || esListo(p.estado)) && (
-                        <Button size="sm" onClick={() => cobrar(p)} title={esAbierto(p.estado) ? 'Cobro directo (mostrador)' : 'Cobrar cuenta'}>Cobrar</Button>
+                      {(esAbierto(p.estado) || esListo(p.estado)) && !p.mesa_id && (
+                        <Button size="sm" onClick={() => cobrar(p)} title="Cobro directo (mostrador)">Cobrar</Button>
+                      )}
+                      {(esAbierto(p.estado) || esListo(p.estado)) && p.mesa_id && (
+                        <span style={{ fontSize: '0.8rem', opacity: 0.65, marginLeft: 8 }}>Se cobra en cuenta</span>
                       )}
                     </RequirePermiso>
                   </td>
