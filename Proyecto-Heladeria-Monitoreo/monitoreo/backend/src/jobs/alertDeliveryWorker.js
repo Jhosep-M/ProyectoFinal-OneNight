@@ -24,6 +24,42 @@ const CLAIM_SQL = `
    )
    RETURNING id, alerta_id, intentos`;
 
+// Envia una alerta al POS y actualiza estados (reuso por el worker y por
+// la entrega inmediata que dispara el servicio al crear/reenviar).
+async function procesarEntrega(alerta, entregaId, intentos, extra = {}) {
+  try {
+    const { ok, status } = await enviarAlertaPOS(alerta);
+    if (!ok) throw new Error(`POS respondió ${status}`);
+
+    await EntregaAlerta.update(
+      { estado: 'enviada', proximo_intento: null, ultimo_error: null },
+      { where: { id: entregaId } },
+    );
+    await Alerta.update({ estado: 'entregada' }, { where: { id: alerta.id } });
+    await registrarAuditoria({
+      entidad: 'entrega_alerta', entidadId: entregaId, accion: 'entregar',
+      detalle: { alertaId: alerta.id, status, intentos, ...extra },
+    });
+    return 'enviada';
+  } catch (e) {
+    const terminal = intentos >= env.deliveryMaxIntentos;
+    const proximo = terminal
+      ? null
+      : new Date(Date.now() + env.deliveryBackoffMinutes * intentos * 60 * 1000);
+    await EntregaAlerta.update(
+      { estado: terminal ? 'error' : 'pendiente', ultimo_error: String(e.message).slice(0, 500), proximo_intento: proximo },
+      { where: { id: entregaId } },
+    );
+    if (terminal) await Alerta.update({ estado: 'error' }, { where: { id: alerta.id } });
+    await registrarAuditoria({
+      entidad: 'entrega_alerta', entidadId: entregaId, accion: 'reintentar',
+      detalle: { alertaId: alerta.id, intentos, terminal, ...extra, error: String(e.message).slice(0, 200) },
+    });
+    logger.warn({ entregaId, intentos, terminal }, 'entrega de alerta fallida');
+    return terminal ? 'error_terminal' : 'reintento';
+  }
+}
+
 async function entregarUnaVez() {
   const [reclamadas] = await sequelize.query(CLAIM_SQL, { type: QueryTypes.SELECT, returning: true });
   const fila = Array.isArray(reclamadas) ? reclamadas[0] : reclamadas;
@@ -38,37 +74,21 @@ async function entregarUnaVez() {
     return 'error_terminal';
   }
 
-  try {
-    const { ok, status } = await enviarAlertaPOS(alerta);
-    if (!ok) throw new Error(`POS respondió ${status}`);
+  return procesarEntrega(alerta, fila.id, fila.intentos);
+}
 
-    await EntregaAlerta.update(
-      { estado: 'enviada', proximo_intento: null, ultimo_error: null },
-      { where: { id: fila.id } },
-    );
-    await Alerta.update({ estado: 'entregada' }, { where: { id: alerta.id } });
-    await registrarAuditoria({
-      entidad: 'entrega_alerta', entidadId: fila.id, accion: 'entregar',
-      detalle: { alertaId: alerta.id, status, intentos: fila.intentos },
-    });
-    return 'enviada';
-  } catch (e) {
-    const terminal = fila.intentos >= env.deliveryMaxIntentos;
-    const proximo = terminal
-      ? null
-      : new Date(Date.now() + env.deliveryBackoffMinutes * fila.intentos * 60 * 1000);
-    await EntregaAlerta.update(
-      { estado: terminal ? 'error' : 'pendiente', ultimo_error: String(e.message).slice(0, 500), proximo_intento: proximo },
-      { where: { id: fila.id } },
-    );
-    if (terminal) await Alerta.update({ estado: 'error' }, { where: { id: alerta.id } });
-    await registrarAuditoria({
-      entidad: 'entrega_alerta', entidadId: fila.id, accion: 'reintentar',
-      detalle: { alertaId: alerta.id, intentos: fila.intentos, terminal, error: String(e.message).slice(0, 200) },
-    });
-    logger.warn({ entregaId: fila.id, intentos: fila.intentos, terminal }, 'entrega de alerta fallida');
-    return terminal ? 'error_terminal' : 'reintento';
-  }
+// Entrega inmediata de UNA alerta concreta (la dispara el servicio al
+// crear/reenviar manualmente). No reemplaza a la cola: si falla, la fila
+// queda 'pendiente' y el worker la reintenta con backoff.
+async function entregarAlertaPorId(alertaId) {
+  const entrega = await EntregaAlerta.findOne({ where: { alerta_id: alertaId } });
+  if (!entrega) return 'sin_entrega';
+  const alerta = await Alerta.findByPk(alertaId);
+  if (!alerta) return 'error_terminal';
+
+  const intentos = entrega.intentos + 1;
+  await entrega.update({ intentos, proximo_intento: new Date(Date.now() + 60000) });
+  return procesarEntrega(alerta, entrega.id, intentos, { inmediata: true });
 }
 
 let timer = null;
@@ -101,4 +121,4 @@ function stop() {
   timer = null;
 }
 
-module.exports = { entregarUnaVez, start, stop };
+module.exports = { entregarUnaVez, entregarAlertaPorId, start, stop };

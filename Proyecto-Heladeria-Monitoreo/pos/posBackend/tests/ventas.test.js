@@ -29,7 +29,7 @@ describe('ventaService.crear — delegacion a registrar_venta', () => {
     sequelize.query.mockResolvedValue([[{ venta_id: VENTA_ID }]]);
   });
 
-  test('envia posicionales como (uid, turno, cliente, items, desc, pagos, NULL, canje)', async () => {
+  test('envia posicionales como (uid, turno, cliente, items, desc, pagos, idem, canje)', async () => {
     const items = [{ producto_id: PRODUCTO_ID, cantidad: 2 }];
     const pagos = [{ metodo_pago_id: METODO_ID, monto: 20.5 }];
     const out = await ventaService.crear({ turno_id: TURNO_ID, items, pagos, userId: USER_ID });
@@ -43,10 +43,11 @@ describe('ventaService.crear — delegacion a registrar_venta', () => {
       .split(')')[0]
       .split(',')
       .map((s) => s.trim().replace(/^:/, '').replace(/::jsonb$/, ''));
-    expect(positional).toEqual(['uid', 'turno', 'cliente', 'items', 'desc', 'pagos', 'NULL', 'canje']);
+    expect(positional).toEqual(['uid', 'turno', 'cliente', 'items', 'desc', 'pagos', 'idem', 'canje']);
     expect(opts.replacements.uid).toBe(USER_ID);
     expect(opts.replacements.turno).toBe(TURNO_ID);
     expect(opts.replacements.cliente).toBeNull();
+    expect(opts.replacements.idem).toBeNull();
     expect(opts.replacements.canje).toBe(0);
     expect(JSON.parse(opts.replacements.items)).toEqual(items);
     expect(JSON.parse(opts.replacements.pagos)).toEqual(pagos);
@@ -77,6 +78,19 @@ describe('ventaService.crear — delegacion a registrar_venta', () => {
     });
     const [, opts] = sequelize.query.mock.calls[0];
     expect(opts.replacements.canje).toBe(5);
+  });
+
+  test('propaga idempotencyKey cuando se informa; ausente -> NULL (compat)', async () => {
+    const key = '123e4567-e89b-12d3-a456-426614174099';
+    await ventaService.crear({
+      turno_id: TURNO_ID,
+      items: [{ producto_id: PRODUCTO_ID, cantidad: 1 }],
+      pagos: [{ metodo_pago_id: METODO_ID, monto: 10 }],
+      userId: USER_ID,
+      idempotencyKey: key,
+    });
+    const [, opts] = sequelize.query.mock.calls[0];
+    expect(opts.replacements.idem).toBe(key);
   });
 });
 

@@ -99,6 +99,45 @@ describe('VentasPage', () => {
     });
   });
 
+  it('soporta pago dividido cuya suma iguala el total', async () => {
+    mocks.mockCrearVenta.mockResolvedValue({ venta_id: 'v4' });
+    renderVentas();
+    await userEvent.click(await screen.findByText('Helado Chocolate'));
+    await userEvent.click(await screen.findByRole('button', { name: /Dividir pago/ }));
+    const monto1 = await screen.findByRole('spinbutton', { name: /Monto del pago 1/i });
+    const monto2 = await screen.findByRole('spinbutton', { name: /Monto del pago 2/i });
+    await userEvent.clear(monto1);
+    await userEvent.type(monto1, '30');
+    await userEvent.clear(monto2);
+    await userEvent.type(monto2, '20');
+    await userEvent.click(await screen.findByRole('button', { name: /Cobrar/ }));
+    await waitFor(() => {
+      expect(mocks.mockCrearVenta).toHaveBeenCalledWith(
+        expect.objectContaining({
+          pagos: [
+            { metodo_pago_id: 'm1', monto: 30 },
+            { metodo_pago_id: 'm1', monto: 20 },
+          ],
+        })
+      );
+    });
+  });
+
+  it('rechaza pago dividido cuya suma no iguala el total', async () => {
+    renderVentas();
+    await userEvent.click(await screen.findByText('Helado Chocolate'));
+    await userEvent.click(await screen.findByRole('button', { name: /Dividir pago/ }));
+    const monto1 = await screen.findByRole('spinbutton', { name: /Monto del pago 1/i });
+    const monto2 = await screen.findByRole('spinbutton', { name: /Monto del pago 2/i });
+    await userEvent.clear(monto1);
+    await userEvent.type(monto1, '10');
+    await userEvent.clear(monto2);
+    await userEvent.type(monto2, '10');
+    await userEvent.click(await screen.findByRole('button', { name: /Cobrar/ }));
+    expect(await screen.findByText(/La suma de los pagos/)).toBeInTheDocument();
+    expect(mocks.mockCrearVenta).not.toHaveBeenCalled();
+  });
+
   it('sin turno abierto muestra aviso y deshabilita cobrar', async () => {
     mocks.mockListarTurnos.mockResolvedValue([]);
     renderVentas();

@@ -2,9 +2,22 @@ const { env } = require('../config/environment');
 
 // POST de alerta hacia el POS (contrato AGENTS.md §7).
 // Timeout duro con AbortController: si el POS no responde en
-// DELIVERY_TIMEOUT_MS, lanzamos y el worker agenda reintento.
+// DELIVERY_TIMEOUT_MS (config/environment.js:16-18, default 5000ms,
+// DELIVERY_BACKOFF_MINUTES y DELIVERY_MAX_INTENTOS acompañan), lanzamos
+// y el worker agenda reintento.
 async function enviarAlertaPOS(alerta) {
   if (!env.posAlertsUrl) throw new Error('POS_ALERTS_URL no configurado');
+  // Paridad con pos/posBackend/src/integrations/monitoreoClient.js:15-17:
+  // en producción solo https (evita filtrar alertas por red insegura).
+  let protocolo;
+  try {
+    protocolo = new URL(env.posAlertsUrl).protocol;
+  } catch {
+    throw new Error('POS_ALERTS_URL inválida');
+  }
+  if (env.nodeEnv === 'production' && protocolo !== 'https:') {
+    throw new Error('POS_ALERTS_URL debe ser https en produccion');
+  }
   const controlador = new AbortController();
   const reloj = setTimeout(() => controlador.abort(), env.deliveryTimeoutMs);
   try {

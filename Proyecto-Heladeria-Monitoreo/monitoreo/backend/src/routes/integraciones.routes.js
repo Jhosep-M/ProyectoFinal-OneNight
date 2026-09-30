@@ -1,3 +1,7 @@
+// integraciones (español): CRUD JWT de credenciales API-key (crear/rotar/
+// listar integraciones POS). Auth JWT + RBAC (integracion.gestionar/
+// integracion.consultar), jamás expone la key. NO confundir con
+// integrations.routes.js (ingesta máquina-a-máquina con API key, §6).
 const { Router } = require('express');
 const { authenticateJWT } = require('../middlewares/auth.middleware');
 const { requirePermission, scopeOrg } = require('../middlewares/rbac.middleware');

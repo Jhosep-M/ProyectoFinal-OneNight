@@ -2,7 +2,7 @@ const { DataTypes } = require('sequelize');
 
 module.exports = (sequelize) => sequelize.define('AlertaPos', {
   id_alerta: { type: DataTypes.UUID, primaryKey: true, defaultValue: DataTypes.UUIDV4, field: 'id_alerta' },
-  turno_id: { type: DataTypes.UUID, allowNull: false, field: 'turno_id' },
+  turno_id: { type: DataTypes.UUID, allowNull: true, field: 'turno_id' }, // alertas Monitoreo sin turno
   tipo: { type: DataTypes.STRING, allowNull: false, field: 'tipo' },
   nivel: { type: DataTypes.STRING, allowNull: false, field: 'nivel' },
   mensaje: { type: DataTypes.TEXT, allowNull: false, field: 'mensaje' },

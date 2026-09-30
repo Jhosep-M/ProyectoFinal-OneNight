@@ -22,6 +22,7 @@ async function crear(body, userId) {
     cliente_id: parsed.cliente_id,
     descuento: parsed.descuento,
     puntos_canje: parsed.puntos_canje ?? 0,
+    idempotencyKey: parsed.idempotencyKey ?? undefined,
   });
   return { venta_id };
 }

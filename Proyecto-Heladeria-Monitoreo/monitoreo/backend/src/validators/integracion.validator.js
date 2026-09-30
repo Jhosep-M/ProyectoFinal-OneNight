@@ -8,10 +8,10 @@ const consumptionSchema = z.object({
   // cantidad minimum 0 (el 0 es legítimo: turno sin equipos activos) y sin
   // tope de decimales. La BD guarda NUMERIC(14,3): el service redondea a 3.
   cantidad: z.number().nonnegative(),
-  unidadMedida: z.string().trim().min(1).max(20),
+  unidadMedida: z.enum(['litros', 'kWh']),
   fechaConsumo: z.coerce.date(),
   origen: z.string().trim().min(1).max(30).default('POS'),
-  organizacionExternaId: z.string().uuid(),
+  organizacionExternaId: z.string().uuid().optional(),
 });
 
 module.exports = { consumptionSchema };

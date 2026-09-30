@@ -14,6 +14,7 @@ const enlaces = [
   { a: '/recomendaciones', texto: 'Recomendaciones', icono: 'tips_and_updates' },
   { a: '/reportes', texto: 'Reportes', icono: 'assessment' },
   { a: '/organizaciones', texto: 'Organizaciones', icono: 'domain' },
+  { a: '/integraciones', texto: 'Integraciones', icono: 'link' },
   { a: '/notificaciones', texto: 'Notificaciones', icono: 'mail' },
   { a: '/auditoria', texto: 'Auditoría', icono: 'history' },
 ];

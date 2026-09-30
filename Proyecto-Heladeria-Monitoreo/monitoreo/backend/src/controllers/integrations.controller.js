@@ -1,3 +1,6 @@
+// Controller de ingesta POS→Monitoreo (API key, sin JWT/RBAC).
+// Par: routes/integrations.routes.js. No mezclar con integraciones.controller.js
+// (CRUD JWT de credenciales).
 const { recibirConsumo } = require('../services/integracion.service');
 const { ok, fail } = require('../utils/response');
 

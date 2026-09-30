@@ -15,11 +15,13 @@ const { sequelize } = require('../config/database');
  * @param {string|null} [params.cliente_id] - cliente opcional
  * @param {number} [params.descuento] - descuento total (>=0, validado en PG)
  * @param {number} [params.puntos_canje] - puntos a canjear (1 punto = $1, descuenta del total antes de validar pagos; requiere cliente_id)
+ * @param {string} [params.idempotencyKey] - clave opcional; ausente -> NULL
+ *   (PG UNIQUE permite múltiples NULL; registrar_venta crea fila nueva, compat histórica).
  * @returns {Promise<string>} venta_id UUID
  */
-async function crear({ turno_id, items, pagos, userId, cliente_id, descuento, puntos_canje }) {
+async function crear({ turno_id, items, pagos, userId, cliente_id, descuento, puntos_canje, idempotencyKey }) {
   const [result] = await sequelize.query(
-    'SELECT public.registrar_venta(:uid,:turno,:cliente,:items::jsonb,:desc,:pagos::jsonb,NULL,:canje) as venta_id',
+    'SELECT public.registrar_venta(:uid,:turno,:cliente,:items::jsonb,:desc,:pagos::jsonb,:idem,:canje) as venta_id',
     {
       replacements: {
         uid: userId,
@@ -28,6 +30,7 @@ async function crear({ turno_id, items, pagos, userId, cliente_id, descuento, pu
         items: JSON.stringify(items),
         desc: descuento ?? 0,
         pagos: JSON.stringify(pagos),
+        idem: idempotencyKey || null,
         canje: puntos_canje ?? 0,
       },
     }

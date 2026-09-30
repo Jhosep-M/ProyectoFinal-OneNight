@@ -80,5 +80,5 @@ POS recibe, valida, registra en EntregaAlerta + AlertaPos
 
 ## Autenticación
 
-- **POS → Monitoreo**: JWT de Supabase (Bearer)
+- **POS → Monitoreo**: API-key propia (sha256) en `Authorization: Bearer <apiKey>` (validada contra su hash, nunca JWT de Supabase)
 - **Monitoreo → POS**: API-key (`x-api-key` header, `crypto.timingSafeEqual`)

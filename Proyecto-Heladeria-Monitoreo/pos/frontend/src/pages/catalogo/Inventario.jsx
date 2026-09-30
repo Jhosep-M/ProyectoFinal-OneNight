@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { inventarioService, proveedoresService } from '../../services/inventarioService.js';
+import { inventarioService } from '../../services/inventarioService.js';
 import { getAlertaInsumo, isStockBajo, isVencido, isPorVencer } from '../../utils/inventario.js';
 import RequirePermiso from '../../components/common/RequirePermiso.jsx';
 import Button from '../../components/common/Button.jsx';
@@ -293,29 +293,4 @@ export default function Inventario() {
   );
 }
 
-export function Proveedores() {
-  const [items, setItems] = useState([]);
-  const [form, setForm] = useState({ nombre: '', nit: '' });
-  const [error, setError] = useState('');
-  const load = () => proveedoresService.list().then(setItems).catch((e) => setError(e.message));
-  useEffect(() => { load(); }, []);
-  const create = async (ev) => {
-    ev.preventDefault();
-    try { await proveedoresService.create(form); setForm({ nombre: '', nit: '' }); load(); }
-    catch (e) { setError(e.message); }
-  };
-  return (
-    <div>
-      <h2>Proveedores</h2>
-      {error && <p role="alert">{error}</p>}
-      <RequirePermiso permiso="inventario.movimiento">
-        <form onSubmit={create}>
-          <input placeholder="Nombre" value={form.nombre} onChange={(e) => setForm({ ...form, nombre: e.target.value })} required />
-          <input placeholder="NIT (único)" value={form.nit} onChange={(e) => setForm({ ...form, nit: e.target.value })} />
-          <button type="submit">Crear</button>
-        </form>
-      </RequirePermiso>
-      <ul>{items.map((p) => <li key={p.id_proveedor}>{p.nombre} — {p.nit || 's/n'} — {p.estado}</li>)}</ul>
-    </div>
-  );
-}
+export { default as Proveedores } from './Proveedores.jsx';

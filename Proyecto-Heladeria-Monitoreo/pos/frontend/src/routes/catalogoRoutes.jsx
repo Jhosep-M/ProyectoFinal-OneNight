@@ -1,5 +1,6 @@
 import Productos, { Categorias } from '../pages/catalogo/Productos.jsx';
-import Inventario, { Proveedores } from '../pages/catalogo/Inventario.jsx';
+import Inventario from '../pages/catalogo/Inventario.jsx';
+import Proveedores from '../pages/catalogo/Proveedores.jsx';
 import RecetasPage from '../pages/catalogo/RecetasPage.jsx';
 import { Clientes, Promociones } from '../pages/catalogo/RecetasClientesPromos.jsx';
 

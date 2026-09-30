@@ -1,3 +1,6 @@
+// Controller CRUD de credenciales de integración (JWT + RBAC).
+// Par: routes/integraciones.routes.js. No mezclar con integrations.controller.js
+// (ingesta de consumo con API key, §6).
 const repo = require('../repositories/integraciones.repository');
 const service = require('../services/integraciones.service');
 const { ok, okList, fail } = require('../utils/response');

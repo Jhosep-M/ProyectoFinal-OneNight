@@ -1,11 +1,12 @@
-async function enviarConsumoAMonitoreo(payload, apiKey, url, timeoutMs = 5000) {
+async function enviarConsumoAMonitoreo(payload, apiKey, url, timeoutMs) {
   if (!url || typeof url !== 'string' || !url.trim()) {
     throw new Error('monitoreo url requerido');
   }
   if (!apiKey || typeof apiKey !== 'string' || !apiKey.trim()) {
     throw new Error('monitoreo apiKey requerido');
   }
-  const ms = Number(timeoutMs) > 0 ? Number(timeoutMs) : 5000;
+  const envMs = Number(process.env.MONITOREO_TIMEOUT_MS);
+  const ms = Number(timeoutMs) > 0 ? Number(timeoutMs) : (envMs > 0 ? envMs : 5000);
   let parsed;
   try {
     parsed = new URL(url);

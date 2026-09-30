@@ -27,18 +27,32 @@ function requirePermission(permiso) {
 }
 
 // Tras requirePermission: resuelve req.organizacionId validando membership.
+// ESTRICTO (Fase 3): sin fallback silencioso a req.orgIds[0]. Sin
+// ?organizacionId en lecturas → 400 OrganizacionId requerido.
+// Excepciones para no romper escrituras existentes:
+//  - POST con organizacionId en el body: se valida contra la membresía.
+//  - Rutas con :id (PATCH/DELETE): el controller contrasta req.orgIds con la
+//    fila real (404 uniforme si es ajena); scopeOrg solo deja pasar.
 function scopeOrg(req, res, next) {
   if (!req.orgIds?.length) return res.status(403).json({ error: 'Forbidden', detail: 'sin organización activa' });
-  const pedido = req.query?.organizacionId;
-  if (!pedido) {
-    req.organizacionId = req.orgIds[0];
+  const pedidoQuery = req.query?.organizacionId;
+  if (pedidoQuery) {
+    if (!req.orgIds.includes(pedidoQuery)) {
+      return res.status(403).json({ error: 'Forbidden', detail: 'organización fuera de tu membresía' });
+    }
+    req.organizacionId = pedidoQuery;
     return next();
   }
-  if (!req.orgIds.includes(pedido)) {
-    return res.status(403).json({ error: 'Forbidden', detail: 'organización fuera de tu membresía' });
+  if (req.params?.id) return next();
+  const pedidoBody = req.body?.organizacionId;
+  if (pedidoBody) {
+    if (!req.orgIds.includes(pedidoBody)) {
+      return res.status(403).json({ error: 'Forbidden', detail: 'organización fuera de tu membresía' });
+    }
+    req.organizacionId = pedidoBody;
+    return next();
   }
-  req.organizacionId = pedido;
-  next();
+  return res.status(400).json({ error: 'OrganizacionId requerido', detail: 'query organizacionId es obligatorio' });
 }
 
 module.exports = { requirePermission, scopeOrg };

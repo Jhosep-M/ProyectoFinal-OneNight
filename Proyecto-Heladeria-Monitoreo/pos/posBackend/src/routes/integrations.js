@@ -76,6 +76,28 @@ router.get('/cola', authorize('integracion.consultar'), async (req, res, next) =
   } catch (e) { next(e); }
 });
 
+// Alerta recibidas de Monitoreo (receptor POST /alerts de arriba las guarda en
+// alerta_pos con turno_id NULL). DEBE ir antes de GET '/:id' para no ser
+// capturada por esa ruta.
+router.get('/alerts', authorize('alerta.consultar'), async (req, res, next) => {
+  try {
+    const limit = Math.min(parseInt(req.query.limit || '50', 10), 200);
+    const offset = Math.max(parseInt(req.query.offset || '0', 10), 0);
+    const [rows] = await sequelize.query(
+      `SELECT id_alerta, tipo, nivel, mensaje, estado, creado_en
+         FROM alerta_pos
+        WHERE turno_id IS NULL
+        ORDER BY creado_en DESC
+        LIMIT :limit OFFSET :offset`,
+      { replacements: { limit, offset } },
+    );
+    const [countRows] = await sequelize.query(
+      `SELECT COUNT(*)::int AS total FROM alerta_pos WHERE turno_id IS NULL`,
+    );
+    res.json({ data: rows, total: countRows[0].total, limit, offset });
+  } catch (e) { next(e); }
+});
+
 router.get('/:id', authorize('integracion.consultar'), async (req, res, next) => {
   try {
     const [rows] = await sequelize.query(`SELECT * FROM cola_integracion WHERE id_cola=:id`, { replacements: { id: req.params.id } });

@@ -11,3 +11,8 @@ export async function listar({ organizacionId, nivel, desde, hasta }) {
 export async function acusar(id) { return api.post(`/alertas/${id}/acusar`, {}); }
 export async function resolver(id) { return api.post(`/alertas/${id}/resolver`, {}); }
 export async function reenviar(id) { return api.post(`/alertas/${id}/reenviar`, {}); }
+
+// Crea una alerta manual de demostracion y la envia al POS.
+export async function crearPrueba({ organizacionId, nivel, tipoRecurso, mensaje }) {
+  return api.post('/alertas/prueba', { organizacionId, nivel, tipoRecurso, mensaje });
+}

@@ -66,11 +66,31 @@ test('scopeOrg rechaza organización ajena con 403 (aislamiento de tenant)', asy
   assert.strictEqual(status, 403);
 });
 
-test('scopeOrg sin query usa la primera org del membership y setea organizacionId', () => {
+test('scopeOrg sin query ni body → 400 OrganizacionId requerido (sin fallback silencioso)', () => {
   const { scopeOrg } = require('../../src/middlewares/rbac.middleware');
-  const req = { orgIds: ['aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'], query: {} };
+  const req = { orgIds: ['aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'], query: {}, method: 'GET' };
+  let status; let body;
+  const res = { status(s) { status = s; return this; }, json(b) { body = b; return this; } };
+  scopeOrg(req, res, () => { throw new Error('no debe llamar next'); });
+  assert.strictEqual(status, 400);
+  assert.strictEqual(body.error, 'OrganizacionId requerido');
+});
+
+test('scopeOrg POST con organizacionId en body válido → next (compat escrituras)', () => {
+  const { scopeOrg } = require('../../src/middlewares/rbac.middleware');
+  const req = { orgIds: ['aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'], query: {}, body: { organizacionId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa' }, method: 'POST' };
   let nextLlamado = false;
-  scopeOrg(req, res = { status() { return this; }, json() { return this; } }, () => { nextLlamado = true; });
+  const res = { status() { return this; }, json() { return this; } };
+  scopeOrg(req, res, () => { nextLlamado = true; });
   assert.strictEqual(nextLlamado, true);
   assert.strictEqual(req.organizacionId, 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa');
+});
+
+test('scopeOrg ruta :id sin query deja pasar (el controller valida membership)', () => {
+  const { scopeOrg } = require('../../src/middlewares/rbac.middleware');
+  const req = { orgIds: ['aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'], query: {}, params: { id: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb' } };
+  let nextLlamado = false;
+  const res = { status() { return this; }, json() { return this; } };
+  scopeOrg(req, res, () => { nextLlamado = true; });
+  assert.strictEqual(nextLlamado, true);
 });

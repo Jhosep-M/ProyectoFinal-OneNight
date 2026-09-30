@@ -6,6 +6,7 @@ import Dashboard from '../views/Dashboard';
 import Consumo from '../views/Consumo';
 import Alertas from '../views/Alertas';
 import Organizaciones from '../views/Organizaciones';
+import Integraciones from '../views/Integraciones';
 import Medidores from '../views/Medidores';
 import Umbrales from '../views/Umbrales';
 import Metas from '../views/Metas';
@@ -25,6 +26,7 @@ export default function AppRoutes() {
           <Route path="/consumo" element={<Consumo />} />
           <Route path="/alertas" element={<Alertas />} />
           <Route path="/organizaciones" element={<Organizaciones />} />
+          <Route path="/integraciones" element={<Integraciones />} />
           <Route path="/medidores" element={<Medidores />} />
           <Route path="/umbrales" element={<Umbrales />} />
           <Route path="/metas" element={<Metas />} />

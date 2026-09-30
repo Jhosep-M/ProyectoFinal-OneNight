@@ -13,4 +13,8 @@ async function listar(organizacionId, { desde, hasta, nivel }) {
   return Alerta.findAll({ where, order: [['fecha_generacion', 'DESC']], limit: 200 });
 }
 
-module.exports = { listar };
+async function obtenerPorId(id) {
+  return Alerta.findByPk(id);
+}
+
+module.exports = { listar, obtenerPorId };

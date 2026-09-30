@@ -575,6 +575,25 @@ paths:
         '400': { $ref: '#/components/responses/SolicitudInvalida' }
         '401': { $ref: '#/components/responses/NoAutorizado' }
         '403': { $ref: '#/components/responses/Prohibido' }
+  /reportes/auditoria:
+    get:
+      tags: [Reportes]
+      summary: Listar auditoría de cambios (permiso reporte.consultar, scope tenant estricto)
+      description: >
+        Lee auditoria_cambio (sin columna organizacion_id en DDL v1: filtro
+        best-effort por detalle JSON + usuario miembro). Sin ?organizacionId
+        responde 400 OrganizacionId requerido.
+      parameters:
+        - $ref: '#/components/parameters/OrganizacionIdQueryRequired'
+        - $ref: '#/components/parameters/DesdeQuery'
+        - $ref: '#/components/parameters/HastaQuery'
+        - $ref: '#/components/parameters/PageQuery'
+        - $ref: '#/components/parameters/LimitQuery'
+      responses:
+        '200': { description: Registros de auditoría paginados }
+        '400': { $ref: '#/components/responses/SolicitudInvalida' }
+        '401': { $ref: '#/components/responses/NoAutorizado' }
+        '403': { $ref: '#/components/responses/Prohibido' }
   # ---------------------------------------------------------- Integraciones
   /integraciones:
     get:
@@ -679,7 +698,7 @@ components:
       name: organizacionId
       required: false
       schema: { type: string, format: uuid }
-      description: Aislamiento de tenant (scopeOrg)
+      description: Aislamiento de tenant (scopeOrg estricto Fase 3: lecturas sin query responden 400 OrganizacionId requerido; escrituras aceptan organizacionId en body y rutas :id validan por membresía)
     OrganizacionIdQueryRequired:
       in: query
       name: organizacionId
@@ -738,16 +757,16 @@ components:
   schemas:
     ConsumoExterno:
       type: object
-      required: [consumoExternoId, idempotencyKey, tipoRecurso, cantidad, unidadMedida, fechaConsumo]
+      required: [consumoExternoId, tipoRecurso, cantidad, unidadMedida, fechaConsumo]
       properties:
         consumoExternoId: { type: string, format: uuid }
-        idempotencyKey: { type: string, minLength: 8, maxLength: 120 }
+        idempotencyKey: { type: string, minLength: 8, maxLength: 150, description: 'Opcional: si se omite se usa consumoExternoId como fallback (idempotencia)' }
         tipoRecurso: { type: string, enum: [agua, energia] }
-        cantidad: { type: number, exclusiveMinimum: 0, description: 'Positiva, máximo 3 decimales' }
-        unidadMedida: { type: string, minLength: 1, maxLength: 20 }
+        cantidad: { type: number, minimum: 0, description: 'Mínimo 0 (el 0 es legítimo: turno sin equipos activos), máximo 3 decimales' }
+        unidadMedida: { type: string, enum: [litros, kWh] }
         fechaConsumo: { type: string, format: date-time }
         origen: { type: string, minLength: 1, maxLength: 30, default: POS, example: POS }
-        organizacionExternaId: { type: string, format: uuid, description: 'Opcional: si se envía debe coincidir con la organización de la integración' }
+        organizacionExternaId: { type: string, format: uuid, description: 'opcional; si se omite se deriva de la integración (API-key)' }
     Umbral:
       type: object
       required: [organizacionId, tipoRecurso, nivel, limiteInferior, limiteSuperior]

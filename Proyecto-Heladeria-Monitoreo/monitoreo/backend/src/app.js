@@ -50,10 +50,13 @@ function createApp() {
   const { notificacionesRouter } = require('./routes/notificaciones.routes');
   const { reportesRouter } = require('./routes/reportes.routes');
   const { integracionesRouter } = require('./routes/integraciones.routes');
+  const { auditoriaRouter } = require('./routes/auditoria.routes');
   app.use('/api/v1/consumo', consumoRouter);
   app.use('/api/v1/alertas', alertasRouter);
   app.use('/api/v1/notificaciones', notificacionesRouter);
   app.use('/api/v1/reportes', reportesRouter);
+  // Frontend (services/auditoriaService.js) pide GET /api/v1/reportes/auditoria.
+  app.use('/api/v1/reportes/auditoria', auditoriaRouter);
   app.use('/api/v1/integraciones', integracionesRouter);
 
   app.use(notFound);

@@ -3,9 +3,11 @@ import { motion } from 'framer-motion';
 import Card from '../../components/ui/Card.jsx';
 import Badge from '../../components/ui/Badge.jsx';
 import Skeleton from '../../components/ui/Skeleton.jsx';
+import EmptyState from '../../components/ui/EmptyState.jsx';
 import { formatCurrency, formatTime } from '../../utils/format.js';
 import { listarVentas } from '../../services/ventasService.js';
 import { listarMesas } from '../../services/mesasService.js';
+import { listarAlertasMonitoreo } from '../../services/alertasService.js';
 
 const container = {
   hidden: { opacity: 0 },
@@ -25,6 +27,14 @@ const ESTADOS_VENTA = {
   anulado: { nombre: 'Anulado', variante: 'danger' },
 };
 
+// Nivel de alerta_pos para alertas de Monitoreo (NIVEL_DB en
+// posBackend/src/routes/integrations.js): bajo|medio|critico.
+const NIVEL_ALERTA = {
+  bajo: { nombre: 'Bajo', variante: 'info' },
+  medio: { nombre: 'Advertencia', variante: 'warning' },
+  critico: { nombre: 'Crítico', variante: 'danger' },
+};
+
 // Las filas del backend usan id_venta, total como string (NUMERIC) y
 // estado 'activa'/'anulada'. Se normaliza para la UI.
 const normVenta = (v) => ({
@@ -37,6 +47,7 @@ const normVenta = (v) => ({
 export default function DashboardPage() {
   const [ventas, setVentas] = useState([]);
   const [mesas, setMesas] = useState([]);
+  const [alertas, setAlertas] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -44,12 +55,14 @@ export default function DashboardPage() {
     const fetchData = async () => {
       try {
         setLoading(true);
-        const [ventasData, mesasData] = await Promise.all([
+        const [ventasData, mesasData, alertasData] = await Promise.all([
           listarVentas(),
           listarMesas(),
+          listarAlertasMonitoreo({ limit: 10 }).catch(() => ({ data: [] })),
         ]);
         setVentas((ventasData || []).map(normVenta));
         setMesas(mesasData || []);
+        setAlertas(alertasData?.data || []);
       } catch (err) {
         setError('No se pudieron cargar los datos del dashboard');
       } finally {
@@ -176,6 +189,51 @@ export default function DashboardPage() {
               </tbody>
             </table>
           </div>
+        </Card>
+      </motion.div>
+
+      <motion.div variants={item} className="mt-3">
+        <Card>
+          <div className="d-flex justify-content-between align-items-center mb-3">
+            <h5 className="mb-0" style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>
+              Alertas de Monitoreo
+            </h5>
+            <Badge variant={alertas.length ? 'warning' : 'secondary'}>{alertas.length} alertas</Badge>
+          </div>
+          {alertas.length === 0 ? (
+            <EmptyState
+              icon="bi-bell-slash"
+              title="Sin alertas de Monitoreo"
+              description="Cuando Monitoreo detecte un exceso de consumo, la alerta aparecerá aquí."
+            />
+          ) : (
+            <div className="table-responsive">
+              <table className="table table-hover mb-0">
+                <thead>
+                  <tr>
+                    <th>Hora</th>
+                    <th>Nivel</th>
+                    <th>Recurso</th>
+                    <th>Mensaje</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {alertas.map((a) => (
+                    <tr key={a.id_alerta}>
+                      <td className="text-muted">{formatTime(a.creado_en)}</td>
+                      <td>
+                        <Badge variant={NIVEL_ALERTA[a.nivel]?.variante || 'secondary'}>
+                          {NIVEL_ALERTA[a.nivel]?.nombre || a.nivel}
+                        </Badge>
+                      </td>
+                      <td className="text-capitalize">{a.tipo}</td>
+                      <td>{a.mensaje}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </Card>
       </motion.div>
     </motion.div>

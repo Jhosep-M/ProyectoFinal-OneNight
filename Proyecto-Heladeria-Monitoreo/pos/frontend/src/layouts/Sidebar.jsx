@@ -9,6 +9,7 @@ const GRUPOS = [
     enlaces: [
       { to: '/dashboard', texto: 'Dashboard', icono: 'bi-grid', permiso: null },
       { to: '/ventas', texto: 'Ventas', icono: 'bi-cart', permiso: 'venta.consultar' },
+      { to: '/devoluciones', texto: 'Devoluciones', icono: 'bi-arrow-counterclockwise', permiso: 'devolucion.consultar' },
       { to: '/caja', texto: 'Caja', icono: 'bi-cash-register', permiso: 'turno.consultar' },
       { to: '/pedidos', texto: 'Pedidos', icono: 'bi-clipboard', permiso: 'pedido.consultar' },
       { to: '/mesas', texto: 'Mesas', icono: 'bi-grid-3x3', permiso: 'mesa.consultar' },
@@ -19,6 +20,7 @@ const GRUPOS = [
     enlaces: [
       { to: '/catalogo/productos', texto: 'Productos', icono: 'bi-box', permiso: 'producto.consultar' },
       { to: '/catalogo/inventario', texto: 'Inventario', icono: 'bi-boxes', permiso: 'inventario.consultar' },
+      { to: '/catalogo/proveedores', texto: 'Proveedores', icono: 'bi-truck', permiso: 'inventario.consultar' },
       { to: '/catalogo/recetas', texto: 'Recetas', icono: 'bi-journal-text', permiso: 'producto.consultar' },
       { to: '/catalogo/clientes', texto: 'Clientes', icono: 'bi-people', permiso: 'cliente.consultar' },
       { to: '/catalogo/promociones', texto: 'Promociones', icono: 'bi-tag', permiso: 'promocion.consultar' },

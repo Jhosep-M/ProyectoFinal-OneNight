@@ -15,7 +15,7 @@ function crearPosMock(handler) {
     req.on('end', () => {
       server.peticiones.push({
         url: req.url,
-        auth: req.headers.authorization,
+        apiKey: req.headers['x-api-key'],
         cuerpo: JSON.parse(cuerpo || '{}'),
       });
       handler(req, res, server.peticiones.length);
@@ -65,7 +65,7 @@ dbTest('Review #5: entrega exitosa → enviada, alerta entregada, payload y Bear
   assert.strictEqual(r, 'enviada');
 
   const p = posMock.peticiones[0];
-  assert.strictEqual(p.auth, 'Bearer clave-pos-test');
+  assert.strictEqual(p.apiKey, 'clave-pos-test');
   assert.strictEqual(p.cuerpo.alertaId, alertaId);
   assert.strictEqual(p.cuerpo.nivel, 'critico');
   assert.strictEqual(p.cuerpo.tipoRecurso, 'agua');
