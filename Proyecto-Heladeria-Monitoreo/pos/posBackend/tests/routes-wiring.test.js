@@ -59,7 +59,9 @@ describe('routes sales -> ventaService', () => {
       items: [{ producto_id: UUID('b'), cantidad: 2 }],
       pagos: [{ metodo_pago_id: UUID('c'), monto: 15 }],
       userId: 'u-test',
+      cliente_id: undefined,
       descuento: 5,
+      puntos_canje: 0,
     });
   });
 
@@ -97,6 +99,6 @@ describe('routes shifts -> turnoService', () => {
     turnoService.cerrar.mockResolvedValueOnce({ exito: true, diferencia: 0 });
     const res = await request(app).post(`/api/v1/shifts/${UUID('e')}/cerrar`).send({ monto_final_real: 120 });
     expect(res.status).toBe(200);
-    expect(turnoService.cerrar).toHaveBeenCalledWith(UUID('e'), 120);
+    expect(turnoService.cerrar).toHaveBeenCalledWith(UUID('e'), 120, 'u-test');
   });
 });

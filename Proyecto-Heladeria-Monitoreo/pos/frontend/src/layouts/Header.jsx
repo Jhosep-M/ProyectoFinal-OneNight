@@ -15,11 +15,17 @@ export default function Header({ title, breadcrumb }) {
       </div>
       <div className="header-actions">
         <button
-          className="btn btn-sm btn-outline-secondary position-relative"
+          className="btn btn-ghost btn-sm position-relative"
           title="Ver auditoría"
+          aria-label="Ver auditoría"
           onClick={() => navigate('/auditoria')}
         >
           <i className="bi bi-bell"></i>
+          <span
+            className="position-absolute rounded-circle"
+            aria-hidden="true"
+            style={{ width: '8px', height: '8px', background: '#8B6914', top: '8px', right: '10px', border: '1.5px solid #fff' }}
+          />
         </button>
         <Avatar name={userName} size="md" />
       </div>

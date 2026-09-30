@@ -23,6 +23,7 @@ export default function Reportes() {
   useEffect(() => { cargar(); }, [cargar]);
 
 <<<<<<< HEAD
+<<<<<<< HEAD
   return (
     <section>
       <h2>Reportes</h2>
@@ -47,13 +48,34 @@ export default function Reportes() {
   return (
     <section>
       <h2>Reportes</h2>
+=======
+  function descargarCSV() {
+    const filas = reporte?.porRecurso ?? [];
+    const head = 'tipo,total,registros\n';
+    const body = filas.map((r) => `${r.tipo},${r.total},${r.registros}`).join('\n');
+    const blob = new Blob([head + body], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'reporte-consumo.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  return (
+    <section>
+      <h2>Reportes</h2>
+>>>>>>> develop
       <form className="formulario" onSubmit={(e) => e.preventDefault()}>
         <label>Desde <input type="date" value={rango.desde} onChange={(e) => setRango({ ...rango, desde: e.target.value })} /></label>
         <label>Hasta <input type="date" value={rango.hasta} onChange={(e) => setRango({ ...rango, hasta: e.target.value })} /></label>
         <button type="button" onClick={descargarCSV}>Descargar CSV</button>{' '}
         <button type="button" onClick={() => window.print()}>PDF / Imprimir</button>
       </form>
+<<<<<<< HEAD
 >>>>>>> origin/feature/Airton-auxilio
+=======
+>>>>>>> develop
       {error && <p className="error">{error}</p>}
       {reporte && (
         <div className="tarjetas">

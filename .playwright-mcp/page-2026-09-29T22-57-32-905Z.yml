@@ -1,0 +1,12 @@
+- generic [ref=f3e4]:
+  - heading "Iniciar sesión" [level=1] [ref=f3e5]
+  - paragraph [ref=f3e6]: Monitoreo de agua y energía
+  - generic [ref=f3e7]:
+    - text: Correo
+    - textbox "Correo" [ref=f3e8]
+  - generic [ref=f3e9]:
+    - text: Contraseña
+    - generic [ref=f3e10]:
+      - textbox "Contraseña Mostrar contraseña" [ref=f3e11]
+      - button "Mostrar contraseña" [ref=f3e12] [cursor=pointer]
+  - button "Entrar" [ref=f3e17] [cursor=pointer]

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { listarClientes, verCliente, crearCliente, actualizarCliente } from '../../services/customersService.js';
+import { listarClientes, verCliente, verVentasCliente, crearCliente, actualizarCliente } from '../../services/customersService.js';
 import Button from '../../components/common/Button.jsx';
 import Card from '../../components/common/Card.jsx';
 import Badge from '../../components/common/Badge.jsx';
@@ -7,6 +7,8 @@ import Alert from '../../components/alerts/Alert.jsx';
 import Input from '../../components/common/Input.jsx';
 import Select from '../../components/common/Select.jsx';
 import RequirePermiso from '../../components/common/RequirePermiso.jsx';
+import DetalleCliente from '../../components/clientes/DetalleCliente.jsx';
+import AjustePuntosModal from '../../components/clientes/AjustePuntosModal.jsx';
 
 const empty = { nombre: '', telefono: '', correo: '', puntos_fidelidad: 0, estado: 'activo' };
 
@@ -16,25 +18,53 @@ export default function ClientesPage() {
   const [form, setForm] = useState(empty);
   const [editando, setEditando] = useState(null);
   const [detalle, setDetalle] = useState(null);
+  const [ventas, setVentas] = useState([]);
+  const [ajusteCliente, setAjusteCliente] = useState(null);
   const [alert, setAlert] = useState(null);
+  const [q, setQ] = useState('');
+  const [filtroEstado, setFiltroEstado] = useState('');
 
   const recargar = async () => {
     setLoading(true);
-    try { setClientes(await listarClientes()); }
-    catch (e) { setAlert({ tone: 'error', message: e.message }); }
-    finally { setLoading(false); }
+    try {
+      const params = { limit: 20, offset: 0 };
+      if (q) params.q = q;
+      if (filtroEstado) params.estado = filtroEstado;
+      const data = await listarClientes(params);
+      setClientes(Array.isArray(data) ? data : (data?.data ?? data?.items ?? []));
+    } catch (e) {
+      setAlert({ tone: 'error', message: e.message });
+    } finally {
+      setLoading(false);
+    }
   };
-  useEffect(() => { recargar(); }, []);
+
+  useEffect(() => {
+    const t = setTimeout(() => { recargar(); }, 300);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [q, filtroEstado]);
+
+  const normalizar = (v) => {
+    const t = (v ?? '').trim();
+    return t === '' ? null : t;
+  };
 
   const guardar = async (e) => {
     e.preventDefault();
     setAlert(null);
     try {
+      const payload = {
+        nombre: form.nombre.trim(),
+        telefono: normalizar(form.telefono),
+        correo: normalizar(form.correo),
+        estado: form.estado,
+      };
       if (editando) {
-        await actualizarCliente(editando, form);
+        await actualizarCliente(editando, payload);
         setAlert({ tone: 'success', message: 'Cliente actualizado' });
       } else {
-        await crearCliente(form);
+        await crearCliente(payload);
         setAlert({ tone: 'success', message: 'Cliente creado' });
       }
       setForm(empty);
@@ -49,7 +79,21 @@ export default function ClientesPage() {
   };
 
   const ver = async (id) => {
-    try { setDetalle(await verCliente(id)); } catch (e) { setAlert({ tone: 'error', message: e.message }); }
+    try {
+      const [d, v] = await Promise.all([
+        verCliente(id),
+        Promise.resolve(verVentasCliente(id)).catch(() => []),
+      ]);
+      setDetalle(d);
+      setVentas(Array.isArray(v) ? v : (v?.data ?? v?.items ?? []));
+    } catch (e) { setAlert({ tone: 'error', message: e.message }); }
+  };
+
+  const trasAjuste = async () => {
+    const id = ajusteCliente?.id_cliente ?? detalle?.id_cliente;
+    setAjusteCliente(null);
+    await recargar();
+    if (id) await ver(id);
   };
 
   const cancelar = () => { setEditando(null); setForm(empty); };
@@ -62,14 +106,14 @@ export default function ClientesPage() {
       <RequirePermiso permiso="cliente.gestionar">
         <Card title={editando ? 'Editar cliente' : 'Nuevo cliente'}>
           <form onSubmit={guardar}>
-            <div className="row">
-              <Input placeholder="nombre" value={form.nombre} onChange={(e) => setForm({ ...form, nombre: e.target.value })} required />
-              <Input placeholder="teléfono" value={form.telefono} onChange={(e) => setForm({ ...form, telefono: e.target.value })} />
-              <Input placeholder="correo" type="email" value={form.correo} onChange={(e) => setForm({ ...form, correo: e.target.value })} />
+            <div className="row-inline">
+              <Input label="Nombre" placeholder="Nombre" value={form.nombre} onChange={(e) => setForm({ ...form, nombre: e.target.value })} required />
+              <Input label="Teléfono" placeholder="Teléfono" value={form.telefono} onChange={(e) => setForm({ ...form, telefono: e.target.value })} />
+              <Input label="Correo" placeholder="Correo" type="email" value={form.correo} onChange={(e) => setForm({ ...form, correo: e.target.value })} />
             </div>
-            <div className="row">
-              <Input type="number" min={0} placeholder="puntos" value={form.puntos_fidelidad} onChange={(e) => setForm({ ...form, puntos_fidelidad: e.target.value })} style={{ width: 90 }} />
-              <Select value={form.estado} onChange={(e) => setForm({ ...form, estado: e.target.value })}>
+            <div className="row-inline">
+              {editando && <p>Puntos actuales: {form.puntos_fidelidad}</p>}
+              <Select label="Estado" value={form.estado} onChange={(e) => setForm({ ...form, estado: e.target.value })}>
                 <option value="activo">activo</option>
                 <option value="inactivo">inactivo</option>
               </Select>
@@ -81,8 +125,19 @@ export default function ClientesPage() {
       </RequirePermiso>
 
       <Card title="Clientes">
+        <div className="row-inline">
+          <Input label="Buscar" placeholder="Buscar" value={q} onChange={(e) => setQ(e.target.value)} />
+          <Select label="Filtrar por estado" value={filtroEstado} onChange={(e) => setFiltroEstado(e.target.value)}>
+            <option value="">Todos</option>
+            <option value="activo">activo</option>
+            <option value="inactivo">inactivo</option>
+          </Select>
+          <Button type="button" variant="secondary" onClick={recargar}>Recargar</Button>
+        </div>
         {loading ? (
           <p>Cargando…</p>
+        ) : clientes.length === 0 ? (
+          <p>Sin clientes — crea el primero</p>
         ) : (
           <table className="data-table">
             <thead><tr><th>Nombre</th><th>Teléfono</th><th>Correo</th><th>Puntos</th><th>Estado</th><th></th></tr></thead>
@@ -97,7 +152,8 @@ export default function ClientesPage() {
                   <td>
                     <Button size="sm" variant="ghost" onClick={() => ver(c.id_cliente)}>Ver</Button>{' '}
                     <RequirePermiso permiso="cliente.gestionar">
-                      <Button size="sm" variant="secondary" onClick={() => editar(c)}>Editar</Button>
+                      <Button size="sm" variant="secondary" onClick={() => editar(c)}>Editar</Button>{' '}
+                      <Button size="sm" variant="secondary" onClick={() => setAjusteCliente(c)}>Ajustar</Button>
                     </RequirePermiso>
                   </td>
                 </tr>
@@ -108,23 +164,11 @@ export default function ClientesPage() {
       </Card>
 
       {detalle && (
-        <Card title={`Detalle: ${detalle.nombre}`}>
-          <p>Puntos: {detalle.puntos_fidelidad}</p>
-          <h4>Movimientos de puntos</h4>
-          <table className="data-table">
-            <thead><tr><th>Fecha</th><th>Tipo</th><th>Puntos</th><th>Motivo</th></tr></thead>
-            <tbody>
-              {(detalle.movimientos_puntos || []).map((m) => (
-                <tr key={m.id_movimiento}>
-                  <td>{new Date(m.fecha).toLocaleString()}</td>
-                  <td>{m.tipo}</td>
-                  <td>{m.puntos}</td>
-                  <td>{m.motivo || '—'}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </Card>
+        <DetalleCliente detalle={detalle} ventas={ventas} onClose={() => { setDetalle(null); setVentas([]); }} />
+      )}
+
+      {ajusteCliente && (
+        <AjustePuntosModal cliente={ajusteCliente} onClose={() => setAjusteCliente(null)} onDone={trasAjuste} />
       )}
     </div>
   );

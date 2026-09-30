@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import Sidebar from './Sidebar.jsx';
 import Header from './Header.jsx';
@@ -7,7 +8,7 @@ const TITULOS = {
   '/ventas': { title: 'Punto de Venta', breadcrumb: 'Nueva venta' },
   '/caja': { title: 'Caja / Turno Actual', breadcrumb: 'Turno Mañana' },
   '/pedidos': { title: 'Pedidos', breadcrumb: 'Gestión de pedidos' },
-  '/mesas': { title: 'Gestión de Salón y Mesas', breadcrumb: '12/20 mesas ocupadas' },
+  '/mesas': { title: 'Gestión de Salón y Mesas', breadcrumb: 'Cargando mesas…' },
   '/catalogo/productos': { title: 'Productos', breadcrumb: 'Catálogo' },
   '/catalogo/inventario': { title: 'Inventario', breadcrumb: 'Catálogo' },
   '/catalogo/recetas': { title: 'Recetas', breadcrumb: 'Catálogo' },
@@ -20,7 +21,9 @@ const TITULOS = {
 
 export default function MainLayout() {
   const location = useLocation();
-  const { title, breadcrumb } = TITULOS[location.pathname] || { title: 'Helados Pariente', breadcrumb: '' };
+  const [override, setOverride] = useState(null);
+  const base = TITULOS[location.pathname] || { title: 'Helados Pariente', breadcrumb: '' };
+  const { title, breadcrumb } = { ...base, ...(override || {}) };
 
   return (
     <div className="layout">
@@ -28,7 +31,7 @@ export default function MainLayout() {
       <div className="content">
         <Header title={title} breadcrumb={breadcrumb} />
         <main className="main-content">
-          <Outlet />
+          <Outlet context={{ setHeaderOverride: setOverride }} />
         </main>
       </div>
     </div>

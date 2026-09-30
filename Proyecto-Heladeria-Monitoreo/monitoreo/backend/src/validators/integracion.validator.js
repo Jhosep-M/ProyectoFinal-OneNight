@@ -4,8 +4,10 @@ const consumptionSchema = z.object({
   consumoExternoId: z.string().uuid(),
   idempotencyKey: z.string().trim().min(8).max(150).optional(),
   tipoRecurso: z.enum(['agua', 'energia']),
-  cantidad: z.number().positive()
-    .refine((v) => Math.abs(v * 1000 - Math.round(v * 1000)) < 1e-9, { message: 'máximo 3 decimales' }),
+  // Contrato shared/contracts/pos-to-monitoring/consumption.schema.json:
+  // cantidad minimum 0 (el 0 es legítimo: turno sin equipos activos) y sin
+  // tope de decimales. La BD guarda NUMERIC(14,3): el service redondea a 3.
+  cantidad: z.number().nonnegative(),
   unidadMedida: z.string().trim().min(1).max(20),
   fechaConsumo: z.coerce.date(),
   origen: z.string().trim().min(1).max(30).default('POS'),

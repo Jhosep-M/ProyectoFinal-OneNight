@@ -8,9 +8,15 @@ export async function listar({ organizacionId, nivel, desde, hasta }) {
   return api.get(`/alertas?${q}`);
 }
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
+=======
+>>>>>>> develop
 
 export async function acusar(id) { return api.post(`/alertas/${id}/acusar`, {}); }
 export async function resolver(id) { return api.post(`/alertas/${id}/resolver`, {}); }
 export async function reenviar(id) { return api.post(`/alertas/${id}/reenviar`, {}); }
+<<<<<<< HEAD
 >>>>>>> origin/feature/Airton-auxilio
+=======
+>>>>>>> develop

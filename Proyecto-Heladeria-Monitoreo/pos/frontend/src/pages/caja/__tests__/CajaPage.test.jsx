@@ -6,14 +6,15 @@ import { AuthProvider } from '../../../context/AuthContext.jsx';
 import CajaPage from '../CajaPage.jsx';
 
 const mocks = vi.hoisted(() => ({
-  mockListarTurnos: vi.fn(),
+  mockListarMisTurnos: vi.fn(),
   mockListarVentas: vi.fn(),
   mockAbrirTurno: vi.fn(),
   mockCerrarTurno: vi.fn(),
 }));
 
 vi.mock('../../../services/cajaService.js', () => ({
-  listarTurnos: mocks.mockListarTurnos,
+  listarMisTurnos: mocks.mockListarMisTurnos,
+  listarVentas: undefined,
   abrirTurno: mocks.mockAbrirTurno,
   cerrarTurno: mocks.mockCerrarTurno,
 }));
@@ -22,7 +23,10 @@ vi.mock('../../../services/ventasService.js', () => ({
   listarVentas: mocks.mockListarVentas,
 }));
 
-vi.mock('../../../context/AuthContext.jsx', () => ({ useAuth: () => ({ session: { user: { email: 'c@h.com' } }, loading: false, signOut: vi.fn() }), AuthProvider: ({ children }) => children }));
+vi.mock('../../../context/AuthContext.jsx', () => ({
+  useAuth: () => ({ session: { user: { id: 'u-mio', email: 'c@h.com' } }, loading: false, signOut: vi.fn() }),
+  AuthProvider: ({ children }) => children,
+}));
 
 function renderCaja() {
   return render(
@@ -34,41 +38,54 @@ function renderCaja() {
   );
 }
 
-describe('CajaPage', () => {
+describe('CajaPage (Solo mío)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mocks.mockListarTurnos.mockResolvedValue([
-      { id_turno: 't1', fecha_apertura: '2026-09-28T08:00:00Z', monto_inicial: 100, estado: 'abierto' },
+    mocks.mockListarMisTurnos.mockResolvedValue([
+      { id_turno: 't1', usuario_id: 'u-mio', fecha_apertura: '2026-09-28T08:00:00Z', monto_inicial: 100, estado: 'abierto', cajero_email: 'c@h.com' },
     ]);
     mocks.mockListarVentas.mockResolvedValue([]);
   });
 
-  it('carga y muestra turno activo', async () => {
+  it('carga y muestra mi turno activo con dueño', async () => {
     renderCaja();
     expect(await screen.findByText('Turno Actual')).toBeInTheDocument();
-    expect(screen.getByText('abierto')).toBeInTheDocument();
-    expect(screen.getByText(/100/)).toBeInTheDocument();
+    expect(screen.getAllByText(/abierto/i).length).toBeGreaterThan(0);
+    expect(screen.getByText(/c@h\.com/)).toBeInTheDocument();
   });
 
-  it('cerrar turno llama al servicio con el id del turno', async () => {
+  it('cerrar turno abre modal y confirma con monto contado', async () => {
     mocks.mockCerrarTurno.mockResolvedValue({});
-    mocks.mockListarTurnos
+    mocks.mockListarMisTurnos
       .mockResolvedValueOnce([
-        { id_turno: 't1', fecha_apertura: '2026-09-28T08:00:00Z', monto_inicial: 100, estado: 'abierto' },
+        { id_turno: 't1', usuario_id: 'u-mio', fecha_apertura: '2026-09-28T08:00:00Z', monto_inicial: 100, estado: 'abierto' },
       ])
       .mockResolvedValue([]);
     renderCaja();
     await userEvent.click(await screen.findByRole('button', { name: /Cerrar Turno/ }));
+    const input = await screen.findByLabelText(/Efectivo contado/i);
+    await userEvent.clear(input);
+    await userEvent.type(input, '120');
+    await userEvent.click(screen.getByRole('button', { name: /Confirmar cierre/ }));
     await waitFor(() => {
-      expect(mocks.mockCerrarTurno).toHaveBeenCalledWith('t1', expect.any(Number));
+      expect(mocks.mockCerrarTurno).toHaveBeenCalledWith('t1', { monto_final_real: 120 });
     });
   });
 
-  it('abrir turno llama al servicio cuando no hay turno activo', async () => {
-    mocks.mockListarTurnos.mockResolvedValue([]);
+  it('sin turno propio muestra abrir aunque haya ajenos (no los lista aquí)', async () => {
+    mocks.mockListarMisTurnos.mockResolvedValue([]);
     mocks.mockAbrirTurno.mockResolvedValue({ id_turno: 't2' });
     renderCaja();
     expect(await screen.findByText('No hay un turno activo')).toBeInTheDocument();
+    expect(screen.queryByText(/solo lectura/i)).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Cerrar como admin/ })).not.toBeInTheDocument();
+  });
+
+  it('abrir turno llama al servicio', async () => {
+    mocks.mockListarMisTurnos.mockResolvedValue([]);
+    mocks.mockAbrirTurno.mockResolvedValue({ id_turno: 't2' });
+    renderCaja();
+    await screen.findByText('No hay un turno activo');
     await userEvent.type(screen.getByPlaceholderText('monto inicial'), '200');
     await userEvent.click(screen.getByRole('button', { name: 'Abrir' }));
     await waitFor(() => {
@@ -77,7 +94,7 @@ describe('CajaPage', () => {
   });
 
   it('muestra error cuando abrir falla', async () => {
-    mocks.mockListarTurnos.mockResolvedValue([]);
+    mocks.mockListarMisTurnos.mockResolvedValue([]);
     mocks.mockAbrirTurno.mockRejectedValueOnce(new Error('Ya hay un turno abierto'));
     renderCaja();
     await screen.findByText('No hay un turno activo');

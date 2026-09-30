@@ -1,4 +1,5 @@
 <<<<<<< HEAD
+<<<<<<< HEAD
 :root { font-family: system-ui, sans-serif; color: #14213d; }
 body { margin: 0; background: #f7f9fb; }
 .layout { min-height: 100vh; display: flex; flex-direction: column; }
@@ -24,6 +25,8 @@ body { margin: 0; background: #f7f9fb; }
 .tarjetas { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; }
 .tarjeta { background: #fff; padding: 1rem; border-radius: 8px; }
 =======
+=======
+>>>>>>> develop
 :root {
   font-family: Inter, -apple-system, "Segoe UI", Roboto, Arial, Helvetica, sans-serif;
   color-scheme: light;
@@ -772,4 +775,7 @@ select:focus-visible {
   .btn { font-size: 11px; padding: 6px 10px; }
   .statusbar { font-size: 10px; }
 }
+<<<<<<< HEAD
 >>>>>>> origin/feature/Airton-auxilio
+=======
+>>>>>>> develop

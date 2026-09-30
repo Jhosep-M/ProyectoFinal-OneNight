@@ -16,6 +16,13 @@ describe('Step1 producto - validacion existente', () => {
     expect(p.nombre).toBe('Helado Vainilla');
     expect(p.stock_minimo).toBe(2);
   });
+
+  it('acepta imagen_url opcional (Storage o URL)', () => {
+    const p = createProductSchema.parse({ nombre: 'Cono Simple', precio: 12, imagen_url: 'cono-simple.jpg' });
+    expect(p.imagen_url).toBe('cono-simple.jpg');
+    const q = updateProductSchema.parse({ imagen_url: 'https://ejemplo.com/foto.jpg' });
+    expect(q.imagen_url).toContain('foto.jpg');
+  });
 });
 
 describe('Step1 categoria - schemas nuevos', () => {

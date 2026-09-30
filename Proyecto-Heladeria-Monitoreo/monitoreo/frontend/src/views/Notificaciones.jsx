@@ -23,20 +23,28 @@ export default function Notificaciones() {
       {error && <p className="error">{error}</p>}
       <table className="tabla">
 <<<<<<< HEAD
+<<<<<<< HEAD
         <thead><tr><th>Creada</th><th>Estado</th><th>Alerta</th><th /></tr></thead>
 =======
         <thead><tr><th>Fecha</th><th>Estado</th><th>Mensaje</th><th>Accion</th></tr></thead>
 >>>>>>> origin/feature/Airton-auxilio
+=======
+        <thead><tr><th>Fecha</th><th>Estado</th><th>Mensaje</th><th>Accion</th></tr></thead>
+>>>>>>> develop
         <tbody>
           {data.map((n) => (
             <tr key={n.id}>
               <td>{new Date(n.creada_en).toLocaleString('es')}</td>
               <td>{n.estado}</td>
 <<<<<<< HEAD
+<<<<<<< HEAD
               <td>{n.alerta?.mensaje}</td>
 =======
               <td>{n.alerta?.mensaje ?? '-'}</td>
 >>>>>>> origin/feature/Airton-auxilio
+=======
+              <td>{n.alerta?.mensaje ?? '-'}</td>
+>>>>>>> develop
               <td>
                 {n.estado === 'pendiente' && (
                   <button type="button" onClick={() => ver(n.id)}>Marcar vista</button>

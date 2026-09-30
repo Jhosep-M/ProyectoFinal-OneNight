@@ -95,7 +95,7 @@ BEGIN
   VALUES (p_usuario_id, 'CERRAR_TURNO', 'turno_caja', p_turno_id, 'exitoso', NOW(),
     jsonb_build_object('montoInicial', v_turno.monto_inicial, 'montoEsperado', v_monto_esperado,
       'montoReal', p_monto_final_real, 'diferencia', v_diferencia, 'alertaId', v_alerta_id,
-      'consumoAguaId', v_consumo_agua, 'consumoEnergiaId', v_consumo_energia)::text);
+      'consumoAguaId', v_consumo_agua, 'consumoEnergiaId', v_consumo_energia));
 
   RETURN jsonb_build_object('exito', true, 'turnoId', p_turno_id, 'montoInicial', v_turno.monto_inicial,
     'totalVentas', v_total_ventas, 'totalEfectivo', v_total_efectivo, 'montoEsperado', v_monto_esperado,

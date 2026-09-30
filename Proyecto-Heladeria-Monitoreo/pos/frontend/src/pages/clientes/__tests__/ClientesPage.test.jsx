@@ -9,13 +9,16 @@ const mocks = vi.hoisted(() => ({
   mockListar: vi.fn(),
   mockVer: vi.fn(),
   mockCrear: vi.fn(),
+  mockActualizar: vi.fn(),
 }));
 
 vi.mock('../../../services/customersService.js', () => ({
   listarClientes: mocks.mockListar,
   verCliente: mocks.mockVer,
   crearCliente: mocks.mockCrear,
-  actualizarCliente: vi.fn(),
+  actualizarCliente: mocks.mockActualizar,
+  ajustarPuntos: vi.fn(),
+  verVentasCliente: vi.fn(),
 }));
 
 vi.mock('../../../context/AuthContext.jsx', () => ({ useAuth: () => ({ session: { user: { email: 'c@h.com' } }, loading: false, signOut: vi.fn() }), AuthProvider: ({ children }) => children }));
@@ -60,10 +63,30 @@ describe('ClientesPage', () => {
     mocks.mockCrear.mockResolvedValue({ id_cliente: 'cl2' });
     renderClientes();
     await screen.findByText('María');
-    await userEvent.type(screen.getByPlaceholderText('nombre'), 'Pedro');
+    await userEvent.type(screen.getByPlaceholderText('Nombre'), 'Pedro');
     await userEvent.click(screen.getByRole('button', { name: 'Crear' }));
     await waitFor(() => {
       expect(mocks.mockCrear).toHaveBeenCalledWith(expect.objectContaining({ nombre: 'Pedro' }));
     });
+  });
+
+  it('muestra empty-state cuando no hay clientes', async () => {
+    mocks.mockListar.mockResolvedValue([]);
+    renderClientes();
+    expect(await screen.findByText('Sin clientes — crea el primero')).toBeInTheDocument();
+  });
+
+  it('crear NO envía puntos_fidelidad', async () => {
+    mocks.mockCrear.mockResolvedValue({ id_cliente: 'cl2' });
+    renderClientes();
+    await screen.findByText('María');
+    await userEvent.type(screen.getByPlaceholderText('Nombre'), 'Pedro');
+    await userEvent.click(screen.getByRole('button', { name: 'Crear' }));
+    await waitFor(() => {
+      expect(mocks.mockCrear).toHaveBeenCalled();
+    });
+    const payload = mocks.mockCrear.mock.calls[0][0];
+    expect(payload).not.toHaveProperty('puntos_fidelidad');
+    expect(payload).toEqual(expect.objectContaining({ nombre: 'Pedro' }));
   });
 });

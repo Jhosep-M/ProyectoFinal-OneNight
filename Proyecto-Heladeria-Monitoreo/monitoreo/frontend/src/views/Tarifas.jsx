@@ -19,9 +19,13 @@ export default function Tarifas() {
   const [error, setError] = useState(null);
   const [guardando, setGuardando] = useState(false);
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
   const [calc, setCalc] = useState({ cantidad: '', tarifaId: '' });
 >>>>>>> origin/feature/Airton-auxilio
+=======
+  const [calc, setCalc] = useState({ cantidad: '', tarifaId: '' });
+>>>>>>> develop
 
   const cargar = useCallback(async () => {
     if (!orgSeleccionada) return;
@@ -100,7 +104,10 @@ export default function Tarifas() {
         </tbody>
       </table>
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
+=======
+>>>>>>> develop
 
       <h2>Calculadora de costo</h2>
       <form className="formulario" onSubmit={(e) => e.preventDefault()}>
@@ -117,7 +124,10 @@ export default function Tarifas() {
           return `${(Number(calc.cantidad) * Number(t.monto)).toLocaleString('es', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Bs`;
         })()}</p>
       </form>
+<<<<<<< HEAD
 >>>>>>> origin/feature/Airton-auxilio
+=======
+>>>>>>> develop
     </section>
   );
 }

@@ -5,17 +5,21 @@ const { sequelize } = require('../config/database');
  */
 
 /**
- * Cierra turno delegando a public.cerrar_turno.
+ * Cierra turno delegando a public.cerrar_turno (firma canónica 3 args con ownership).
  * @param {string} turno_id - UUID turno_caja
  * @param {number} monto - monto_final_real (NUMERIC >=0)
+ * @param {string} userId - auth user id (JWT) para control de turno ajeno
  * @returns {Promise<object>} JSONB result de cerrar_turno (ventas, esperado, diferencia, consumos, alertas)
  */
-async function cerrar(turno_id, monto) {
+async function cerrar(turno_id, monto, userId) {
   if (monto === null || monto === undefined || typeof monto !== 'number' || monto < 0) {
     throw new Error('monto_final_real debe ser >= 0');
   }
-  const [rows] = await sequelize.query('SELECT public.cerrar_turno(:id::uuid, :monto) as result', {
-    replacements: { id: turno_id, monto },
+  if (!userId) {
+    throw new Error('usuario obligatorio para cerrar turno');
+  }
+  const [rows] = await sequelize.query('SELECT public.cerrar_turno(:id::uuid, :monto, :uid::uuid) as result', {
+    replacements: { id: turno_id, monto, uid: userId },
   });
   const row = rows && rows[0];
   return row ? row.result ?? row : row;
