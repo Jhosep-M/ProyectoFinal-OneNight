@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import Card from '../../components/ui/Card.jsx';
 import Badge from '../../components/ui/Badge.jsx';
@@ -51,26 +51,43 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  // Recarga silenciosa reutilizable: la usa el intervalo y el focus para
+  // reflejar ventas/mesas nuevas al cobrar una cuenta sin recargar la pagina.
+  const recargar = useCallback(async () => {
+    const [ventasData, mesasData, alertasData] = await Promise.all([
+      listarVentas(),
+      listarMesas(),
+      listarAlertasMonitoreo({ limit: 10 }).catch(() => ({ data: [] })),
+    ]);
+    setVentas((ventasData || []).map(normVenta));
+    setMesas(mesasData || []);
+    setAlertas(alertasData?.data || []);
+  }, []);
+
   useEffect(() => {
+    let activo = true;
     const fetchData = async () => {
       try {
         setLoading(true);
-        const [ventasData, mesasData, alertasData] = await Promise.all([
-          listarVentas(),
-          listarMesas(),
-          listarAlertasMonitoreo({ limit: 10 }).catch(() => ({ data: [] })),
-        ]);
-        setVentas((ventasData || []).map(normVenta));
-        setMesas(mesasData || []);
-        setAlertas(alertasData?.data || []);
+        await recargar();
+        if (activo) setError(null);
       } catch (err) {
-        setError('No se pudieron cargar los datos del dashboard');
+        if (activo) setError('No se pudieron cargar los datos del dashboard');
       } finally {
-        setLoading(false);
+        if (activo) setLoading(false);
       }
     };
     fetchData();
-  }, []);
+    // Auto-refresh: intervalo (igual que Caja) + al recuperar foco (igual que Ventas).
+    const id = setInterval(() => { recargar().catch(() => {}); }, 15000);
+    const onFocus = () => { recargar().catch(() => {}); };
+    window.addEventListener('focus', onFocus);
+    return () => {
+      activo = false;
+      clearInterval(id);
+      window.removeEventListener('focus', onFocus);
+    };
+  }, [recargar]);
 
   const totalVentas = ventas
     .filter((v) => v.estado !== 'anulado')

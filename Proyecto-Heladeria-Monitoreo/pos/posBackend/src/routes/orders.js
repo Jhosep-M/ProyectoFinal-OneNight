@@ -4,6 +4,7 @@ const { authorize } = require('../middlewares/authorize');
 const { createOrderSchema, updateOrderSchema, cobrarPedidoSchema } = require('../validators/orders');
 const { sequelize } = require('../config/database');
 const { auditLog } = require('../utils/audit');
+const { constraintErrorMessage } = require('../utils/dbErrors');
 
 const router = Router();
 router.use(authenticateJWT);
@@ -62,6 +63,8 @@ router.post('/', authorize('pedido.crear'), async (req, res, next) => {
   } catch (e) {
     if (e.name === 'ZodError') return res.status(400).json({ error: 'Validation failed', details: e.errors });
     if (e.status === 400) return res.status(400).json({ error: e.message });
+    const constraint = constraintErrorMessage(e);
+    if (constraint) return res.status(400).json({ error: constraint });
     next(e);
   }
 });
@@ -135,6 +138,8 @@ router.post('/:id/cobrar', authorize('venta.crear'), async (req, res, next) => {
   } catch (e) {
     if (e.name === 'ZodError') return res.status(400).json({ error: 'Validation failed', details: e.errors });
     if (e.status === 404 || e.status === 409 || e.status === 400) return res.status(e.status).json({ error: e.message });
+    const constraint = constraintErrorMessage(e);
+    if (constraint) return res.status(400).json({ error: constraint });
     next(e);
   }
 });
