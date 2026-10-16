@@ -1,11 +1,15 @@
 import { useState } from 'react';
 import Button from '../../components/ui/Button.jsx';
+import { formatCurrency } from '../../utils/format.js';
 
 /**
  * Opción A: arqueo real. Pide conteo físico (monto_final_real) en vez de
- * reutilizar totalVentas. Si es cierre de turno ajeno (admin), exige motivo.
+ * reutilizar totalVentas.
+ * Flujo reactivo: si el cierre devuelve 422 (diferencia > umbral), la página
+ * reabre este modal con `requiereMotivo` + `diferenciaInfo` y el motivo pasa a
+ * ser obligatorio (>=5). También es obligatorio al cerrar un turno ajeno (admin).
  */
-export default function CerrarTurnoModal({ abierto, esAjeno, cargando, error, onConfirmar, onCancelar }) {
+export default function CerrarTurnoModal({ abierto, esAjeno, requiereMotivo = false, diferenciaInfo = null, cargando, error, onConfirmar, onCancelar }) {
   const [monto, setMonto] = useState('');
   const [motivo, setMotivo] = useState('');
 
@@ -13,7 +17,8 @@ export default function CerrarTurnoModal({ abierto, esAjeno, cargando, error, on
 
   const montoNum = Number(monto);
   const montoValido = monto !== '' && Number.isFinite(montoNum) && montoNum >= 0;
-  const motivoValido = !esAjeno || motivo.trim().length >= 3;
+  const motivoObligatorio = esAjeno || requiereMotivo;
+  const motivoValido = !motivoObligatorio || motivo.trim().length >= 5;
   const puedeConfirmar = montoValido && motivoValido && !cargando;
 
   return (
@@ -25,6 +30,17 @@ export default function CerrarTurnoModal({ abierto, esAjeno, cargando, error, on
             Cuenta el efectivo físico de caja e ingrésalo. Quedará en auditoría con tu usuario y hora.
             {esAjeno ? ' Estás cerrando un turno ajeno como administrador: el motivo es obligatorio.' : ''}
           </p>
+          {requiereMotivo && diferenciaInfo && (
+            <div className="alert alert-warning py-2 small" role="alert">
+              La diferencia de caja supera el umbral permitido:
+              <br />
+              <strong>Diferencia: {formatCurrency(diferenciaInfo.diferencia ?? 0)}</strong>
+              {' · '}Esperado: {formatCurrency(diferenciaInfo.montoEsperado ?? 0)}
+              {' · '}Umbral: {formatCurrency(diferenciaInfo.umbral ?? 0)}
+              <br />
+              Debes registrar un motivo para poder cerrar el turno.
+            </div>
+          )}
           {error && <div className="alert alert-danger py-2 small" role="alert">{error}</div>}
           <label htmlFor="monto-cierre" className="form-label small fw-semibold mb-1">
             Efectivo contado (monto final real)
@@ -43,19 +59,20 @@ export default function CerrarTurnoModal({ abierto, esAjeno, cargando, error, on
               onChange={(e) => setMonto(e.target.value)}
             />
           </div>
-          {esAjeno && (
+          {motivoObligatorio && (
             <>
               <label htmlFor="motivo-cierre" className="form-label small fw-semibold mb-1">
-                Motivo (obligatorio para turno ajeno)
+                Motivo {esAjeno ? '(obligatorio para turno ajeno)' : '(obligatorio: diferencia sobre el umbral)'}
               </label>
               <textarea
                 id="motivo-cierre"
-                className="form-control mb-2"
+                className="form-control mb-1"
                 rows={2}
-                placeholder="Ej. Cajero ausente, cierre supervisado…"
+                placeholder={esAjeno ? 'Ej. Cajero ausente, cierre supervisado…' : 'Ej. Faltante por vuelto mal entregado…'}
                 value={motivo}
                 onChange={(e) => setMotivo(e.target.value)}
               />
+              <small className="text-muted mb-2">Mínimo 5 caracteres.</small>
             </>
           )}
           <div className="d-flex gap-2 justify-content-end mt-2">
@@ -67,7 +84,7 @@ export default function CerrarTurnoModal({ abierto, esAjeno, cargando, error, on
               icon="bi-lock"
               loading={cargando}
               disabled={!puedeConfirmar}
-              onClick={() => onConfirmar({ monto_final_real: montoNum, ...(esAjeno ? { motivo: motivo.trim() } : {}) })}
+              onClick={() => onConfirmar({ monto_final_real: montoNum, ...(motivoObligatorio ? { motivo: motivo.trim() } : {}) })}
             >
               {cargando ? 'Cerrando...' : 'Confirmar cierre'}
             </Button>

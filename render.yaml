@@ -10,23 +10,30 @@
 #   1. Sube este archivo + los cambios de código a GitHub (rama principal).
 #   2. Render Dashboard -> New -> Blueprint -> conecta el repo.
 #      (El repo raíz es D:\Proyecto; este render.yaml vive en su raíz.)
-#   3. Render pedirá los valores marcados con `sync: false` (secretos).
+#   3. Render pedirá SOLO los valores `sync: false` (6 en total).
 #   4. Tras el primer deploy, revisa que los nombres de servicio no hayan
 #      recibido sufijo (p.ej. -abc1). Si lo recibieron, actualiza las dos URLs
 #      cruzadas (MONITOREO_URL y POS_ALERTS_URL) y haz redeploy.
 #   5. Cuando existan los dominios de Vercel, ponlos en CORS_ORIGIN de ambos
 #      servicios y vuelve a desplegar.
 #
-# Valores que hay que tener a mano (nunca en Git):
-#   - DATABASE_URL de cada proyecto Supabase (usar el POOLER, Session mode 5432):
-#       POS:       postgresql://postgres.lltmyookhktzycxlprlx:<PWD>@aws-0-<REGION>.pooler.supabase.com:5432/postgres
-#       Monitoreo: postgresql://postgres.jbafjkcblplghcqakrwj:<PWD>@aws-0-<REGION>.pooler.supabase.com:5432/postgres
-#   - SUPABASE_ANON_KEY y SUPABASE_SERVICE_ROLE_KEY de cada proyecto.
-#   - MONITOREO_API_KEY: la apiKey que devuelve la UI de Monitoreo al crear una
-#       Integración (se muestra UNA sola vez) para la organización objetivo.
-#   - ORGANIZACION_EXTERNA_ID: el id (uuid) de esa organización en monitoreo.organizacion.
-#   - POS_ALERTS_API_KEY (en Monitoreo): un secreto aleatorio propio; el POS lo
-#       recibe automáticamente como POS_ALERT_API_KEY vía fromService.
+# NO se configuran aquí (no se usan en runtime, verificado en el código):
+#   - SUPABASE_SERVICE_ROLE_KEY: posBackend la crea en config/supabase.js pero
+#     nadie la importa; monitoreo/backend no la usa. Omitir = menos secretos.
+#
+# `sync: false` (secretos a completar en el dashboard, nunca en Git):
+#   - DATABASE_URL x2: POOLER de cada Supabase, Session mode 5432 (no el host
+#       directo db.<ref>.supabase.co, que es IPv6-only):
+#         POS:       postgresql://postgres.lltmyookhktzycxlprlx:<PWD>@aws-0-<REGION>.pooler.supabase.com:5432/postgres
+#         Monitoreo: postgresql://postgres.jbafjkcblplghcqakrwj:<PWD>@aws-0-<REGION>.pooler.supabase.com:5432/postgres
+#   - CORS_ORIGIN x2: dominio(s) exactos de Vercel (sin wildcard; el POS lo prohíbe).
+#   - POS_ALERTS_API_KEY (Monitoreo): secreto aleatorio; el POS lo hereda como
+#       POS_ALERT_API_KEY vía fromService (mismo valor, un solo prompt).
+#   - MONITOREO_API_KEY (POS): apiKey que devuelve la UI de Monitoreo al crear
+#       o rotar una Integración (se muestra UNA sola vez).
+#
+# Valores públicos ya fijados (no secretos; las anon/publishable keys viajan en
+# el bundle del frontend por diseño). Si rotas las claves, actualízalas aquí.
 # =============================================================================
 
 services:
@@ -53,9 +60,7 @@ services:
       - key: SUPABASE_URL
         value: https://jbafjkcblplghcqakrwj.supabase.co
       - key: SUPABASE_ANON_KEY
-        sync: false
-      - key: SUPABASE_SERVICE_ROLE_KEY
-        sync: false          # solo backend, nunca al frontend
+        value: sb_publishable_xJX9SbxZaeuB6yn7S9UHJg_qXQxeGAZ
       - key: CORS_ORIGIN
         sync: false          # dominio(s) de Vercel del frontend Monitoreo
       - key: RATE_LIMIT_WINDOW_MS
@@ -89,9 +94,7 @@ services:
       - key: SUPABASE_URL
         value: https://lltmyookhktzycxlprlx.supabase.co
       - key: SUPABASE_ANON_KEY
-        sync: false
-      - key: SUPABASE_SERVICE_ROLE_KEY
-        sync: false          # solo backend, nunca al frontend
+        value: sb_publishable__6VB22K5mFdY2whg6aqtww_fQGKA1BL
       - key: CORS_ORIGIN
         sync: false          # dominio(s) de Vercel del frontend POS
       - key: RATE_LIMIT_WINDOW_MS
@@ -113,5 +116,6 @@ services:
           type: web
           name: heladeria-monitoreo-backend
           envVarKey: POS_ALERTS_API_KEY
+      # Organización "Heladería Demo" en monitoreo.organizacion (no es secreto).
       - key: ORGANIZACION_EXTERNA_ID
-        sync: false          # uuid de la organización en monitoreo.organizacion
+        value: 11111111-1111-4111-8111-111111111111

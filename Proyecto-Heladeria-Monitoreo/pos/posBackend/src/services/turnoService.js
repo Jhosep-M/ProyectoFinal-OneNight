@@ -5,22 +5,25 @@ const { sequelize } = require('../config/database');
  */
 
 /**
- * Cierra turno delegando a public.cerrar_turno (firma canónica 3 args con ownership).
+ * Cierra turno delegando a public.cerrar_turno (firma canónica 4 args con ownership).
  * @param {string} turno_id - UUID turno_caja
  * @param {number} monto - monto_final_real (NUMERIC >=0)
  * @param {string} userId - auth user id (JWT) para control de turno ajeno
- * @returns {Promise<object>} JSONB result de cerrar_turno (ventas, esperado, diferencia, consumos, alertas)
+ * @param {string} [motivo] - justificación cuando el turno es ajeno o la diferencia
+ *   supera el umbral. La función PG lanza 'MOTIVO_REQUERIDO|...' si falta; la ruta lo mapea a 422.
+ * @returns {Promise<object>} JSONB result de cerrar_turno (ventas, esperado, diferencia, motivo, consumos, alertas)
  */
-async function cerrar(turno_id, monto, userId) {
+async function cerrar(turno_id, monto, userId, motivo) {
   if (monto === null || monto === undefined || typeof monto !== 'number' || monto < 0) {
     throw new Error('monto_final_real debe ser >= 0');
   }
   if (!userId) {
     throw new Error('usuario obligatorio para cerrar turno');
   }
-  const [rows] = await sequelize.query('SELECT public.cerrar_turno(:id::uuid, :monto, :uid::uuid) as result', {
-    replacements: { id: turno_id, monto, uid: userId },
-  });
+  const [rows] = await sequelize.query(
+    'SELECT public.cerrar_turno(:id::uuid, :monto, :uid::uuid, :motivo::varchar) as result',
+    { replacements: { id: turno_id, monto, uid: userId, motivo: motivo ?? null } }
+  );
   const row = rows && rows[0];
   return row ? row.result ?? row : row;
 }

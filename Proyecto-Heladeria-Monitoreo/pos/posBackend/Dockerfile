@@ -4,7 +4,7 @@
 #   docker build -t pos-backend:local ./pos/posBackend
 # Health: GET /health -> { ok: true } (src/routes/health.js, confirmado)
 # =============================================================================
-FROM node:20-alpine AS base
+FROM node:24-alpine AS base
 WORKDIR /app
 ENV NODE_ENV=production \
     PORT=3000

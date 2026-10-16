@@ -36,7 +36,12 @@ export async function apiFetch(path, { method = 'GET', body } = {}) {
   const text = await res.text();
   const payload = text ? JSON.parse(text) : null;
   if (!res.ok) {
-    throw new Error(payload?.error || `HTTP ${res.status}`);
+    const err = new Error(payload?.error || `HTTP ${res.status}`);
+    // Conserva status y payload para que la UI reaccione (p.ej. 422 MOTIVO_REQUERIDO).
+    err.status = res.status;
+    err.code = payload?.code;
+    err.payload = payload;
+    throw err;
   }
   return payload;
 }

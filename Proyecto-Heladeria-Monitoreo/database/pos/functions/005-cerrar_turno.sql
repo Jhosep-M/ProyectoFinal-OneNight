@@ -1,9 +1,22 @@
 -- Fase A — cerrar_turno endurecido (borrador Nuevo.md + ownership + idempotencia cola).
--- Firma nueva con p_usuario_id; actualizar REVOKE antiguos (uuid,numeric) tras aplicar.
+-- Reactivo: si el turno es ajeno o la diferencia supera el umbral, el motivo es
+-- obligatorio (>=5). Sin motivo la función RAISE 'MOTIVO_REQUERIDO|...' y la ruta
+-- lo mapea a 422. La columna turno_caja.motivo_diferencia guarda el motivo y queda en auditoría.
+-- Firma canónica: (uuid, numeric, uuid, varchar). Se eliminan firmas antiguas (uuid,numeric)
+-- y (uuid,numeric,uuid) para evitar sobrecargas ambiguas.
+
+-- La columna se agrega aquí (idempotente) para que el archivo sea autocontenido;
+-- la migración 015-turno-motivo-diferencia.sql hace lo mismo para el runner.
+ALTER TABLE public.turno_caja ADD COLUMN IF NOT EXISTS motivo_diferencia varchar(500);
+
+DROP FUNCTION IF EXISTS public.cerrar_turno(uuid, numeric);
+DROP FUNCTION IF EXISTS public.cerrar_turno(uuid, numeric, uuid);
+
 CREATE OR REPLACE FUNCTION public.cerrar_turno(
   p_turno_id uuid,
   p_monto_final_real numeric,
-  p_usuario_id uuid
+  p_usuario_id uuid,
+  p_motivo varchar DEFAULT NULL
 )
 RETURNS jsonb
 LANGUAGE plpgsql
@@ -17,6 +30,9 @@ DECLARE
   v_monto_esperado numeric(14,2);
   v_diferencia numeric(14,2);
   v_umbral numeric(14,2);
+  v_motivo text;
+  v_es_ajeno boolean;
+  v_requiere_motivo boolean;
   v_alerta_id uuid;
   v_consumo_agua uuid;
   v_consumo_energia uuid;
@@ -30,8 +46,9 @@ BEGIN
   IF v_turno.estado <> 'abierto' THEN
     RAISE EXCEPTION 'El turno no está abierto. Estado actual: %', v_turno.estado;
   END IF;
-  IF v_turno.usuario_id <> p_usuario_id
-     AND NOT public.usuario_tiene_permiso(p_usuario_id, 'turno.cerrar.todos') THEN
+
+  v_es_ajeno := v_turno.usuario_id <> p_usuario_id;
+  IF v_es_ajeno AND NOT public.usuario_tiene_permiso(p_usuario_id, 'turno.cerrar.todos') THEN
     RAISE EXCEPTION 'No autorizado a cerrar turno ajeno';
   END IF;
 
@@ -53,11 +70,22 @@ BEGIN
   SELECT valor::numeric INTO v_umbral FROM configuracion_pos WHERE clave = 'umbral_diferencia_caja';
   v_umbral := COALESCE(v_umbral, 50.00);
 
+  v_motivo := NULLIF(btrim(COALESCE(p_motivo, '')), '');
+  v_requiere_motivo := v_es_ajeno OR ABS(v_diferencia) > v_umbral;
+
+  -- Reactivo: motivo obligatorio si el turno es ajeno o la diferencia supera el umbral.
+  -- El mensaje lleva los datos para que la ruta arme el 422 sin recalcular nada.
+  IF v_requiere_motivo AND (v_motivo IS NULL OR char_length(v_motivo) < 5) THEN
+    RAISE EXCEPTION 'MOTIVO_REQUERIDO|diferencia=%|esperado=%|umbral=%|ajeno=%',
+      ROUND(v_diferencia, 2), ROUND(v_monto_esperado, 2), ROUND(v_umbral, 2), v_es_ajeno;
+  END IF;
+
   IF ABS(v_diferencia) > v_umbral THEN
     INSERT INTO alerta_pos (turno_id, tipo, nivel, mensaje)
     VALUES (p_turno_id, 'diferencia_caja',
       CASE WHEN ABS(v_diferencia) >= v_umbral * 2 THEN 'critico' ELSE 'alto' END,
-      'Diferencia de caja detectada: ' || ROUND(v_diferencia, 2) || ' Bs')
+      'Diferencia de caja detectada: ' || ROUND(v_diferencia, 2) || ' Bs'
+        || CASE WHEN v_motivo IS NOT NULL THEN '. Motivo: ' || left(v_motivo, 200) ELSE '' END)
     RETURNING id_alerta INTO v_alerta_id;
   END IF;
 
@@ -65,6 +93,7 @@ BEGIN
     monto_final_esperado = v_monto_esperado,
     monto_final_real = p_monto_final_real,
     diferencia = v_diferencia,
+    motivo_diferencia = v_motivo,
     fecha_cierre = NOW(),
     estado = 'cerrado'
   WHERE id_turno = p_turno_id;
@@ -94,21 +123,16 @@ BEGIN
   INSERT INTO auditoria_accion (usuario_id, accion, entidad, entidad_id, resultado, fecha, detalle)
   VALUES (p_usuario_id, 'CERRAR_TURNO', 'turno_caja', p_turno_id, 'exitoso', NOW(),
     jsonb_build_object('montoInicial', v_turno.monto_inicial, 'montoEsperado', v_monto_esperado,
-      'montoReal', p_monto_final_real, 'diferencia', v_diferencia, 'alertaId', v_alerta_id,
-      'consumoAguaId', v_consumo_agua, 'consumoEnergiaId', v_consumo_energia));
+      'montoReal', p_monto_final_real, 'diferencia', v_diferencia, 'motivo', v_motivo,
+      'esTurnoAjeno', v_es_ajeno, 'requirioMotivo', v_requiere_motivo,
+      'alertaId', v_alerta_id, 'consumoAguaId', v_consumo_agua, 'consumoEnergiaId', v_consumo_energia));
 
   RETURN jsonb_build_object('exito', true, 'turnoId', p_turno_id, 'montoInicial', v_turno.monto_inicial,
     'totalVentas', v_total_ventas, 'totalEfectivo', v_total_efectivo, 'montoEsperado', v_monto_esperado,
-    'montoReal', p_monto_final_real, 'diferencia', v_diferencia,
-    'alertaGenerada', v_alerta_id IS NOT NULL, 'alertaId', v_alerta_id,
+    'montoReal', p_monto_final_real, 'diferencia', v_diferencia, 'motivo', v_motivo,
+    'esTurnoAjeno', v_es_ajeno, 'alertaGenerada', v_alerta_id IS NOT NULL, 'alertaId', v_alerta_id,
     'consumoAguaId', v_consumo_agua, 'consumoEnergiaId', v_consumo_energia);
 END;
 $$;
-REVOKE ALL ON FUNCTION public.cerrar_turno(uuid,numeric,uuid) FROM PUBLIC, anon, authenticated;
-GRANT EXECUTE ON FUNCTION public.cerrar_turno(uuid,numeric,uuid) TO service_role;
--- Compat: revocar firma antigua de 2 args si existiera en la DB viva.
-DO $$ BEGIN
-  IF EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'cerrar_turno' AND pg_get_function_identity_arguments(oid) = 'uuid, numeric') THEN
-    REVOKE ALL ON FUNCTION public.cerrar_turno(uuid,numeric) FROM PUBLIC, anon, authenticated;
-  END IF;
-END $$;
+REVOKE ALL ON FUNCTION public.cerrar_turno(uuid,numeric,uuid,varchar) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.cerrar_turno(uuid,numeric,uuid,varchar) TO service_role;

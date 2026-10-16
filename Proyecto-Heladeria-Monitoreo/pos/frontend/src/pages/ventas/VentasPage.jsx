@@ -298,7 +298,7 @@ export default function VentasPage() {
                 <div key={p.id} className="col-6 col-md-4 col-xl-3">
                   <motion.div variants={item}>
                     <Card
-                      className="h-100"
+                      className="h-100 producto-card"
                       hover={false}
                       style={{ cursor: 'pointer' }}
                       onClick={() => agregarProducto(p)}

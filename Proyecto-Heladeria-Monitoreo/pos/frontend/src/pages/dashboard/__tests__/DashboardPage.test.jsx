@@ -1,4 +1,4 @@
-﻿import { render, screen } from '@testing-library/react';
+﻿import { render, screen, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
 import { AuthProvider } from '../../../context/AuthContext.jsx';
@@ -66,5 +66,17 @@ describe('DashboardPage', () => {
     mocks.mockListarVentas.mockRejectedValueOnce(new Error('Error de red'));
     renderDashboard();
     expect(await screen.findByText(/No se pudieron cargar los datos/)).toBeInTheDocument();
+  });
+
+  it('recarga al recuperar foco (refresco tras cobrar)', async () => {
+    renderDashboard();
+    await screen.findByText('Ventas del día');
+    await waitFor(() => expect(mocks.mockListarVentas).toHaveBeenCalledTimes(1));
+
+    mocks.mockListarVentas.mockResolvedValue([
+      { id_venta: 'v2', fecha: '2026-09-28T11:00:00Z', total: 999, estado: 'activa' },
+    ]);
+    window.dispatchEvent(new Event('focus'));
+    await waitFor(() => expect(mocks.mockListarVentas).toHaveBeenCalledTimes(2));
   });
 });

@@ -99,6 +99,25 @@ describe('routes shifts -> turnoService', () => {
     turnoService.cerrar.mockResolvedValueOnce({ exito: true, diferencia: 0 });
     const res = await request(app).post(`/api/v1/shifts/${UUID('e')}/cerrar`).send({ monto_final_real: 120 });
     expect(res.status).toBe(200);
-    expect(turnoService.cerrar).toHaveBeenCalledWith(UUID('e'), 120, 'u-test');
+    expect(turnoService.cerrar).toHaveBeenCalledWith(UUID('e'), 120, 'u-test', undefined);
+  });
+
+  test('POST /:id/cerrar reenvía el motivo cuando el body lo trae', async () => {
+    turnoService.cerrar.mockResolvedValueOnce({ exito: true });
+    const res = await request(app).post(`/api/v1/shifts/${UUID('e')}/cerrar`).send({ monto_final_real: 200, motivo: 'faltante de caja' });
+    expect(res.status).toBe(200);
+    expect(turnoService.cerrar).toHaveBeenCalledWith(UUID('e'), 200, 'u-test', 'faltante de caja');
+  });
+
+  test('POST /:id/cerrar mapea MOTIVO_REQUERIDO -> 422 con datos de diferencia', async () => {
+    turnoService.cerrar.mockRejectedValueOnce(
+      new Error('MOTIVO_REQUERIDO|diferencia=120.00|esperado=80.00|umbral=50.00|ajeno=false')
+    );
+    const res = await request(app).post(`/api/v1/shifts/${UUID('e')}/cerrar`).send({ monto_final_real: 200 });
+    expect(res.status).toBe(422);
+    expect(res.body.code).toBe('MOTIVO_REQUERIDO');
+    expect(res.body.diferencia).toBe(120);
+    expect(res.body.montoEsperado).toBe(80);
+    expect(res.body.umbral).toBe(50);
   });
 });
