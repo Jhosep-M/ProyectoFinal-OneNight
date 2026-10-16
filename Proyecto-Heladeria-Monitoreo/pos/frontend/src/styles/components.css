@@ -166,6 +166,32 @@
   color: var(--ink-muted);
 }
 
+/* Card con pop al hover (productos en Ventas).
+   Solo en punteros reales: en táctil el hover se dispara al tocar y queda
+   pegado. transform + box-shadow (paint/GPU), nunca width/margin. */
+@media (hover: hover) and (pointer: fine) {
+  .producto-card {
+    transition: transform var(--duration) var(--ease-out),
+                box-shadow var(--duration) var(--ease-out);
+  }
+  .producto-card:hover {
+    transform: translateY(-4px) scale(1.03);
+    box-shadow: 0 6px 16px rgba(44, 24, 16, 0.12),
+                0 14px 32px rgba(44, 24, 16, 0.10);
+  }
+  .producto-card:active {
+    transform: translateY(-1px) scale(0.995);
+    transition-duration: 100ms;
+  }
+}
+
+/* El guard global de tokens.css solo anula la duración de la transición,
+   no el transform: hay que quitar el movimiento explícitamente. */
+@media (prefers-reduced-motion: reduce) {
+  .producto-card:hover,
+  .producto-card:active { transform: none; }
+}
+
 /* Skeleton */
 .skeleton {
   background: linear-gradient(90deg, var(--surface-sunk) 25%, #e8e5df 50%, var(--surface-sunk) 75%);
