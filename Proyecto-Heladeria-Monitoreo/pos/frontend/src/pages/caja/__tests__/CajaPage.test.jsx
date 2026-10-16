@@ -102,4 +102,29 @@ describe('CajaPage (Solo mío)', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Abrir' }));
     expect(await screen.findByText(/Ya hay un turno abierto/)).toBeInTheDocument();
   });
+
+  it('ante 422 MOTIVO_REQUERIDO el modal pide motivo y reintenta con él', async () => {
+    const err422 = new Error('La diferencia supera el umbral permitido. Ingresa un motivo para cerrar.');
+    err422.status = 422;
+    err422.code = 'MOTIVO_REQUERIDO';
+    err422.payload = { code: 'MOTIVO_REQUERIDO', diferencia: 120, montoEsperado: 80, umbral: 50 };
+    mocks.mockCerrarTurno.mockRejectedValueOnce(err422);
+    renderCaja();
+    await userEvent.click(await screen.findByRole('button', { name: /Cerrar Turno/ }));
+    const input = await screen.findByLabelText(/Efectivo contado/i);
+    await userEvent.clear(input);
+    await userEvent.type(input, '200');
+    await userEvent.click(screen.getByRole('button', { name: /Confirmar cierre/ }));
+
+    // El modal sigue abierto y ahora exige un motivo (>=5).
+    const motivoInput = await screen.findByLabelText(/Motivo \(obligatorio: diferencia/i);
+    expect(motivoInput).toBeInTheDocument();
+
+    mocks.mockCerrarTurno.mockResolvedValueOnce({});
+    await userEvent.type(motivoInput, 'faltante de caja');
+    await userEvent.click(screen.getByRole('button', { name: /Confirmar cierre/ }));
+    await waitFor(() => {
+      expect(mocks.mockCerrarTurno).toHaveBeenLastCalledWith('t1', { monto_final_real: 200, motivo: 'faltante de caja' });
+    });
+  });
 });

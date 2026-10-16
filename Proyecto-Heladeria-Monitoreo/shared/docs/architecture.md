@@ -32,7 +32,7 @@ En la práctica, las rutas tienen handlers inline (no usan controllers como capa
 | `public.registrar_venta` | Crea venta, descuenta stock, insumos, acumula puntos |
 | `public.anular_venta` | Anula venta, restaura stock e insumos |
 | `public.procesar_devolucion` | Devolución parcial/total, restaura stock e insumos |
-| `public.cerrar_turno` | Cierra turno, calcula diferencia, genera consumo |
+| `public.cerrar_turno` | Cierra turno (firma `uuid,numeric,uuid,varchar`), calcula diferencia, exige motivo si la diferencia supera el umbral o el turno es ajeno, genera consumo |
 
 ## Migraciones
 

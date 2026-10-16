@@ -47,6 +47,7 @@ export default function CajaPage() {
   const [cerrando, setCerrando] = useState(false);
   const [modalPropio, setModalPropio] = useState(false);
   const [errorCerrar, setErrorCerrar] = useState(null);
+  const [diferenciaInfo, setDiferenciaInfo] = useState(null);
   const [montoInicial, setMontoInicial] = useState('');
   const [abriendo, setAbriendo] = useState(false);
   const [errorAbrir, setErrorAbrir] = useState(null);
@@ -105,15 +106,24 @@ export default function CajaPage() {
   const nombreCajero = (t) =>
     t?.cajero_email || t?.cajero || t?.usuario || t?.usuario_email || session?.user?.email || '—';
 
-  const handleConfirmarCierrePropio = async ({ monto_final_real }) => {
+  const handleConfirmarCierrePropio = async ({ monto_final_real, motivo }) => {
     if (!turnoActivo || !turnoActivoId) return;
     setCerrando(true);
     setErrorCerrar(null);
     try {
-      await cerrarTurno(turnoActivoId, { monto_final_real });
+      await cerrarTurno(turnoActivoId, { monto_final_real, ...(motivo ? { motivo } : {}) });
       setModalPropio(false);
+      setDiferenciaInfo(null);
       await recargar();
     } catch (err) {
+      // Reactivo: si la diferencia supera el umbral, el backend responde 422 y
+      // pide un motivo. Mantenemos el modal abierto con el bloque de motivo.
+      if (err?.status === 422 || err?.code === 'MOTIVO_REQUERIDO') {
+        const p = err.payload || {};
+        setDiferenciaInfo({ diferencia: p.diferencia, montoEsperado: p.montoEsperado, umbral: p.umbral });
+        setErrorCerrar('La diferencia supera el umbral permitido. Registra un motivo para cerrar.');
+        return;
+      }
       const msg = String(err.message || '');
       if (/409|abierto|ya cerrado/i.test(msg)) {
         setErrorCerrar('El turno ya fue cerrado. Actualizando…');
@@ -233,7 +243,7 @@ export default function CajaPage() {
                   <Button
                     variant="primary"
                     icon="bi-lock"
-                    onClick={() => { setErrorCerrar(null); setModalPropio(true); }}
+                    onClick={() => { setErrorCerrar(null); setDiferenciaInfo(null); setModalPropio(true); }}
                     loading={cerrando}
                   >
                     {cerrando ? 'Cerrando...' : 'Cerrar Turno'}
@@ -243,9 +253,11 @@ export default function CajaPage() {
                 <CerrarTurnoModal
                   abierto={modalPropio}
                   esAjeno={false}
+                  requiereMotivo={!!diferenciaInfo}
+                  diferenciaInfo={diferenciaInfo}
                   cargando={cerrando}
                   error={errorCerrar}
-                  onCancelar={() => { setModalPropio(false); setErrorCerrar(null); }}
+                  onCancelar={() => { setModalPropio(false); setErrorCerrar(null); setDiferenciaInfo(null); }}
                   onConfirmar={handleConfirmarCierrePropio}
                 />
               </>

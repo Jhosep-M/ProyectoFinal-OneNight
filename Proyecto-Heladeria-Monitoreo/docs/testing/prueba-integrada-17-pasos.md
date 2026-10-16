@@ -16,7 +16,7 @@ Runbook manual end-to-end. Precondiciones:
 |---|--------|--------------|----------|
 | 1 | `POST /api/v1/shifts {monto_inicial:100}` (cajero) | `SELECT * FROM turno_caja` | 1 turno `abierto` |
 | 2 | `POST /api/v1/sales {turno_id, items, pagos}` | `SELECT estado,total FROM venta` | venta `activa`, pagos suman total |
-| 3 | `POST /api/v1/shifts/:id/cerrar {monto_final_real}` | respuesta JSON | `diferencia`, `consumoAguaId`, `consumoEnergiaId` |
+| 3 | `POST /api/v1/shifts/:id/cerrar {monto_final_real}` | respuesta JSON | `diferencia`, `consumoAguaId`, `consumoEnergiaId` (si la diferencia supera el umbral o el turno es ajeno, responde 422 `MOTIVO_REQUERIDO` y exige `motivo`) |
 | 4 | — | `SELECT * FROM consumo_reportado WHERE turno_id=...` | 2 filas (`agua/litros`, `energia/kWh`) `pendiente` |
 | 5 | — | `SELECT estado FROM cola_integracion` | 2 filas `pendiente` con `idempotency_key` único |
 | 6 | Worker `processColaOnce()` | respuesta Monitoreo 200 | `cola=enviado`, `consumo=enviado` |

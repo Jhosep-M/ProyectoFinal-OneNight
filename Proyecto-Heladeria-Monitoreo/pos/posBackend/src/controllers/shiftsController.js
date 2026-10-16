@@ -50,7 +50,7 @@ async function abrir(body, userId) {
 
 async function cerrar(turnoId, body, userId) {
   const parsed = cerrarTurnoSchema.parse(body);
-  return turnoService.cerrar(turnoId, parsed.monto_final_real, userId);
+  return turnoService.cerrar(turnoId, parsed.monto_final_real, userId, parsed.motivo);
 }
 
 module.exports = { listar, listarMios, listarTodos, permisos, abrir, cerrar };

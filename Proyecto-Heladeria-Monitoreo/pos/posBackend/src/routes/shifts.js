@@ -42,6 +42,23 @@ router.post('/:id/cerrar', authorize('turno.cerrar'), async (req, res, next) => 
   } catch (e) {
     if (e.name === 'ZodError') return res.status(400).json({ error: 'Validation failed', details: e.errors });
     const msg = String((e && e.message) || '');
+    // Reactivo: la función PG exige motivo si la diferencia supera el umbral o el
+    // turno es ajeno. Devuelve 422 con la diferencia/esperado/umbral para que la UI
+    // pida el motivo sin recalcular nada.
+    if (msg.includes('MOTIVO_REQUERIDO')) {
+      const num = (key) => {
+        const m = msg.match(new RegExp(`${key}=(-?[0-9.]+)`));
+        return m ? Number(m[1]) : null;
+      };
+      return res.status(422).json({
+        code: 'MOTIVO_REQUERIDO',
+        error: 'La diferencia supera el umbral permitido. Ingresa un motivo para cerrar el turno.',
+        diferencia: num('diferencia'),
+        montoEsperado: num('esperado'),
+        umbral: num('umbral'),
+        esTurnoAjeno: /ajeno=t/.test(msg),
+      });
+    }
     if (/no autorizado a cerrar turno ajeno/i.test(msg)) {
       return res.status(403).json({ error: 'No puedes cerrar un turno ajeno' });
     }

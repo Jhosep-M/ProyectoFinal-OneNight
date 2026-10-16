@@ -52,6 +52,7 @@ describe('turnoService.cerrar', () => {
       montoEsperado: 150.5,
       montoReal: 145,
       diferencia: -5.5,
+      motivo: null,
       alertaGenerada: false,
       alertaId: null,
       consumoAguaId: 'aaaaaaa1-1111-4111-8111-111111111111',
@@ -62,7 +63,21 @@ describe('turnoService.cerrar', () => {
     expect(out).toEqual(jsonb);
     const [sql, opts] = sequelize.query.mock.calls[0];
     expect(sql).toMatch(/cerrar_turno/);
-    expect(opts.replacements).toEqual({ id: TURNO_ID, monto: 145, uid: USER_ID });
+    expect(opts.replacements).toEqual({ id: TURNO_ID, monto: 145, uid: USER_ID, motivo: null });
+  });
+
+  test('reenvía el motivo cuando se cierra con diferencia sobre el umbral', async () => {
+    sequelize.query.mockResolvedValueOnce([[{ result: { exito: true } }]]);
+    await turnoService.cerrar(TURNO_ID, 200, USER_ID, 'Faltante por vuelto');
+    const [, opts] = sequelize.query.mock.calls[0];
+    expect(opts.replacements).toEqual({ id: TURNO_ID, monto: 200, uid: USER_ID, motivo: 'Faltante por vuelto' });
+  });
+
+  test('propaga el MOTIVO_REQUERIDO de PG (la ruta lo mapea a 422)', async () => {
+    sequelize.query.mockRejectedValueOnce(
+      new Error('MOTIVO_REQUERIDO|diferencia=120.00|esperado=80.00|umbral=50.00|ajeno=false')
+    );
+    await expect(turnoService.cerrar(TURNO_ID, 200, USER_ID)).rejects.toThrow(/MOTIVO_REQUERIDO/);
   });
 
   test('rechaza monto_final_real negativo sin tocar la DB', async () => {
@@ -89,5 +104,11 @@ describe('validators shifts', () => {
   test('cerrar rechaza monto_final_real negativo y acepta cero', () => {
     expect(cerrarTurnoSchema.safeParse({ monto_final_real: -1 }).success).toBe(false);
     expect(cerrarTurnoSchema.safeParse({ monto_final_real: 0 }).success).toBe(true);
+  });
+
+  test('cerrar acepta sin motivo y exige >=5 cuando viene', () => {
+    expect(cerrarTurnoSchema.safeParse({ monto_final_real: 10 }).success).toBe(true);
+    expect(cerrarTurnoSchema.safeParse({ monto_final_real: 10, motivo: 'abc' }).success).toBe(false);
+    expect(cerrarTurnoSchema.safeParse({ monto_final_real: 10, motivo: 'faltante de caja' }).success).toBe(true);
   });
 });
