@@ -166,6 +166,27 @@
   color: var(--ink-muted);
 }
 
+/* Foto del producto en Ventas: caja 1:1 con la imagen completa (sin recortes).
+   aspect-ratio reserva el alto y evita saltos de layout al cargar. */
+.producto-card__media {
+  aspect-ratio: 1 / 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #F5E6D3;
+  border-bottom: 1px dotted #D4C4B0;
+  border-radius: calc(var(--radius) - 2px);
+  overflow: hidden;
+  margin-bottom: 12px;
+}
+.producto-card__img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  padding: 10px;
+  object-fit: contain;
+}
+
 /* Card con pop al hover (productos en Ventas).
    Solo en punteros reales: en táctil el hover se dispara al tocar y queda
    pegado. transform + box-shadow (paint/GPU), nunca width/margin. */
