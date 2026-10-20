@@ -303,28 +303,22 @@ export default function VentasPage() {
                       style={{ cursor: 'pointer' }}
                       onClick={() => agregarProducto(p)}
                     >
-                      {resolveProductoImagen(p) ? (
-                        <img
-                          src={resolveProductoImagen(p)}
-                          alt={p.nombre}
-                          loading="lazy"
-                          className="mb-2 w-100"
-                          style={{ height: '80px', objectFit: 'cover', borderBottom: '1px dotted #D4C4B0', background: '#F5E6D3' }}
-                          onError={(e) => { e.currentTarget.style.display = 'none'; }}
-                        />
-                      ) : (
-                        <div
-                          className="mb-2 d-flex align-items-center justify-content-center"
-                          style={{
-                            height: '80px',
-                            background: p.color || '#F5E6D3',
-                            borderBottom: '1px dotted #D4C4B0',
-                          }}
-                          aria-hidden="true"
-                        >
-                          <i className="bi bi-image text-muted"></i>
-                        </div>
-                      )}
+                      <div
+                        className="producto-card__media"
+                        style={!resolveProductoImagen(p) && p.color ? { background: p.color } : undefined}
+                      >
+                        {resolveProductoImagen(p) ? (
+                          <img
+                            src={resolveProductoImagen(p)}
+                            alt={p.nombre}
+                            loading="lazy"
+                            className="producto-card__img"
+                            onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                          />
+                        ) : (
+                          <i className="bi bi-image text-muted" aria-hidden="true"></i>
+                        )}
+                      </div>
                       <h6 className="mb-1" style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>
                         {p.nombre}
                       </h6>

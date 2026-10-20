@@ -182,6 +182,8 @@ describe('VentasPage', () => {
     renderVentas();
     const img = await screen.findByAltText('Helado Chocolate');
     expect(img).toHaveAttribute('src', expect.stringContaining('cono-simple.jpg'));
+    expect(img).toHaveClass('producto-card__img');
+    expect(img.closest('.producto-card__media')).not.toBeNull();
     await userEvent.click(await screen.findByText('Helado Chocolate'));
     expect(await screen.findByText(/IVA \(13% incluido\)/)).toBeInTheDocument();
     // Precio 50 Bs con IVA incluido: total = 50, no 50*1.16
