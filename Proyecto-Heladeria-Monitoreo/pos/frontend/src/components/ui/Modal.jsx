@@ -1,37 +1,53 @@
-import { motion, AnimatePresence } from 'framer-motion';
+import { useId, useRef } from 'react';
+import { createPortal } from 'react-dom';
+import { AnimatePresence, motion } from 'framer-motion';
+import useDialogFocus from './useDialogFocus.js';
 
-export default function Modal({ show, onClose, title, children, footer }) {
-  return (
+const transition = { duration: 0.2, ease: [0.16, 1, 0.3, 1] };
+
+export default function Modal({ show, onClose, title, children, footer, initialFocusRef }) {
+  const panelRef = useRef(null);
+  const titleId = useId();
+  useDialogFocus(show, panelRef, onClose, initialFocusRef);
+
+  if (typeof document === 'undefined') return null;
+
+  return createPortal(
     <AnimatePresence>
       {show && (
-        <>
+        <motion.div
+          className="modal-backdrop"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={transition}
+          onClick={onClose}
+        >
           <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="modal-backdrop fade show"
-            onClick={onClose}
-          />
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.95 }}
-            className="modal fade show d-block"
-            tabIndex="-1"
+            ref={panelRef}
+            className="modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby={title ? titleId : undefined}
+            tabIndex={-1}
+            initial={{ opacity: 0, y: 8, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 8, scale: 0.98 }}
+            transition={transition}
+            onClick={(event) => event.stopPropagation()}
           >
-            <div className="modal-dialog">
-              <div className="modal-content">
-                <div className="modal-header">
-                  <h5 className="modal-title">{title}</h5>
-                  <button type="button" className="btn-close" onClick={onClose}></button>
-                </div>
-                <div className="modal-body">{children}</div>
-                {footer && <div className="modal-footer">{footer}</div>}
-              </div>
+            <div className="modal-header">
+              {title ? <h3 id={titleId}>{title}</h3> : <span />}
+              <button type="button" className="modal-close" onClick={onClose} aria-label="Cerrar">
+                ×
+              </button>
             </div>
+            <div className="modal-body">{children}</div>
+            {footer && <div className="modal-footer">{footer}</div>}
           </motion.div>
-        </>
+        </motion.div>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body
   );
 }

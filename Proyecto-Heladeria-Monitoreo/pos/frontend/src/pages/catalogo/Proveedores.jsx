@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import Card from '../../components/ui/Card.jsx';
 import Button from '../../components/ui/Button.jsx';
 import Badge from '../../components/ui/Badge.jsx';
@@ -9,9 +9,6 @@ import Input from '../../components/ui/Input.jsx';
 import RequirePermiso from '../../components/common/RequirePermiso.jsx';
 import { proveedoresService } from '../../services/inventarioService.js';
 
-// Página propia de Proveedores (CRUD /api/v1/suppliers).
-// Antes era un sub-export de Inventario.jsx; ahora vive aquí y aquel
-// re-exporta por compatibilidad sin duplicar lógica.
 const formVacio = { nombre: '', nit: '', contacto: '', telefono: '', correo: '', estado: 'activo' };
 
 export default function Proveedores() {
@@ -23,6 +20,10 @@ export default function Proveedores() {
   const [aviso, setAviso] = useState(null);
   const [guardando, setGuardando] = useState(false);
   const [busqueda, setBusqueda] = useState('');
+  const [fieldErrors, setFieldErrors] = useState({});
+  const nombreRef = useRef(null);
+  const nitRef = useRef(null);
+  const correoRef = useRef(null);
 
   const cargar = useCallback(async () => {
     setLoading(true);
@@ -50,6 +51,7 @@ export default function Proveedores() {
       correo: p.correo || '',
       estado: p.estado || 'activo',
     });
+    setFieldErrors({});
     setError(null);
     setAviso(null);
   };
@@ -57,14 +59,17 @@ export default function Proveedores() {
   const cancelar = () => {
     setEditando(null);
     setForm(formVacio);
+    setFieldErrors({});
   };
 
   const guardar = async (ev) => {
     ev.preventDefault();
     setError(null);
     setAviso(null);
+    setFieldErrors({});
     if (!form.nombre.trim()) {
-      setError('El nombre es obligatorio');
+      setFieldErrors({ nombre: 'El nombre es obligatorio.' });
+      nombreRef.current?.focus();
       return;
     }
     setGuardando(true);
@@ -74,7 +79,7 @@ export default function Proveedores() {
         nit: form.nit.trim() || null,
         contacto: form.contacto.trim() || null,
         telefono: form.telefono.trim() || null,
-        correo: form.correo.trim() || null,
+        correo: form.correo.trim().toLowerCase() || null,
         ...(editando ? { estado: form.estado } : {}),
       };
       if (editando) {
@@ -87,7 +92,20 @@ export default function Proveedores() {
       cancelar();
       await cargar();
     } catch (e) {
-      setError(e.message);
+      const message = e?.message || 'No se pudo guardar. Intenta de nuevo.';
+      if (e?.status === 409 || /duplicad/i.test(message)) {
+        if (/correo/i.test(message)) {
+          setFieldErrors({ correo: 'Este correo ya está asignado a otro proveedor.' });
+          correoRef.current?.focus();
+        } else if (/nit/i.test(message)) {
+          setFieldErrors({ nit: 'Ya existe un proveedor con este NIT.' });
+          nitRef.current?.focus();
+        } else {
+          setError(message);
+        }
+      } else {
+        setError(message);
+      }
     } finally {
       setGuardando(false);
     }
@@ -124,7 +142,7 @@ export default function Proveedores() {
     <div className="d-flex flex-column gap-3">
       <div>
         <h1>Proveedores</h1>
-        <p className="text-muted">Alta, edición e inactivación de proveedores (NIT único).</p>
+        <p className="text-muted">Alta, edición e inactivación de proveedores (NIT y correo únicos).</p>
       </div>
 
       {error && <Alert variant="danger" icon="bi-exclamation-triangle-fill">{error}</Alert>}
@@ -136,24 +154,63 @@ export default function Proveedores() {
           <form onSubmit={guardar}>
             <div className="row g-2">
               <div className="col-12 col-md-6">
-                <Input label="Nombre" placeholder="Ej. Lácteos del Valle" value={form.nombre} onChange={set('nombre')} required />
+                <Input
+                  ref={nombreRef}
+                  label="Nombre"
+                  placeholder="Ej. Lácteos del Valle"
+                  value={form.nombre}
+                  onChange={set('nombre')}
+                  error={fieldErrors.nombre}
+                  required
+                />
               </div>
               <div className="col-12 col-md-6">
-                <Input label="NIT (único)" placeholder="Ej. 123456789" value={form.nit} onChange={set('nit')} />
+                <Input
+                  ref={nitRef}
+                  label="NIT (único)"
+                  placeholder="Ej. 123456789"
+                  value={form.nit}
+                  onChange={set('nit')}
+                  error={fieldErrors.nit}
+                />
               </div>
               <div className="col-12 col-md-6">
-                <Input label="Contacto" placeholder="Persona de contacto" value={form.contacto} onChange={set('contacto')} />
+                <Input
+                  label="Contacto"
+                  placeholder="Persona de contacto"
+                  value={form.contacto}
+                  onChange={set('contacto')}
+                />
               </div>
               <div className="col-12 col-md-6">
-                <Input label="Teléfono" placeholder="Ej. 70123456" value={form.telefono} onChange={set('telefono')} />
+                <Input
+                  label="Teléfono"
+                  placeholder="Ej. 70123456"
+                  value={form.telefono}
+                  onChange={set('telefono')}
+                />
               </div>
               <div className="col-12 col-md-6">
-                <Input label="Correo" type="email" placeholder="proveedor@ejemplo.com" value={form.correo} onChange={set('correo')} />
+                <Input
+                  ref={correoRef}
+                  label="Correo"
+                  type="email"
+                  placeholder="proveedor@ejemplo.com"
+                  value={form.correo}
+                  onChange={set('correo')}
+                  error={fieldErrors.correo}
+                  maxLength={150}
+                />
               </div>
               {editando && (
                 <div className="col-12 col-md-6">
                   <label className="form-label" htmlFor="prov-estado">Estado</label>
-                  <select id="prov-estado" className="form-select" value={form.estado} onChange={set('estado')}>
+                  <select
+                    id="prov-estado"
+                    className="form-select"
+                    value={form.estado}
+                    onChange={set('estado')}
+                  >
                     <option value="activo">activo</option>
                     <option value="inactivo">inactivo</option>
                   </select>

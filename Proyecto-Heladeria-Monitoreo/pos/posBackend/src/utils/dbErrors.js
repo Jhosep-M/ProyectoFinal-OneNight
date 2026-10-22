@@ -6,6 +6,15 @@ function isUniqueViolation(e) {
   return /duplicate|unique/i.test(e.message || '');
 }
 
+function uniqueViolationTarget(e) {
+  if (!isUniqueViolation(e)) return null;
+  const constraint = [e.constraint, e.original?.constraint, e.parent?.constraint].find(Boolean) || '';
+  const text = `${constraint} ${e.detail || ''} ${e.message || ''}`;
+  if (/correo/i.test(text)) return 'correo';
+  if (/nit/i.test(text)) return 'nit';
+  return 'otro';
+}
+
 // Codigos de violacion de constraint de PostgreSQL que se traducen a 400.
 const PG_CONSTRAINT_MESSAGES = {
   23502: 'Faltan campos obligatorios en la solicitud',
@@ -26,4 +35,4 @@ function constraintErrorMessage(e) {
   return code ? PG_CONSTRAINT_MESSAGES[code] : null;
 }
 
-module.exports = { isUniqueViolation, pgConstraintCode, constraintErrorMessage };
+module.exports = { isUniqueViolation, uniqueViolationTarget, pgConstraintCode, constraintErrorMessage };
