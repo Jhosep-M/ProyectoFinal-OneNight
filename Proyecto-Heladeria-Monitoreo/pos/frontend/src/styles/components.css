@@ -331,6 +331,7 @@
 /* Row-inline helper (formularios): NO usar .row para no pisar el grid de Bootstrap */
 .row-inline { display: flex; gap: 8px; flex-wrap: wrap; align-items: flex-end; margin-bottom: 12px; }
 .row-inline > * { flex: 0 0 auto; }
+.row-inline--center { justify-content: center; text-align: center; }
 
 /* KPIs de caja: número tabular, jerarquía clara */
 .kpi-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
@@ -504,8 +505,44 @@
   margin-bottom: 12px;
 }
 .field-row .field { margin-bottom: 0; min-width: 0; }
+.field-row--3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+@media (max-width: 900px) {
+  .field-row--3 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
 @media (max-width: 640px) {
   .field-row { grid-template-columns: 1fr; }
+}
+
+/* Pie de formulario: estado a la izquierda, acciones a la derecha */
+.form-footer {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+.form-footer .field { margin-bottom: 0; min-width: 180px; }
+.form-footer__actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+/* Cifras alineadas a la derecha, tabulares (usa --bs-font-numeric heredado) */
+.numeric { text-align: right; font-variant-numeric: tabular-nums; }
+th.numeric { text-align: right; }
+
+/* Modal grande para detalle con tablas */
+.modal--lg { max-width: 640px; }
+
+/* Solo lectura para lectores de pantalla */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 /* Drawer lateral */

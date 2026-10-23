@@ -29,9 +29,9 @@ describe('AjustePuntosModal', () => {
     mocks.mockAjustar.mockResolvedValue({});
     const onDone = vi.fn();
     render(<AjustePuntosModal cliente={cliente} onClose={vi.fn()} onDone={onDone} />);
-    await userEvent.selectOptions(screen.getByLabelText(/Tipo/i), 'canje');
-    await userEvent.type(screen.getByLabelText(/Puntos/i), '50');
-    await userEvent.type(screen.getByLabelText(/Motivo/i), 'Premio canje');
+    await userEvent.selectOptions(screen.getByLabelText(/^Tipo$/i), 'canje');
+    await userEvent.type(screen.getByLabelText(/^Puntos$/i), '50');
+    await userEvent.type(screen.getByLabelText(/^Motivo$/i), 'Premio canje');
     await userEvent.click(screen.getByRole('button', { name: 'Guardar' }));
     await waitFor(() => {
       expect(mocks.mockAjustar).toHaveBeenCalledWith(
@@ -44,8 +44,8 @@ describe('AjustePuntosModal', () => {
 
   it('motivo corto bloquea submit', async () => {
     render(<AjustePuntosModal cliente={cliente} onClose={vi.fn()} onDone={vi.fn()} />);
-    await userEvent.type(screen.getByLabelText(/Puntos/i), '10');
-    await userEvent.type(screen.getByLabelText(/Motivo/i), 'ab');
+    await userEvent.type(screen.getByLabelText(/^Puntos$/i), '10');
+    await userEvent.type(screen.getByLabelText(/^Motivo$/i), 'ab');
     await userEvent.click(screen.getByRole('button', { name: 'Guardar' }));
     expect(await screen.findByRole('alert')).toBeInTheDocument();
     expect(mocks.mockAjustar).not.toHaveBeenCalled();

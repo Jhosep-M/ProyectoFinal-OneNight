@@ -2,17 +2,19 @@ import { usePermisos } from '../../context/PermisosContext.jsx';
 
 const SIN_FALLBACK = Symbol('sin-fallback');
 
-export default function RequirePermiso({ permiso, children, fallback = SIN_FALLBACK }) {
+export default function RequirePermiso({ permiso, permisos, children, fallback = SIN_FALLBACK }) {
   const { tienePermiso, loading } = usePermisos();
   if (loading) return null;
-  if (!tienePermiso(permiso)) {
+  const lista = permisos ?? (Array.isArray(permiso) ? permiso : [permiso]);
+  const ok = lista.some((p) => tienePermiso(p));
+  if (!ok) {
     // Si el caller da fallback explícito (ej. ocultar botón), respetarlo.
     // Si no, mostrar mensaje en vez de página en blanco.
     if (fallback !== SIN_FALLBACK) return fallback;
     return (
       <div className="alert alert-warning d-flex align-items-center gap-2" role="alert">
         <i className="bi bi-shield-lock-fill"></i>
-        <span>No tienes permiso para ver esta sección ({permiso}).</span>
+        <span>No tienes permiso para ver esta sección ({lista.join(' o ')}).</span>
       </div>
     );
   }

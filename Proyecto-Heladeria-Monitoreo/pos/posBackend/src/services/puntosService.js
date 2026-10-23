@@ -3,7 +3,7 @@ const { sequelize } = require('../config/database');
 function calculaPuntos(total) {
   const t = Number(total || 0);
   if (!Number.isFinite(t) || t <= 0) return 0;
-  return Math.floor(t / 10);
+  return Math.floor(t / 30);
 }
 
 // Hook para P1: llamar desde registrar_venta (PG/Node) cuando cliente_id presente.

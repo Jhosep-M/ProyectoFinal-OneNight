@@ -10,6 +10,7 @@ const mocks = vi.hoisted(() => ({
   mockVer: vi.fn(),
   mockCrear: vi.fn(),
   mockActualizar: vi.fn(),
+  mockEliminar: vi.fn(),
 }));
 
 vi.mock('../../../services/customersService.js', () => ({
@@ -17,6 +18,7 @@ vi.mock('../../../services/customersService.js', () => ({
   verCliente: mocks.mockVer,
   crearCliente: mocks.mockCrear,
   actualizarCliente: mocks.mockActualizar,
+  eliminarCliente: mocks.mockEliminar,
   ajustarPuntos: vi.fn(),
   verVentasCliente: vi.fn(),
 }));
@@ -64,16 +66,18 @@ describe('ClientesPage', () => {
     renderClientes();
     await screen.findByText('María');
     await userEvent.type(screen.getByPlaceholderText('Nombre'), 'Pedro');
+    await userEvent.type(screen.getByPlaceholderText('Ej. 71098016'), '71098016');
+    await userEvent.type(screen.getByPlaceholderText('cliente@correo.com'), 'pedro@x.com');
     await userEvent.click(screen.getByRole('button', { name: 'Crear' }));
     await waitFor(() => {
-      expect(mocks.mockCrear).toHaveBeenCalledWith(expect.objectContaining({ nombre: 'Pedro' }));
+      expect(mocks.mockCrear).toHaveBeenCalledWith(expect.objectContaining({ nombre: 'Pedro', telefono: '71098016', correo: 'pedro@x.com' }));
     });
   });
 
   it('muestra empty-state cuando no hay clientes', async () => {
     mocks.mockListar.mockResolvedValue([]);
     renderClientes();
-    expect(await screen.findByText('Sin clientes — crea el primero')).toBeInTheDocument();
+    expect(await screen.findByText('Sin clientes')).toBeInTheDocument();
   });
 
   it('crear NO envía puntos_fidelidad', async () => {
@@ -81,12 +85,25 @@ describe('ClientesPage', () => {
     renderClientes();
     await screen.findByText('María');
     await userEvent.type(screen.getByPlaceholderText('Nombre'), 'Pedro');
+    await userEvent.type(screen.getByPlaceholderText('Ej. 71098016'), '71098016');
+    await userEvent.type(screen.getByPlaceholderText('cliente@correo.com'), 'pedro@x.com');
     await userEvent.click(screen.getByRole('button', { name: 'Crear' }));
     await waitFor(() => {
       expect(mocks.mockCrear).toHaveBeenCalled();
     });
     const payload = mocks.mockCrear.mock.calls[0][0];
     expect(payload).not.toHaveProperty('puntos_fidelidad');
-    expect(payload).toEqual(expect.objectContaining({ nombre: 'Pedro' }));
+  });
+
+  it('eliminar pide confirm y llama al servicio', async () => {
+    mocks.mockEliminar.mockResolvedValue({ id_cliente: 'cl1', estado: 'inactivo' });
+    const spy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    renderClientes();
+    await screen.findByText('María');
+    await userEvent.click(screen.getByRole('button', { name: 'Eliminar' }));
+    await waitFor(() => {
+      expect(mocks.mockEliminar).toHaveBeenCalledWith('cl1');
+    });
+    spy.mockRestore();
   });
 });
