@@ -23,7 +23,7 @@
 }
 
 .brand-name {
-  font-family: 'Playfair Display', Georgia, serif;
+  font-family: var(--bs-font-serif);
   font-style: italic;
   font-size: 1.25rem;
   font-weight: 600;
@@ -47,7 +47,7 @@
   letter-spacing: 0.06em;
   color: #8B6914;
   font-weight: 600;
-  font-family: 'Source Sans 3', sans-serif;
+  font-family: var(--bs-font-sans-serif);
 }
 
 .sidebar-link {
@@ -62,7 +62,7 @@
   margin-bottom: 2px;
   transition: background 0.15s ease, color 0.15s ease;
   position: relative;
-  font-family: 'Source Sans 3', sans-serif;
+  font-family: var(--bs-font-sans-serif);
 }
 
 .sidebar-link i {
@@ -97,7 +97,7 @@
   font-size: 0.8rem;
   color: #A89080;
   word-break: break-all;
-  font-family: 'Source Sans 3', sans-serif;
+  font-family: var(--bs-font-sans-serif);
 }
 
 .content {
@@ -122,7 +122,7 @@
 }
 
 .header-title {
-  font-family: 'Playfair Display', Georgia, serif;
+  font-family: var(--bs-font-serif);
   font-size: 1.25rem;
   font-weight: 600;
   color: #2C1810;
@@ -133,7 +133,7 @@
 .header-breadcrumb {
   font-size: 0.75rem;
   color: #5C4033;
-  font-family: 'Source Sans 3', sans-serif;
+  font-family: var(--bs-font-sans-serif);
   margin-top: 1px;
 }
 
@@ -174,7 +174,7 @@
 }
 
 .auth-card h1 {
-  font-family: 'Playfair Display', Georgia, serif;
+  font-family: var(--bs-font-serif);
   font-size: 1.5rem;
   font-weight: 600;
   text-align: center;
