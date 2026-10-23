@@ -47,7 +47,8 @@
   --info-soft: #E0EBF0;
   --bs-font-sans-serif: 'Source Sans 3', system-ui, sans-serif;
   --bs-font-serif: 'Playfair Display', Georgia, serif;
-  --bs-font-mono: 'Source Serif 4', Georgia, serif;
+  --bs-font-numeric: 'Source Serif 4', Georgia, serif;
+  --bs-font-mono: ui-monospace, 'SF Mono', 'Cascadia Mono', Consolas, monospace;
   --bs-border-radius: 10px;
   --bs-border-radius-sm: 8px;
   --bs-border-radius-lg: 12px;

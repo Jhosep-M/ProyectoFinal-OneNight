@@ -40,6 +40,25 @@ const fmtMoney = (v) => {
 
 const shortId = (id) => (id ? String(id).slice(0, 8) : '—');
 
+const horaRaw = (p) => p.fecha_pedido || p.fecha_hora || p.created_at || p.createdAt || p.hora;
+
+const horaMs = (p) => {
+  const raw = horaRaw(p);
+  if (!raw) return 0;
+  const d = new Date(raw);
+  return Number.isNaN(d.getTime()) ? 0 : d.getTime();
+};
+
+const horaPedido = (p) => {
+  const raw = horaRaw(p);
+  if (!raw) return '—';
+  const d = new Date(raw);
+  if (Number.isNaN(d.getTime())) return String(raw).slice(11, 16);
+  return d.toLocaleTimeString('es-BO', { hour: '2-digit', minute: '2-digit' });
+};
+
+const pesoEstado = (p) => (esAbierto(p.estado) ? 0 : esListo(p.estado) ? 1 : esCerrado(p.estado) ? 2 : 3);
+
 export default function PedidosPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -164,6 +183,8 @@ export default function PedidosPage() {
         return mesa.includes(q) || mesero.includes(q) || String(p.estado || '').includes(q);
       });
     }
+    // Operación de salón: activos primero, los más viejos de cada grupo arriba.
+    list.sort((a, b) => pesoEstado(a) - pesoEstado(b) || horaMs(a) - horaMs(b));
     return list;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pedidos, filtroEstado, busqueda, mesas]);
@@ -213,6 +234,11 @@ export default function PedidosPage() {
 
   const setItem = (k, patch) =>
     setItems((prev) => prev.map((x, j) => (j === k ? { ...x, ...patch } : x)));
+
+  const cambiarCant = (k, delta) =>
+    setItems((prev) =>
+      prev.map((x, j) => (j === k ? { ...x, cantidad: Math.max(1, (Number(x.cantidad) || 1) + delta) } : x))
+    );
 
   const crear = async (e) => {
     e.preventDefault();
@@ -375,15 +401,24 @@ export default function PedidosPage() {
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: 12, flexWrap: 'wrap', marginBottom: 4 }}>
-        <div>
-          <h1 style={{ marginBottom: 2 }}>Pedidos</h1>
-          <p style={{ margin: 0, opacity: 0.7 }}>Abierto → Listo → Cobrado. La mesa se ocupa y libera sola.</p>
-        </div>
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          <Badge tone="warning">Abiertos: {stats.abiertos}</Badge>
-          <Badge tone="success">Listos: {stats.listos}</Badge>
-          <Badge tone="neutral">Por cobrar: {fmtMoney(stats.porCobrar)}</Badge>
+      {/* El título lo muestra el topbar; aquí solo descripción + resumen operativo */}
+      <div className="pedidos-resumen">
+        <p className="pedidos-resumen__desc">
+          Crea y sigue los pedidos del salón. La mesa se libera al cobrar la cuenta.
+        </p>
+        <div className="pedidos-resumen__stats">
+          <span className="chip-stat chip-stat--warning">
+            <span className="chip-stat__label">Abiertos</span>
+            <span className="chip-stat__value">{stats.abiertos}</span>
+          </span>
+          <span className="chip-stat chip-stat--success">
+            <span className="chip-stat__label">Listos</span>
+            <span className="chip-stat__value">{stats.listos}</span>
+          </span>
+          <span className="chip-stat">
+            <span className="chip-stat__label">Por cobrar</span>
+            <span className="chip-stat__value">{fmtMoney(stats.porCobrar)}</span>
+          </span>
         </div>
       </div>
 
@@ -397,11 +432,13 @@ export default function PedidosPage() {
             onClick={toggleCuenta}
             onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleCuenta(); } }}
             aria-expanded={cuentaExpandida}
-            style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap', width: '100%', textAlign: 'left', cursor: 'pointer', padding: 0 }}
+            className="cuenta-resumen"
             title="Presiona para ver todos los productos de la cuenta"
           >
-            <span style={{ fontSize: '1.25rem', fontWeight: 700 }}>{fmtMoney(cuentaMesa.total)}</span>
-            <span style={{ opacity: 0.7 }}>{cuentaMesa.n} pedido(s) sin cobrar. Toca para ver todos los productos; al cobrar el último, la mesa queda libre sola.</span>
+            <span className="cuenta-resumen__amount">{fmtMoney(cuentaMesa.total)}</span>
+            <span className="cuenta-resumen__meta">
+              {cuentaMesa.n} pedido(s) sin cobrar. Toca para ver los productos; el último cobro libera la mesa.
+            </span>
             <span style={{ marginLeft: 'auto', display: 'flex', gap: 8 }} onClick={(e) => e.stopPropagation()}>
               <Button variant="secondary" size="sm" onClick={() => navigate('/mesas')}>Volver a mesas</Button>
             </span>
@@ -452,9 +489,6 @@ export default function PedidosPage() {
       )}
 
       <Card title="Nuevo pedido">
-        <p style={{ marginTop: 0, opacity: 0.7, fontSize: '0.85rem' }}>
-          Paso 1: mesa · Paso 2: productos · Paso 3: crear
-        </p>
         {loadErrors.mesas && (
           <Alert tone="error" message={`Mesas: ${loadErrors.mesas}`} onClose={() => recargar()} />
         )}
@@ -462,40 +496,39 @@ export default function PedidosPage() {
           <Alert tone="error" message={`Productos: ${loadErrors.productos}`} onClose={() => recargar()} />
         )}
         <form onSubmit={crear}>
-          <div className="row-inline" style={{ alignItems: 'flex-end' }}>
-            <Select
-              label="Mesa (vacío = mostrador)"
-              value={mesaId}
-              onChange={(e) => setMesaId(e.target.value)}
-              style={{ minWidth: 200 }}
-            >
-              <option value="">Mostrador / Para llevar</option>
-              {mesas.map((m) => (
-                <option key={m.id_mesa || m.id} value={m.id_mesa || m.id}>
-                  Mesa {m.numero ?? m.nombre ?? shortId(m.id_mesa || m.id)}
-                  {m.estado ? ` — ${m.estado}` : ''}
-                </option>
-              ))}
-            </Select>
-            <div className="field" aria-hidden="true">
-              <label aria-hidden="true">&nbsp;</label>
-              <div style={{ fontSize: '0.875rem', padding: '8px 0', border: '1px solid transparent' }}>
-                Total estimado: <strong>{fmtMoney(totalNuevo)}</strong>
-              </div>
-            </div>
+          <Select
+            label="Mesa"
+            value={mesaId}
+            onChange={(e) => setMesaId(e.target.value)}
+            style={{ minWidth: 220, maxWidth: 320 }}
+          >
+            <option value="">Mostrador / Para llevar</option>
+            {mesas.map((m) => (
+              <option key={m.id_mesa || m.id} value={m.id_mesa || m.id}>
+                Mesa {m.numero ?? m.nombre ?? shortId(m.id_mesa || m.id)}
+                {m.estado ? ` — ${m.estado}` : ''}
+              </option>
+            ))}
+          </Select>
+          <p className="field-hint">Sin mesa = mostrador / llevar</p>
+
+          <div className="pedido-lineas__head" aria-hidden="true">
+            <span>Producto</span>
+            <span>Cant.</span>
+            <span>Subtotal</span>
+            <span />
           </div>
 
           {items.map((it, k) => {
             const prod = productosById.get(String(it.producto_id || ''));
             const sub = (Number(prod?.precio) || 0) * (Number(it.cantidad) || 0);
             return (
-              <div className="row-inline" key={k} style={{ alignItems: 'flex-end' }}>
+              <div className="pedido-linea" key={k}>
                 <Select
-                  label={k === 0 ? 'Producto' : `Producto ${k + 1}`}
+                  label={k === 0 ? 'Producto' : undefined}
                   value={it.producto_id}
                   onChange={(e) => setItem(k, { producto_id: e.target.value })}
                   required
-                  style={{ minWidth: 240 }}
                 >
                   <option value="">Selecciona producto…</option>
                   {productos.map((p) => (
@@ -504,46 +537,60 @@ export default function PedidosPage() {
                     </option>
                   ))}
                 </Select>
-                <Input
-                  label="Cant."
-                  type="number"
-                  min={1}
-                  step={1}
-                  placeholder="1"
-                  value={it.cantidad}
-                  onChange={(e) => setItem(k, { cantidad: e.target.value })}
-                  required
-                  style={{ width: 90 }}
-                />
-                <div className="field" aria-hidden="true">
-                  <label aria-hidden="true">&nbsp;</label>
-                  <div style={{ minWidth: 90, fontSize: '0.875rem', padding: '8px 0', border: '1px solid transparent' }}>
-                    {prod ? fmtMoney(sub) : '—'}
-                  </div>
-                </div>
-                <div className="field" aria-hidden="true">
-                  <label aria-hidden="true">&nbsp;</label>
+                <div className="stepper">
                   <Button
                     type="button"
-                    variant="ghost"
-                    onClick={() => setItems(items.filter((_, j) => j !== k))}
-                    disabled={items.length === 1}
-                    title="Quitar producto"
+                    size="sm"
+                    onClick={() => cambiarCant(k, -1)}
+                    disabled={(Number(it.cantidad) || 1) <= 1}
+                    title="Restar cantidad"
                   >
                     −
                   </Button>
+                  <input
+                    type="number"
+                    min={1}
+                    step={1}
+                    placeholder="1"
+                    aria-label="Cantidad"
+                    value={it.cantidad}
+                    onChange={(e) => setItem(k, { cantidad: e.target.value })}
+                    required
+                  />
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={() => cambiarCant(k, +1)}
+                    title="Sumar cantidad"
+                  >
+                    +
+                  </Button>
                 </div>
+                <div className="pedido-linea__subtotal">{prod ? fmtMoney(sub) : '—'}</div>
+                <Button
+                  type="button"
+                  className="icon-btn"
+                  onClick={() => setItems(items.filter((_, j) => j !== k))}
+                  disabled={items.length === 1}
+                  title="Quitar producto"
+                >
+                  ✕
+                </Button>
               </div>
             );
           })}
 
-          <div className="row-inline">
+          <div className="pedido-footer">
             <Button type="button" variant="secondary" onClick={() => setItems([...items, emptyItem()])}>
               + producto
             </Button>
-            <Button type="submit" loading={creando} disabled={creando}>
-              Crear pedido
-            </Button>
+            <div className="pedido-footer__total">
+              <span className="pedido-footer__label">Total estimado</span>
+              <strong className="pedido-footer__amount">{fmtMoney(totalNuevo)}</strong>
+              <Button type="submit" loading={creando} disabled={creando}>
+                Crear pedido
+              </Button>
+            </div>
           </div>
         </form>
       </Card>
@@ -570,7 +617,11 @@ export default function PedidosPage() {
         }
       >
         {loading ? (
-          <p>Cargando pedidos…</p>
+          <div className="skeleton-list" aria-busy="true">
+            <div className="skeleton" />
+            <div className="skeleton" />
+            <div className="skeleton" />
+          </div>
         ) : loadErrors.pedidos ? (
           <div className="empty-state">
             <h3>No se pudieron cargar los pedidos</h3>
@@ -583,39 +634,44 @@ export default function PedidosPage() {
             <p>{pedidos.length === 0 ? 'Aún no hay pedidos. Crea el primero arriba.' : 'Ningún pedido coincide con el filtro.'}</p>
           </div>
         ) : (
-          <table className="data-table">
-            <thead>
-              <tr><th>Mesa</th><th>Mesero</th><th>Total</th><th>Estado</th><th style={{ textAlign: 'right' }}>Acciones</th></tr>
-            </thead>
-            <tbody>
-              {pedidosFiltrados.map((p) => (
-                <tr key={p.id_pedido}>
-                  <td><strong>{mesaLabel(p)}</strong></td>
-                  <td>{p.mesero_nombre || shortId(p.mesero_id)}</td>
-                  <td>{fmtMoney(p.total)}</td>
-                  <td><Badge tone={TONE_ESTADO[p.estado] || 'neutral'}>{p.estado}</Badge></td>
-                  <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
-                    <RequirePermiso permiso="pedido.gestionar">
-                      {esAbierto(p.estado) && (
-                        <Button size="sm" variant="secondary" onClick={() => cambiarEstado(p.id_pedido, 'listo')}>Listo</Button>
-                      )}
-                      {esAbierto(p.estado) && (
-                        <Button size="sm" variant="ghost" onClick={() => cancelar(p.id_pedido)}>Cancelar</Button>
-                      )}
-                    </RequirePermiso>
-                    <RequirePermiso permiso="venta.crear">
-                      {(esAbierto(p.estado) || esListo(p.estado)) && !p.mesa_id && (
-                        <Button size="sm" onClick={() => cobrar(p)} title="Cobro directo (mostrador)">Cobrar</Button>
-                      )}
-                      {(esAbierto(p.estado) || esListo(p.estado)) && p.mesa_id && (
-                        <span style={{ fontSize: '0.8rem', opacity: 0.65, marginLeft: 8 }}>Se cobra en cuenta</span>
-                      )}
-                    </RequirePermiso>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <div className="table-wrap">
+            <table className="data-table">
+              <thead>
+                <tr><th>Mesa</th><th>Mesero</th><th>Hora</th><th>Total</th><th>Estado</th><th style={{ textAlign: 'right' }}>Acciones</th></tr>
+              </thead>
+              <tbody>
+                {pedidosFiltrados.map((p) => (
+                  <tr key={p.id_pedido}>
+                    <td><strong>{mesaLabel(p)}</strong></td>
+                    <td>{p.mesero_nombre || shortId(p.mesero_id)}</td>
+                    <td>{horaPedido(p)}</td>
+                    <td>{fmtMoney(p.total)}</td>
+                    <td><Badge tone={TONE_ESTADO[p.estado] || 'neutral'}>{p.estado}</Badge></td>
+                    <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
+                      <span className="row-actions">
+                        <RequirePermiso permiso="pedido.gestionar">
+                          {esAbierto(p.estado) && (
+                            <Button size="sm" variant="secondary" onClick={() => cambiarEstado(p.id_pedido, 'listo')}>Listo</Button>
+                          )}
+                          {esAbierto(p.estado) && (
+                            <Button size="sm" variant="ghost" onClick={() => cancelar(p.id_pedido)}>Cancelar</Button>
+                          )}
+                        </RequirePermiso>
+                        <RequirePermiso permiso="venta.crear">
+                          {(esAbierto(p.estado) || esListo(p.estado)) && !p.mesa_id && (
+                            <Button size="sm" onClick={() => cobrar(p)} title="Cobro directo (mostrador)">Cobrar</Button>
+                          )}
+                          {(esAbierto(p.estado) || esListo(p.estado)) && p.mesa_id && (
+                            <Badge tone="info">Se cobra en cuenta</Badge>
+                          )}
+                        </RequirePermiso>
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </Card>
     </div>

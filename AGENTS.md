@@ -782,6 +782,27 @@ Alerta / AlertaPOS
 
 sin una razón arquitectónica explícita.
 
+### 15.1 Regla de tipografía del frontend (estricta y obligatoria)
+
+Toda modificación del frontend (POS y Monitoreo) debe conservar la misma tipografía del sistema. La tipografía es parte de la identidad visual y no se puede cambiar por parciales.
+
+Tipografía oficial (definida en `pos/frontend/src/styles/tokens.css`, replicar en `monitoreo/frontend` si aplica):
+
+```text
+--bs-font-sans-serif: 'Source Sans 3', system-ui, sans-serif  → cuerpo y UI
+--bs-font-serif:      'Playfair Display', Georgia, serif      → títulos (h1-h6)
+--bs-font-numeric:    'Source Serif 4', Georgia, serif        → montos/cifras destacadas
+--bs-font-mono:       stack mono nativo                        → código/valores técnicos
+```
+
+Reglas:
+
+1. Prohibido introducir nuevas familias tipográficas. No cambiar las fuentes cargadas en `index.html` sin actualizar `tokens.css` y esta sección.
+2. Prohibido hardcodear `font-family` con nombres de fuente (`'Source Sans 3'`, `'Playfair Display'`, etc.) en componentes, páginas o estilos. Usar siempre los tokens: `font-family: var(--bs-font-sans-serif)` / `var(--bs-font-serif)` / `var(--bs-font-numeric)`.
+3. Los montos, cantidades, horas y cualquier cifra tabular deben usar `font-variant-numeric: tabular-nums` y, en valores destacados, `--bs-font-numeric`.
+4. La jerarquía es fija: serif para títulos, sans para todo el texto de interfaz. No usar serif en etiquetas, placeholders, botones ni tablas (excepto cifras destacadas).
+5. Al crear un componente nuevo, verificar que hereda la tipografía mediante `inherit` o tokens sin declarar familias literal.
+
 ---
 
 ## 16. Prioridad de implementación

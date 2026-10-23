@@ -83,6 +83,8 @@ Todos los endpoints requieren header `Authorization: Bearer <JWT>` (Supabase Aut
 | PATCH | `/suppliers/:id` | `proveedor.gestionar` | Actualizar proveedor |
 | DELETE | `/suppliers/:id` | `proveedor.gestionar` | Inactivar proveedor |
 
+`POST` y `PATCH` responden `409` cuando el NIT o el correo ya existen (`NIT duplicado` / `Correo duplicado`). El correo se compara sin distinguir mayúsculas.
+
 ### Clientes
 
 | Método | Ruta | Permiso | Descripción |

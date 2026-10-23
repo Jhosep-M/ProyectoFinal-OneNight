@@ -7,7 +7,8 @@
 ## Regla vigente (Fase 4)
 
 - **`components/ui/` es el sistema canónico** para UI nueva: `Button`, `Card`,
-  `Badge`, `Alert`, `EmptyState`, `Input`, `Modal`, `Skeleton`, `DataTable`, `Avatar`.
+  `Badge`, `Alert`, `EmptyState`, `Input`, `Select`, `Modal`, `Drawer`,
+  `Skeleton`, `DataTable`, `Avatar`.
 - **`components/common/` es legacy**: no agregar componentes nuevos aquí.
 - Las páginas nuevas **`Devoluciones.jsx`** y **`Proveedores.jsx`** usan `ui/`.
 - **`VentasPage.jsx`** ya migró `Input` de `common/` a `ui/` (API compatible).
@@ -20,4 +21,4 @@ exista en `ui/` (`Button`, `Card`, `Badge`, `Input`, `EmptyState`, `Skeleton`,
 masivas: un cambio pequeño por vez, verificando `npm run build` + tests.
 
 Excepciones (quedan en `common/` hasta tener reemplazo en `ui/`):
-`RequireAuth`, `RequirePermiso`, `Select`, `Textarea`.
+`RequireAuth`, `RequirePermiso`, `Textarea`.

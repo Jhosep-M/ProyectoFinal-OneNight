@@ -2,7 +2,7 @@ const { Router } = require('express');
 const { authenticateJWT } = require('../middlewares/authenticate');
 const { authorize } = require('../middlewares/authorize');
 const { createSupplierSchema, updateSupplierSchema } = require('../validators/supplier');
-const { isUniqueViolation } = require('../utils/dbErrors');
+const { uniqueViolationTarget } = require('../utils/dbErrors');
 const { sequelize } = require('../config/database');
 const { auditLog } = require('../utils/audit');
 
@@ -36,7 +36,10 @@ router.post('/', authorize('inventario.movimiento'), async (req, res, next) => {
     res.status(201).json(rows[0]);
   } catch (e) {
     if (e.name === 'ZodError') return res.status(400).json({ error: 'Validation failed', details: e.errors });
-    if (isUniqueViolation(e)) return res.status(409).json({ error: 'NIT duplicado' });
+    const duplicado = uniqueViolationTarget(e);
+    if (duplicado === 'correo') return res.status(409).json({ error: 'Correo duplicado' });
+    if (duplicado === 'nit') return res.status(409).json({ error: 'NIT duplicado' });
+    if (duplicado) return res.status(409).json({ error: 'Valor duplicado' });
     next(e);
   }
 });
@@ -58,7 +61,10 @@ router.patch('/:id', authorize('inventario.movimiento'), async (req, res, next) 
     res.json(rows[0]);
   } catch (e) {
     if (e.name === 'ZodError') return res.status(400).json({ error: 'Validation failed', details: e.errors });
-    if (isUniqueViolation(e)) return res.status(409).json({ error: 'NIT duplicado' });
+    const duplicado = uniqueViolationTarget(e);
+    if (duplicado === 'correo') return res.status(409).json({ error: 'Correo duplicado' });
+    if (duplicado === 'nit') return res.status(409).json({ error: 'NIT duplicado' });
+    if (duplicado) return res.status(409).json({ error: 'Valor duplicado' });
     next(e);
   }
 });

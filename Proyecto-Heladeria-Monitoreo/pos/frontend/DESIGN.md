@@ -59,9 +59,10 @@ Escala 4px: `4, 8, 12, 16, 20, 24, 32, 48`. Cards con padding 16–20px. Gap ent
 ## Componentes
 
 - **Button**: variantes primary (accent), secondary (borde), danger (error), ghost (sin fondo). Estados: hover, focus (ring 2px accent), active, disabled (opacity 0.5, cursor not-allowed), loading (spinner + texto).
-- **Input/Select/Textarea**: borde `--border`, focus ring accent, estado error con borde `--error` + mensaje.
-- **Card**: `--surface`, borde 1px, radio 6px, padding 16–20px.
+- **Input/Select/Textarea**: borde `--border`, focus ring accent, estado error con borde `--error` + mensaje inline, `hint` opcional y label asociado con `htmlFor`/`id`.
+- **Card**: `--surface`, borde 1px, radio 6px, padding 16–20px; header opcional con `title`/`actions`.
 - **Badge**: pill 999px, tinte semántico + texto del mismo tono oscuro.
+- **Drawer**: panel lateral para alta/edición; overlay, focus trap, cierre con Escape y footer sticky.
 - **DataTable**: header sticky, filas con hover, ordenación por columna, paginación, skeleton loading, empty state.
 - **Modal**: `<dialog>` nativo o portal, backdrop oscuro, focus trap, cierre con Escape.
 - **Toast/Alert**: esquina superior derecha, auto-dismiss, icono + mensaje, variante semántica.

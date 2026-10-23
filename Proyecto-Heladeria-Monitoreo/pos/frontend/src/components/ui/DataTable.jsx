@@ -1,11 +1,13 @@
-export default function DataTable({ columns, data, pageSize = 10 }) {
+export default function DataTable({ columns, data, empty = null, label }) {
+  if (!data?.length && empty) return empty;
+
   return (
-    <div className="table-responsive">
-      <table className="table table-hover">
+    <div className="table-wrap">
+      <table className="data-table" aria-label={label}>
         <thead>
           <tr>
             {columns.map((col) => (
-              <th key={col.key}>{col.label}</th>
+              <th key={col.key} scope="col">{col.label}</th>
             ))}
           </tr>
         </thead>
