@@ -1,60 +1,89 @@
 import { useState } from 'react';
-import Card from '../common/Card.jsx';
 import Button from '../common/Button.jsx';
+import Badge from '../common/Badge.jsx';
+import EmptyState from '../common/EmptyState.jsx';
 
 export default function DetalleCliente({ detalle, ventas = [], onClose }) {
   const [tab, setTab] = useState('movimientos');
   const movimientos = detalle?.movimientos_puntos || [];
   const listaVentas = Array.isArray(ventas) ? ventas : [];
+  const puntos = Math.trunc(Number(detalle?.puntos_fidelidad ?? 0));
 
   return (
-    <Card title={`Detalle: ${detalle?.nombre}`}>
-      <p>Puntos: {detalle?.puntos_fidelidad}</p>
-      <div className="row-inline">
-        <Button size="sm" variant={tab === 'movimientos' ? 'primary' : 'secondary'} onClick={() => setTab('movimientos')}>
-          Movimientos
-        </Button>
-        <Button size="sm" variant={tab === 'ventas' ? 'primary' : 'secondary'} onClick={() => setTab('ventas')}>
-          Ventas
-        </Button>
+    <div className="modal-backdrop" onClick={onClose}>
+      <div className="modal modal--lg" role="dialog" aria-modal="true" aria-label={`Detalle: ${detalle?.nombre}`} onClick={(e) => e.stopPropagation()}>
+        <div className="modal-header">
+          <h3>Detalle: {detalle?.nombre}</h3>
+          <button type="button" className="modal-close" onClick={onClose} aria-label="Cerrar">×</button>
+        </div>
+        <div className="modal-body">
+          <div className="kpi-grid">
+            <div className="kpi">
+              <div className="kpi-label">Puntos</div>
+              <div className="kpi-value kpi-value-accent">{puntos}</div>
+            </div>
+            <div className="kpi">
+              <div className="kpi-label">Regla</div>
+              <div className="kpi-value">30 Bs = 1</div>
+            </div>
+          </div>
+          <p className="field-hint">{detalle?.telefono ?? ''} · {detalle?.correo ?? ''}</p>
+          <div className="segmented" role="tablist" aria-label="Secciones del cliente">
+            <button type="button" role="tab" aria-pressed={tab === 'movimientos'} onClick={() => setTab('movimientos')}>
+              Movimientos ({movimientos.length})
+            </button>
+            <button type="button" role="tab" aria-pressed={tab === 'ventas'} onClick={() => setTab('ventas')}>
+              Ventas ({listaVentas.length})
+            </button>
+          </div>
+
+          {tab === 'movimientos' && (
+            movimientos.length === 0 ? (
+              <EmptyState title="Sin movimientos" description="Ajusta puntos o registra una venta con este cliente." />
+            ) : (
+              <div className="table-wrap">
+                <table className="data-table">
+                  <thead><tr><th>Fecha</th><th>Tipo</th><th className="numeric">Puntos</th><th>Motivo</th></tr></thead>
+                  <tbody>
+                    {movimientos.map((m) => (
+                      <tr key={m.id_movimiento}>
+                        <td>{m.fecha ? new Date(m.fecha).toLocaleString() : '—'}</td>
+                        <td><Badge tone={m.tipo === 'canje' ? 'warning' : m.puntos < 0 ? 'error' : 'info'}>{m.tipo}</Badge></td>
+                        <td className="numeric">{Math.trunc(Number(m.puntos ?? 0))}</td>
+                        <td>{m.motivo || '—'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )
+          )}
+
+          {tab === 'ventas' && (
+            listaVentas.length === 0 ? (
+              <EmptyState title="Sin ventas" description="Este cliente aún no tiene ventas asociadas." />
+            ) : (
+              <div className="table-wrap">
+                <table className="data-table">
+                  <thead><tr><th>Fecha</th><th className="numeric">Total</th><th>Estado</th></tr></thead>
+                  <tbody>
+                    {listaVentas.map((v, i) => (
+                      <tr key={v.id_venta || v.id || i}>
+                        <td>{v.fecha || v.fecha_venta ? new Date(v.fecha || v.fecha_venta).toLocaleString() : '—'}</td>
+                        <td className="numeric">{v.total}</td>
+                        <td><Badge tone={v.estado === 'activa' ? 'success' : 'neutral'}>{v.estado || '—'}</Badge></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )
+          )}
+        </div>
+        <div className="modal-footer">
+          <Button size="sm" variant="secondary" onClick={onClose}>Cerrar</Button>
+        </div>
       </div>
-
-      {tab === 'movimientos' && (
-        <table className="data-table">
-          <thead><tr><th>Fecha</th><th>Tipo</th><th>Puntos</th><th>Motivo</th></tr></thead>
-          <tbody>
-            {movimientos.map((m) => (
-              <tr key={m.id_movimiento}>
-                <td>{m.fecha ? new Date(m.fecha).toLocaleString() : '—'}</td>
-                <td>{m.tipo}</td>
-                <td>{m.puntos}</td>
-                <td>{m.motivo || '—'}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
-
-      {tab === 'ventas' && (
-        listaVentas.length === 0 ? (
-          <p>Sin ventas</p>
-        ) : (
-          <table className="data-table">
-            <thead><tr><th>Fecha</th><th>Total</th><th>Estado</th></tr></thead>
-            <tbody>
-              {listaVentas.map((v, i) => (
-                <tr key={v.id_venta || v.id || i}>
-                  <td>{v.fecha || v.fecha_venta ? new Date(v.fecha || v.fecha_venta).toLocaleString() : '—'}</td>
-                  <td>{v.total}</td>
-                  <td>{v.estado || '—'}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )
-      )}
-
-      <Button size="sm" variant="secondary" onClick={onClose}>Cerrar</Button>
-    </Card>
+    </div>
   );
 }

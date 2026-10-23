@@ -94,8 +94,8 @@ BEGIN
       UPDATE cliente SET puntos_fidelidad = puntos_fidelidad - v_canje WHERE id_cliente = p_cliente_id;
     END IF;
     INSERT INTO movimiento_puntos (cliente_id, venta_id, puntos, tipo, motivo)
-    VALUES (p_cliente_id, v_venta_id, floor(v_total)::int, 'acumulacion', 'venta ' || v_venta_id::text);
-    UPDATE cliente SET puntos_fidelidad = puntos_fidelidad + floor(v_total)::int WHERE id_cliente = p_cliente_id;
+    VALUES (p_cliente_id, v_venta_id, floor(v_total / 30)::int, 'acumulacion', 'venta ' || v_venta_id::text);
+    UPDATE cliente SET puntos_fidelidad = puntos_fidelidad + floor(v_total / 30)::int WHERE id_cliente = p_cliente_id;
   END IF;
   INSERT INTO auditoria_accion (usuario_id, accion, entidad, entidad_id, resultado, detalle)
   VALUES (p_usuario_id, 'REGISTRAR_VENTA', 'venta', v_venta_id, 'exitoso', jsonb_build_object('total', v_total, 'items', p_items));

@@ -30,4 +30,26 @@ function authorize(permiso) {
 // Alias: authorize() y requirePermission() son el mismo middleware factory.
 const requirePermission = authorize;
 
-module.exports = { authorize, requirePermission };
+function authorizeAny(permisos) {
+  const lista = Array.isArray(permisos) ? permisos : [permisos];
+  return async (req, res, next) => {
+    const user = req.user;
+    if (!user || !user.id) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+    try {
+      for (const perm of lista) {
+        const [rows] = await sequelize.query(
+          'SELECT usuario_tiene_permiso(:uid, :perm) AS has_perm',
+          { replacements: { uid: user.id, perm } }
+        );
+        if (rows && rows[0] && rows[0].has_perm) return next();
+      }
+      return res.status(403).json({ error: 'Forbidden' });
+    } catch (e) {
+      return res.status(500).json({ error: 'Internal error' });
+    }
+  };
+}
+
+module.exports = { authorize, requirePermission, authorizeAny };

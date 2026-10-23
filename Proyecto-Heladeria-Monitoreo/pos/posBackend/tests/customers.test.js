@@ -12,6 +12,7 @@ jest.mock('../src/middlewares/authenticate', () => ({
 }));
 jest.mock('../src/middlewares/authorize', () => ({
   authorize: () => (_req, _res, next) => next(),
+  authorizeAny: () => (_req, _res, next) => next(),
   requirePermission: () => (_req, _res, next) => next(),
 }));
 jest.mock('../src/utils/audit', () => ({ auditLog: jest.fn() }));
@@ -32,9 +33,15 @@ const VALID_ID = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 
 describe('validators/customer', () => {
   test('(a) create ignora puntos_fidelidad (strip unknown)', () => {
-    const parsed = createCustomerSchema.parse({ nombre: 'Ana', puntos_fidelidad: 999 });
+    const parsed = createCustomerSchema.parse({ nombre: 'Ana', telefono: '71098016', correo: 'ana@x.com', puntos_fidelidad: 999 });
     expect(parsed.nombre).toBe('Ana');
     expect(parsed.puntos_fidelidad).toBeUndefined();
+  });
+
+  test('(a2) create exige correo y telefono 8 digitos', () => {
+    expect(() => createCustomerSchema.parse({ nombre: 'Ana', telefono: '71098016' })).toThrow();
+    expect(() => createCustomerSchema.parse({ nombre: 'Ana', telefono: '123', correo: 'ana@x.com' })).toThrow();
+    expect(() => createCustomerSchema.parse({ nombre: 'Ana', telefono: '71098016', correo: 'no-es-email' })).toThrow();
   });
 
   test('(b) update con puntos_fidelidad lanza ZodError', () => {
@@ -59,10 +66,18 @@ describe('routes/customers', () => {
     sequelize.query.mockResolvedValueOnce([[{ id_cliente: VALID_ID, puntos_fidelidad: 0 }]]);
     const res = await request(app)
       .post('/api/v1/customers')
-      .send({ nombre: 'Ana', puntos_fidelidad: 999 });
+      .send({ nombre: 'Ana', telefono: '71098016', correo: 'ana@x.com', puntos_fidelidad: 999 });
     expect(res.status).toBe(201);
     const [, opts] = sequelize.query.mock.calls[0];
     expect(opts.replacements.puntos).toBe(0);
+  });
+
+  test('POST sin correo -> 400', async () => {
+    const res = await request(app)
+      .post('/api/v1/customers')
+      .send({ nombre: 'Ana', telefono: '71098016' });
+    expect(res.status).toBe(400);
+    expect(sequelize.query).not.toHaveBeenCalled();
   });
 
   test('PATCH con puntos_fidelidad -> 400 sin UPDATE', async () => {
@@ -92,9 +107,9 @@ describe('routes/customers', () => {
     const err = new Error('duplicate key value');
     err.code = '23505';
     sequelize.query.mockRejectedValueOnce(err);
-    const res = await request(app).post('/api/v1/customers').send({ nombre: 'Ana' });
+    const res = await request(app).post('/api/v1/customers').send({ nombre: 'Ana', telefono: '71098016', correo: 'ana@x.com' });
     expect(res.status).toBe(409);
-    expect(res.body.error).toBe('Correo o teléfono duplicado');
+    expect(res.body.error).toBe('Correo duplicado');
   });
 
   test('PATCH duplicado (23505) -> 409', async () => {
@@ -105,7 +120,7 @@ describe('routes/customers', () => {
       .patch(`/api/v1/customers/${VALID_ID}`)
       .send({ nombre: 'Otro' });
     expect(res.status).toBe(409);
-    expect(res.body.error).toBe('Correo o teléfono duplicado');
+    expect(res.body.error).toBe('Correo duplicado');
   });
 
   test('listQuerySchema coerce string "20"->20 con defaults', () => {
@@ -187,5 +202,34 @@ describe('routes/customers', () => {
     expect(res.status).toBe(400);
     expect(res.body.error).toBe('Validation failed');
     expect(sequelize.transaction).not.toHaveBeenCalled();
+  });
+
+  test('DELETE inactiva cliente activo -> 200', async () => {
+    sequelize.query.mockResolvedValueOnce([[{ id_cliente: VALID_ID, estado: 'inactivo' }]]);
+    const res = await request(app).delete(`/api/v1/customers/${VALID_ID}`);
+    expect(res.status).toBe(200);
+    expect(res.body.estado).toBe('inactivo');
+    expect(sequelize.query.mock.calls[0][0]).toMatch(/UPDATE cliente SET estado='inactivo'/);
+  });
+
+  test('DELETE con id no-uuid -> 400', async () => {
+    const res = await request(app).delete('/api/v1/customers/no-uuid');
+    expect(res.status).toBe(400);
+    expect(sequelize.query).not.toHaveBeenCalled();
+  });
+
+  test('DELETE cliente inexistente -> 404', async () => {
+    sequelize.query.mockResolvedValueOnce([[]]).mockResolvedValueOnce([[]]);
+    const res = await request(app).delete(`/api/v1/customers/${VALID_ID}`);
+    expect(res.status).toBe(404);
+  });
+
+  test('DELETE cliente ya inactivo -> 409', async () => {
+    sequelize.query
+      .mockResolvedValueOnce([[]])
+      .mockResolvedValueOnce([[{ id_cliente: VALID_ID }]]);
+    const res = await request(app).delete(`/api/v1/customers/${VALID_ID}`);
+    expect(res.status).toBe(409);
+    expect(res.body.error).toBe('Cliente ya inactivo');
   });
 });

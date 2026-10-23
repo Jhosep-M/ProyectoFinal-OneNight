@@ -1,14 +1,14 @@
 const { z } = require('zod');
 const createCustomerSchema = z.object({
   nombre: z.string().trim().min(1).max(100),
-  telefono: z.string().trim().max(30).nullable().optional(),
-  correo: z.string().trim().email().max(150).nullable().optional(),
+  telefono: z.string().trim().regex(/^[0-9]{8}$/, 'Teléfono debe tener exactamente 8 dígitos'),
+  correo: z.string().trim().email('Correo inválido').max(150),
   estado: z.enum(['activo','inactivo']).optional().default('activo'),
 });
 const updateCustomerSchema = z.object({
   nombre: z.string().trim().min(1).max(100).optional(),
-  telefono: z.string().trim().max(30).nullable().optional(),
-  correo: z.string().trim().email().max(150).nullable().optional(),
+  telefono: z.string().trim().regex(/^[0-9]{8}$/, 'Teléfono debe tener exactamente 8 dígitos').optional(),
+  correo: z.string().trim().email('Correo inválido').max(150).optional(),
   estado: z.enum(['activo','inactivo']).optional(),
 }).refine(d => Object.keys(d).length > 0, { message: 'al menos un campo requerido' });
 const uuidParamSchema = z.string().uuid();

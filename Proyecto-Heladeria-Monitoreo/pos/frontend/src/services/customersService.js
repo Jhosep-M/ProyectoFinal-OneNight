@@ -16,4 +16,6 @@ export const actualizarCliente = (id, data) =>
   apiFetch(`/customers/${id}`, { method: 'PATCH', body: data });
 export const ajustarPuntos = (id, data) =>
   apiFetch(`/customers/${id}/ajustes-puntos`, { method: 'POST', body: data });
+export const eliminarCliente = (id) =>
+  apiFetch(`/customers/${id}`, { method: 'DELETE' });
 export const verVentasCliente = (id) => apiFetch(`/customers/${id}/ventas`);
