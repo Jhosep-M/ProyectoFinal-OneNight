@@ -4,6 +4,7 @@ const variantMap = {
   primary: 'btn-primary',
   secondary: 'btn-secondary',
   danger: 'btn-danger',
+  dangerOutline: 'btn-outline-danger',
   outline: 'btn-outline-primary',
   outlineSecondary: 'btn-outline-secondary',
   ghost: 'btn-ghost',

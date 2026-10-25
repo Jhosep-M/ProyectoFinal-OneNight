@@ -41,6 +41,10 @@ function renderCaja() {
 describe('CajaPage (Solo mío)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // mockReset (no solo clear): elimina implementaciones/once heredadas
+    // entre tests para que un ResolvedOnce no consumido no contamine al siguiente.
+    mocks.mockCerrarTurno.mockReset();
+    mocks.mockAbrirTurno.mockReset();
     mocks.mockListarMisTurnos.mockResolvedValue([
       { id_turno: 't1', usuario_id: 'u-mio', fecha_apertura: '2026-09-28T08:00:00Z', monto_inicial: 100, estado: 'abierto', cajero_email: 'c@h.com' },
     ]);
@@ -103,17 +107,40 @@ describe('CajaPage (Solo mío)', () => {
     expect(await screen.findByText(/Ya hay un turno abierto/)).toBeInTheDocument();
   });
 
+  it('muestra en vivo esperado, diferencia y umbral antes de confirmar', async () => {
+    mocks.mockCerrarTurno.mockResolvedValue({});
+    renderCaja();
+    await userEvent.click(await screen.findByRole('button', { name: /Cerrar Turno/ }));
+    const input = await screen.findByLabelText(/Efectivo contado/i);
+    await userEvent.clear(input);
+    await userEvent.type(input, '120');
+    // Esperado aprox = monto_inicial 100 + 0 ventas; dif 20 dentro de tolerancia.
+    expect(await screen.findByText(/Umbral:/)).toBeInTheDocument();
+    expect(screen.getByText(/diferencia dentro de la tolerancia/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Confirmar cierre/ })).toBeEnabled();
+  });
+
+  it('bloquea Confirmar en cliente si la diferencia es crítica (>= 2x umbral)', async () => {
+    renderCaja();
+    await userEvent.click(await screen.findByRole('button', { name: /Cerrar Turno/ }));
+    const input = await screen.findByLabelText(/Efectivo contado/i);
+    await userEvent.clear(input);
+    await userEvent.type(input, '250');
+    expect(await screen.findByText(/requiere supervisor/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Confirmar cierre/ })).toBeDisabled();
+  });
+
   it('ante 422 MOTIVO_REQUERIDO el modal pide motivo y reintenta con él', async () => {
     const err422 = new Error('La diferencia supera el umbral permitido. Ingresa un motivo para cerrar.');
     err422.status = 422;
     err422.code = 'MOTIVO_REQUERIDO';
-    err422.payload = { code: 'MOTIVO_REQUERIDO', diferencia: 120, montoEsperado: 80, umbral: 50 };
+    err422.payload = { code: 'MOTIVO_REQUERIDO', diferencia: 70, montoEsperado: 100, umbral: 50 };
     mocks.mockCerrarTurno.mockRejectedValueOnce(err422);
     renderCaja();
     await userEvent.click(await screen.findByRole('button', { name: /Cerrar Turno/ }));
     const input = await screen.findByLabelText(/Efectivo contado/i);
     await userEvent.clear(input);
-    await userEvent.type(input, '200');
+    await userEvent.type(input, '170');
     await userEvent.click(screen.getByRole('button', { name: /Confirmar cierre/ }));
 
     // El modal sigue abierto y ahora exige un motivo (>=5).
@@ -124,7 +151,30 @@ describe('CajaPage (Solo mío)', () => {
     await userEvent.type(motivoInput, 'faltante de caja');
     await userEvent.click(screen.getByRole('button', { name: /Confirmar cierre/ }));
     await waitFor(() => {
-      expect(mocks.mockCerrarTurno).toHaveBeenLastCalledWith('t1', { monto_final_real: 200, motivo: 'faltante de caja' });
+      expect(mocks.mockCerrarTurno).toHaveBeenLastCalledWith('t1', { monto_final_real: 170, motivo: 'faltante de caja' });
     });
+  });
+
+  it('ante 409 DIFERENCIA_CRITICA el modal sigue abierto y muestra supervisor', async () => {
+    const err409 = new Error('Diferencia crítica, requiere supervisor.');
+    err409.status = 409;
+    err409.code = 'DIFERENCIA_CRITICA';
+    err409.payload = { code: 'DIFERENCIA_CRITICA', diferencia: 150, montoEsperado: 100, umbral: 50 };
+    mocks.mockCerrarTurno.mockRejectedValueOnce(err409);
+    // Primer intento: monto no crítico en cliente (170, dif 70) para que el
+    // botón esté habilitado; el servidor responde 409 crítico.
+    renderCaja();
+    await userEvent.click(await screen.findByRole('button', { name: /Cerrar Turno/ }));
+    const input = await screen.findByLabelText(/Efectivo contado/i);
+    await userEvent.clear(input);
+    await userEvent.type(input, '170');
+    const motivoInput = await screen.findByLabelText(/Motivo \(obligatorio: diferencia/i);
+    await userEvent.type(motivoInput, 'faltante de caja');
+    await userEvent.click(screen.getByRole('button', { name: /Confirmar cierre/ }));
+
+    expect(await screen.findByText(/requiere supervisor/i)).toBeInTheDocument();
+    // El modal no se cierra: el input sigue visible y solo hubo un intento.
+    expect(screen.getByLabelText(/Efectivo contado/i)).toBeInTheDocument();
+    expect(mocks.mockCerrarTurno).toHaveBeenCalledTimes(1);
   });
 });

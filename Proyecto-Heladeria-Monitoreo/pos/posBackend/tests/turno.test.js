@@ -80,6 +80,29 @@ describe('turnoService.cerrar', () => {
     await expect(turnoService.cerrar(TURNO_ID, 200, USER_ID)).rejects.toThrow(/MOTIVO_REQUERIDO/);
   });
 
+  test('cierra con diferencia 20 (< umbral 50) sin motivo', async () => {
+    const jsonb = { exito: true, montoEsperado: 100, montoReal: 120, diferencia: 20, motivo: null };
+    sequelize.query.mockResolvedValueOnce([[{ result: jsonb }]]);
+    const out = await turnoService.cerrar(TURNO_ID, 120, USER_ID);
+    expect(out).toEqual(jsonb);
+    const [, opts] = sequelize.query.mock.calls[0];
+    expect(opts.replacements.motivo).toBeNull();
+  });
+
+  test('cierra con diferencia 120 (> umbral) y motivo >= 5', async () => {
+    const jsonb = { exito: true, montoEsperado: 80, montoReal: 200, diferencia: 120, motivo: 'faltante de caja' };
+    sequelize.query.mockResolvedValueOnce([[{ result: jsonb }]]);
+    const out = await turnoService.cerrar(TURNO_ID, 200, USER_ID, 'faltante de caja');
+    expect(out).toEqual(jsonb);
+  });
+
+  test('propaga DIFERENCIA_CRITICA de PG (la ruta lo mapea a 409 aun con motivo)', async () => {
+    sequelize.query.mockRejectedValueOnce(
+      new Error('DIFERENCIA_CRITICA|diferencia=150.00|esperado=100.00|umbral=50.00|ajeno=false')
+    );
+    await expect(turnoService.cerrar(TURNO_ID, 250, USER_ID, 'motivo largo suficiente')).rejects.toThrow(/DIFERENCIA_CRITICA/);
+  });
+
   test('rechaza monto_final_real negativo sin tocar la DB', async () => {
     await expect(turnoService.cerrar(TURNO_ID, -1, USER_ID)).rejects.toThrow(/monto_final_real/i);
     expect(sequelize.query).not.toHaveBeenCalled();

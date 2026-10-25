@@ -21,6 +21,11 @@ jest.mock('../src/middlewares/authenticate', () => ({
 jest.mock('../src/middlewares/authorize', () => ({
   authorize: () => (_req, _res, next) => next(),
   requirePermission: () => (_req, _res, next) => next(),
+  authorizeAny: () => (_req, _res, next) => next(),
+}));
+
+jest.mock('../src/utils/audit', () => ({
+  auditLog: jest.fn().mockResolvedValue(undefined),
 }));
 
 const request = require('supertest');
@@ -57,5 +62,75 @@ describe('GET /api/v1/mesas', () => {
     sequelize.query.mockResolvedValueOnce([[]]);
     const nf = await request(app).get('/api/v1/mesas/no-existe');
     expect(nf.status).toBe(404);
+  });
+});
+
+describe('POST /api/v1/mesas', () => {
+  beforeEach(() => jest.clearAllMocks());
+
+  test('duplicado retorna 409 Número de mesa duplicado', async () => {
+    const err = new Error('duplicate key');
+    err.original = { code: '23505' };
+    sequelize.query.mockRejectedValueOnce(err);
+    const res = await request(app).post('/api/v1/mesas').send({ numero: 1 });
+    expect(res.status).toBe(409);
+    expect(res.body.error).toBe('Número de mesa duplicado');
+  });
+
+  test('numero inválido retorna 400', async () => {
+    const res = await request(app).post('/api/v1/mesas').send({ numero: -2 });
+    expect(res.status).toBe(400);
+  });
+});
+
+describe('PATCH /api/v1/mesas/:id liberar con guard', () => {
+  beforeEach(() => jest.clearAllMocks());
+
+  test('a libre con pedidos abiertos o cuenta pendiente → 409', async () => {
+    // guard: cuenta abierta con pedidos y total
+    sequelize.query.mockResolvedValueOnce([[{ abiertos: 1, total: 68.5 }]]);
+    const res = await request(app).patch('/api/v1/mesas/m2').send({ estado: 'libre' });
+    expect(res.status).toBe(409);
+    expect(res.body.error).toMatch(/cobra antes de liberar/i);
+  });
+
+  test('a libre sin cuenta → 200 y audita', async () => {
+    const { auditLog } = require('../src/utils/audit');
+    sequelize.query.mockResolvedValueOnce([[{ abiertos: 0, total: 0 }]]);
+    sequelize.query.mockResolvedValueOnce([[{ id_mesa: 'm1', numero: 1, estado: 'libre' }]]);
+    const res = await request(app).patch('/api/v1/mesas/m1').send({ estado: 'libre' });
+    expect(res.status).toBe(200);
+    expect(res.body.estado).toBe('libre');
+    expect(auditLog).toHaveBeenCalledWith(expect.objectContaining({ accion: 'mesa.actualizar' }));
+  });
+});
+
+describe('DELETE /api/v1/mesas/:id (soft inactiva)', () => {
+  beforeEach(() => jest.clearAllMocks());
+
+  test('con pedidos abiertos → 409 y no inactiva', async () => {
+    sequelize.query.mockResolvedValueOnce([[{ abiertos: 2, total: 120 }]]);
+    const res = await request(app).delete('/api/v1/mesas/m2');
+    expect(res.status).toBe(409);
+    expect(res.body.error).toMatch(/pedidos/i);
+    // solo el guard consultó, sin UPDATE posterior
+    expect(sequelize.query).toHaveBeenCalledTimes(1);
+  });
+
+  test('sin pedidos abiertos → 200 inactiva + audit mesa.eliminar', async () => {
+    const { auditLog } = require('../src/utils/audit');
+    sequelize.query.mockResolvedValueOnce([[{ abiertos: 0, total: 0 }]]);
+    sequelize.query.mockResolvedValueOnce([[{ id_mesa: 'm1', numero: 1, estado: 'inactiva' }]]);
+    const res = await request(app).delete('/api/v1/mesas/m1');
+    expect(res.status).toBe(200);
+    expect(res.body.estado).toBe('inactiva');
+    expect(auditLog).toHaveBeenCalledWith(expect.objectContaining({ accion: 'mesa.eliminar' }));
+  });
+
+  test('mesa inexistente → 404', async () => {
+    sequelize.query.mockResolvedValueOnce([[{ abiertos: 0, total: 0 }]]);
+    sequelize.query.mockResolvedValueOnce([[]]);
+    const res = await request(app).delete('/api/v1/mesas/no-existe');
+    expect(res.status).toBe(404);
   });
 });

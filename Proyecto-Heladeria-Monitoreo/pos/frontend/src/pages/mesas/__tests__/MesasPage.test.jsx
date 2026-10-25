@@ -10,6 +10,7 @@ const mocks = vi.hoisted(() => ({
   mockVer: vi.fn(),
   mockCrear: vi.fn(),
   mockActualizar: vi.fn(),
+  mockEliminar: vi.fn(),
 }));
 
 vi.mock('../../../services/mesasService.js', () => ({
@@ -17,6 +18,7 @@ vi.mock('../../../services/mesasService.js', () => ({
   verMesa: mocks.mockVer,
   crearMesa: mocks.mockCrear,
   actualizarMesa: mocks.mockActualizar,
+  eliminarMesa: mocks.mockEliminar,
 }));
 
 vi.mock('../../../context/AuthContext.jsx', () => ({ useAuth: () => ({ session: { user: { email: 'c@h.com' } }, loading: false, signOut: vi.fn() }), AuthProvider: ({ children }) => children }));
@@ -101,14 +103,55 @@ describe('MesasPage', () => {
     });
   });
 
-  it('liberar mesa llama al servicio', async () => {
-    mocks.mockActualizar.mockResolvedValue({ id_mesa: 'm2', numero: 2, estado: 'libre' });
+  it('ocupar mesa llama al servicio', async () => {
+    mocks.mockActualizar.mockResolvedValue({ id_mesa: 'm1', numero: 1, estado: 'ocupada' });
     renderMesas();
-    await screen.findByText('2');
-    await userEvent.click(screen.getByText('2'));
-    await userEvent.click(await screen.findByRole('button', { name: /^Liberar$/ }));
+    await screen.findByText('1');
+    await userEvent.click(screen.getByText('1'));
+    await userEvent.click(await screen.findByRole('button', { name: /^Ocupar$/ }));
     await waitFor(() => {
-      expect(mocks.mockActualizar).toHaveBeenCalledWith('m2', { estado: 'libre' });
+      expect(mocks.mockActualizar).toHaveBeenCalledWith('m1', { estado: 'ocupada' });
     });
+  });
+
+  it('liberar deshabilitado con cuenta pendiente y muestra aviso', async () => {
+    mocks.mockVer.mockResolvedValueOnce({
+      id_mesa: 'm2', numero: 2, estado: 'ocupada', pedidos_abiertos: 1,
+      cuenta_total: 68.5, mesero_nombre: 'Ana', abierto_desde: new Date().toISOString(),
+      pedidos: [{ id_pedido: 'p1', estado: 'abierto', mesero_nombre: 'Ana', total: 68.5 }],
+    });
+    renderMesas();
+    await screen.findByText('1');
+    await userEvent.click(screen.getByText('2'));
+    const liberar = await screen.findByRole('button', { name: /^Liberar$/ });
+    expect(liberar).toBeDisabled();
+    expect(screen.getByText(/Cobra la cuenta antes de liberar/)).toBeInTheDocument();
+  });
+
+  it('muestra error humano cuando el backend rechaza con 409', async () => {
+    const err = new Error('Mesa con pedidos abiertos o cuenta pendiente, cobra antes de liberar');
+    err.status = 409;
+    mocks.mockActualizar.mockRejectedValueOnce(err);
+    renderMesas();
+    await screen.findByText('1');
+    await userEvent.click(screen.getByText('1'));
+    await userEvent.click(await screen.findByRole('button', { name: /^Liberar$/ }));
+    expect(await screen.findByText(/cobra antes de liberar/i)).toBeInTheDocument();
+  });
+
+  it('eliminar con confirm llama DELETE y quita la tarjeta', async () => {
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    mocks.mockEliminar.mockResolvedValue({ id_mesa: 'm1', numero: 1, estado: 'inactiva' });
+    renderMesas();
+    await screen.findByText('1');
+    await userEvent.click(screen.getByText('1'));
+    await userEvent.click(await screen.findByRole('button', { name: /Eliminar/ }));
+    await waitFor(() => {
+      expect(mocks.mockEliminar).toHaveBeenCalledWith('m1');
+    });
+    await waitFor(() => {
+      expect(screen.queryByText('1')).not.toBeInTheDocument();
+    });
+    confirmSpy.mockRestore();
   });
 });

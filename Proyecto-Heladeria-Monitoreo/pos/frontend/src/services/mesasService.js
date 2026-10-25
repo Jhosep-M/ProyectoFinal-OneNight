@@ -8,3 +8,5 @@ export const crearMesa = (numero) => {
 };
 export const actualizarMesa = (id, cambios) =>
   apiFetch(`/mesas/${id}`, { method: 'PATCH', body: cambios });
+export const eliminarMesa = (id) =>
+  apiFetch(`/mesas/${id}`, { method: 'DELETE' });

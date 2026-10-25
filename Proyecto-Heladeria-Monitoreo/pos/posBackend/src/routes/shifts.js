@@ -59,6 +59,20 @@ router.post('/:id/cerrar', authorize('turno.cerrar'), async (req, res, next) => 
         esTurnoAjeno: /ajeno=t/.test(msg),
       });
     }
+    if (msg.includes('DIFERENCIA_CRITICA')) {
+      const num = (key) => {
+        const m = msg.match(new RegExp(`${key}=(-?[0-9.]+)`));
+        return m ? Number(m[1]) : null;
+      };
+      return res.status(409).json({
+        code: 'DIFERENCIA_CRITICA',
+        error: 'Diferencia crítica, requiere supervisor.',
+        diferencia: num('diferencia'),
+        montoEsperado: num('esperado'),
+        umbral: num('umbral'),
+        esTurnoAjeno: /ajeno=t/.test(msg),
+      });
+    }
     if (/no autorizado a cerrar turno ajeno/i.test(msg)) {
       return res.status(403).json({ error: 'No puedes cerrar un turno ajeno' });
     }

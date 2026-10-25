@@ -106,6 +106,9 @@ export default function CajaPage() {
   const nombreCajero = (t) =>
     t?.cajero_email || t?.cajero || t?.usuario || t?.usuario_email || session?.user?.email || '—';
 
+  const UMBRAL_CAJA = 50;
+  const esperadoAprox = turnoActivo ? (Number(turnoActivo.monto_inicial) || 0) + totalVentas : null;
+
   const handleConfirmarCierrePropio = async ({ monto_final_real, motivo }) => {
     if (!turnoActivo || !turnoActivoId) return;
     setCerrando(true);
@@ -116,6 +119,17 @@ export default function CajaPage() {
       setDiferenciaInfo(null);
       await recargar();
     } catch (err) {
+      // Bloqueo duro: diferencia crítica (>= 2x umbral) requiere supervisor.
+      // Mantenemos el modal abierto sin reintentar. No capturar otros 409
+      // (p.ej. turno ya cerrado) que van al manejador genérico de abajo.
+      if (err?.code === 'DIFERENCIA_CRITICA' || err?.payload?.code === 'DIFERENCIA_CRITICA') {
+        const p = err.payload || {};
+        if (p.diferencia !== undefined || p.montoEsperado !== undefined || p.umbral !== undefined) {
+          setDiferenciaInfo({ diferencia: p.diferencia, montoEsperado: p.montoEsperado, umbral: p.umbral });
+        }
+        setErrorCerrar('Diferencia crítica, requiere supervisor.');
+        return;
+      }
       // Reactivo: si la diferencia supera el umbral, el backend responde 422 y
       // pide un motivo. Mantenemos el modal abierto con el bloque de motivo.
       if (err?.status === 422 || err?.code === 'MOTIVO_REQUERIDO') {
@@ -255,6 +269,8 @@ export default function CajaPage() {
                   esAjeno={false}
                   requiereMotivo={!!diferenciaInfo}
                   diferenciaInfo={diferenciaInfo}
+                  esperadoAprox={esperadoAprox}
+                  umbral={diferenciaInfo?.umbral ?? UMBRAL_CAJA}
                   cargando={cerrando}
                   error={errorCerrar}
                   onCancelar={() => { setModalPropio(false); setErrorCerrar(null); setDiferenciaInfo(null); }}
