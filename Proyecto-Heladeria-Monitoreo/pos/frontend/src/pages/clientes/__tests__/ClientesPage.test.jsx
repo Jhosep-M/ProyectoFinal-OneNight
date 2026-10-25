@@ -95,15 +95,27 @@ describe('ClientesPage', () => {
     expect(payload).not.toHaveProperty('puntos_fidelidad');
   });
 
-  it('eliminar pide confirm y llama al servicio', async () => {
+  it('eliminar abre modal y confirma con el servicio', async () => {
     mocks.mockEliminar.mockResolvedValue({ id_cliente: 'cl1', estado: 'inactivo' });
-    const spy = vi.spyOn(window, 'confirm').mockReturnValue(true);
     renderClientes();
     await screen.findByText('María');
     await userEvent.click(screen.getByRole('button', { name: 'Eliminar' }));
+    expect(await screen.findByRole('alertdialog')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Inactivar' }));
     await waitFor(() => {
       expect(mocks.mockEliminar).toHaveBeenCalledWith('cl1');
     });
-    spy.mockRestore();
+  });
+
+  it('eliminar se puede cancelar sin llamar al servicio', async () => {
+    renderClientes();
+    await screen.findByText('María');
+    await userEvent.click(screen.getByRole('button', { name: 'Eliminar' }));
+    expect(await screen.findByRole('alertdialog')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Cancelar' }));
+    await waitFor(() => {
+      expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
+    });
+    expect(mocks.mockEliminar).not.toHaveBeenCalled();
   });
 });

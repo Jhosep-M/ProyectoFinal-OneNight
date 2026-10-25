@@ -11,6 +11,7 @@ import Skeleton from '../../components/common/Skeleton.jsx';
 import RequirePermiso from '../../components/common/RequirePermiso.jsx';
 import DetalleCliente from '../../components/clientes/DetalleCliente.jsx';
 import AjustePuntosModal from '../../components/clientes/AjustePuntosModal.jsx';
+import ConfirmEliminarModal from '../../components/clientes/ConfirmEliminarModal.jsx';
 
 const empty = { nombre: '', telefono: '', correo: '', puntos_fidelidad: 0, estado: 'activo' };
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -23,6 +24,7 @@ export default function ClientesPage() {
   const [detalle, setDetalle] = useState(null);
   const [ventas, setVentas] = useState([]);
   const [ajusteCliente, setAjusteCliente] = useState(null);
+  const [eliminarTarget, setEliminarTarget] = useState(null);
   const [alert, setAlert] = useState(null);
   const [q, setQ] = useState('');
   const [filtroEstado, setFiltroEstado] = useState('');
@@ -107,13 +109,15 @@ export default function ClientesPage() {
   const cancelar = () => { setEditando(null); setForm(empty); };
   const fmtPuntos = (v) => String(Math.trunc(Number(v ?? 0)));
 
-  const eliminar = async (c) => {
-    if (!window.confirm(`¿Inactivar a ${c.nombre}? Se oculta del listado pero se conserva su historial.`)) return;
+  const confirmarEliminar = async () => {
+    const c = eliminarTarget;
+    if (!c) return;
     setAlert(null);
     try {
       await eliminarCliente(c.id_cliente);
       setAlert({ tone: 'success', message: 'Cliente inactivado' });
       if (editando === c.id_cliente) { setEditando(null); setForm(empty); }
+      setEliminarTarget(null);
       recargar();
     } catch (e) { setAlert({ tone: 'error', message: e.message }); }
   };
@@ -199,7 +203,7 @@ export default function ClientesPage() {
                         </RequirePermiso>
                         <RequirePermiso permiso="cliente.gestionar" fallback={null}>
                           {c.estado === 'activo' && (
-                            <Button size="sm" variant="danger" onClick={() => eliminar(c)}>Eliminar</Button>
+                            <Button size="sm" variant="danger" onClick={() => setEliminarTarget(c)}>Eliminar</Button>
                           )}
                         </RequirePermiso>
                       </div>
@@ -218,6 +222,14 @@ export default function ClientesPage() {
 
       {ajusteCliente && (
         <AjustePuntosModal cliente={ajusteCliente} onClose={() => setAjusteCliente(null)} onDone={trasAjuste} />
+      )}
+
+      {eliminarTarget && (
+        <ConfirmEliminarModal
+          cliente={eliminarTarget}
+          onCancel={() => setEliminarTarget(null)}
+          onConfirm={confirmarEliminar}
+        />
       )}
     </div>
   );
