@@ -5,7 +5,7 @@ import Card from '../../components/ui/Card.jsx';
 import Badge from '../../components/ui/Badge.jsx';
 import Button from '../../components/ui/Button.jsx';
 import Skeleton from '../../components/ui/Skeleton.jsx';
-import { listarMesas, verMesa, crearMesa, actualizarMesa } from '../../services/mesasService.js';
+import { listarMesas, verMesa, crearMesa, actualizarMesa, eliminarMesa } from '../../services/mesasService.js';
 import { formatCurrency } from '../../utils/format.js';
 
 const container = {
@@ -75,6 +75,7 @@ export default function MesasPage() {
   const [mesaSeleccionada, setMesaSeleccionada] = useState(null);
   const [creando, setCreando] = useState(false);
   const [cambiandoEstado, setCambiandoEstado] = useState(false);
+  const [eliminando, setEliminando] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -194,6 +195,28 @@ export default function MesasPage() {
   const cuentaSeleccionada = mesaSeleccionada?.pedidos?.reduce((a, p) => a + (Number(p.total) || 0), 0)
     ?? mesaSeleccionada?.cuenta_total ?? 0;
   const tiempoSeleccionado = formatoTiempo(mesaSeleccionada?.abierto_desde || mesaSeleccionada?.pedidos?.[0]?.fecha);
+  // Guard de UI (el backend también lo exige con 409): con pedidos
+  // abiertos o cuenta pendiente no se puede liberar sin cobrar.
+  const pedidosAbiertosSel = Number(mesaSeleccionada?.pedidos_abiertos ?? mesaSeleccionada?.pedidos?.length ?? 0) || 0;
+  const cuentaSel = Number(mesaSeleccionada?.cuenta_total) || cuentaSeleccionada || 0;
+  const tieneCuentaPendiente = pedidosAbiertosSel > 0 || cuentaSel > 0;
+
+  const handleEliminarMesa = async () => {
+    if (!mesaSeleccionada || eliminando) return;
+    const numero = mesaSeleccionada.numero ?? mesaId;
+    if (!window.confirm(`¿Eliminar la mesa ${numero}? Solo se puede eliminar sin pedidos abiertos ni cuenta pendiente.`)) return;
+    setAccionError(null);
+    setEliminando(true);
+    try {
+      await eliminarMesa(mesaId);
+      setMesas((prev) => prev.filter((m) => (m.id_mesa || m.id) !== mesaId));
+      setMesaSeleccionada(null);
+    } catch (err) {
+      setAccionError(err?.message || 'No se pudo eliminar la mesa');
+    } finally {
+      setEliminando(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -285,7 +308,7 @@ export default function MesasPage() {
                     onClick={() => handleSeleccionarMesa(m)}
                   >
                     <div className="d-flex justify-content-between align-items-start mb-1">
-                      <h6 className="mb-0 fs-5 fw-bold" style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>
+                      <h6 className="mb-0 fs-5 fw-bold" style={{ fontFamily: 'var(--bs-font-serif)' }}>
                         <i className="bi bi-grid me-1"></i>
                         {m.numero ?? `Mesa ${m.id}`}
                       </h6>
@@ -293,7 +316,7 @@ export default function MesasPage() {
                         {ESTADOS_MESA[m.estado]?.nombre || m.estado}
                       </Badge>
                     </div>
-                    <div className="fw-bold" style={{ fontFamily: "'Source Serif 4', Georgia, serif" }}>
+                    <div className="fw-bold tabular-nums" style={{ fontFamily: 'var(--bs-font-numeric)', fontVariantNumeric: 'tabular-nums' }}>
                       {m.cuenta_total > 0 ? formatCurrency(m.cuenta_total) : 'Sin cuenta'}
                     </div>
                     <div className="text-muted small">
@@ -313,7 +336,7 @@ export default function MesasPage() {
         {mesaSeleccionada && (
           <Card className="sticky-top" style={{ top: '80px' }}>
             <div className="d-flex justify-content-between align-items-start mb-1">
-              <h5 className="mb-0" style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>
+              <h5 className="mb-0" style={{ fontFamily: 'var(--bs-font-serif)' }}>
                 Mesa {mesaSeleccionada.numero ?? mesaSeleccionada.id}
               </h5>
               <Badge variant={ESTADOS_MESA[mesaSeleccionada.estado]?.variante || 'secondary'}>
@@ -327,7 +350,7 @@ export default function MesasPage() {
 
             <div className="d-flex justify-content-between align-items-center p-2 rounded mb-3" style={{ background: '#F7F1E6' }}>
               <span className="text-muted small">Cuenta actual</span>
-              <span className="fw-bold fs-5" style={{ fontFamily: "'Source Serif 4', Georgia, serif" }}>
+              <span className="fw-bold fs-5 tabular-nums" style={{ fontFamily: 'var(--bs-font-numeric)', fontVariantNumeric: 'tabular-nums' }}>
                 {formatCurrency(cuentaSeleccionada)}
               </span>
             </div>
@@ -357,10 +380,18 @@ export default function MesasPage() {
               <Button variant="primary" icon="bi-plus-lg" onClick={() => navigate(`/pedidos?mesa=${mesaId}`)}>Nuevo pedido</Button>
               <Button variant="secondary" icon="bi-receipt" onClick={() => navigate(`/pedidos?mesa=${mesaId}`)}>Ver cuenta</Button>
               <div className="text-muted small mb-1">La mesa se ocupa al crear un pedido y se libera al cobrar el último. Solo usa esto en casos excepcionales.</div>
+              {tieneCuentaPendiente && (
+                <div className="alert alert-warning py-1 px-2 small mb-1" role="alert">
+                  Cobra la cuenta antes de liberar.
+                </div>
+              )}
               <div className="d-flex gap-2">
                 <Button variant="secondary" icon="bi-person" onClick={() => handleCambiarEstado('ocupada')} disabled={cambiandoEstado}>Ocupar</Button>
-                <Button variant="danger" icon="bi-x-lg" onClick={() => handleCambiarEstado('libre')} disabled={cambiandoEstado}>Liberar</Button>
+                <Button variant="danger" icon="bi-x-lg" onClick={() => handleCambiarEstado('libre')} disabled={cambiandoEstado || tieneCuentaPendiente}>Liberar</Button>
               </div>
+              <Button variant="dangerOutline" icon="bi-trash" onClick={handleEliminarMesa} disabled={eliminando || cambiandoEstado}>
+                {eliminando ? 'Eliminando...' : 'Eliminar'}
+              </Button>
             </div>
           </Card>
         )}

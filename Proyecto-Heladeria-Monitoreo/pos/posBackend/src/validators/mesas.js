@@ -6,7 +6,10 @@ const createMesaSchema = z.object({
 }).refine((d) => d.numero !== undefined || d.nombre !== undefined, { message: 'numero requerido' });
 
 const updateMesaSchema = z.object({
-  estado: z.enum(['libre', 'ocupada', 'reservada'], { errorMap: () => ({ message: 'estado debe ser libre, ocupada o reservada' }) }),
+  // 'disponible' es alias histórico de 'libre' (Modelo defaultea
+  // 'disponible', la API normaliza a 'libre'). 'inactiva' NO se acepta
+  // por PATCH: solo el DELETE la asigna (soft-delete).
+  estado: z.enum(['libre', 'disponible', 'ocupada', 'reservada'], { errorMap: () => ({ message: 'estado debe ser libre, ocupada o reservada' }) }),
 });
 
 module.exports = { createMesaSchema, updateMesaSchema };

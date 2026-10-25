@@ -80,6 +80,13 @@ BEGIN
       ROUND(v_diferencia, 2), ROUND(v_monto_esperado, 2), ROUND(v_umbral, 2), v_es_ajeno;
   END IF;
 
+  -- Bloqueo duro: diferencia crítica (>= 2x umbral) requiere supervisor.
+  -- Ni siquiera con motivo se permite cerrar; la ruta lo mapea a 409.
+  IF ABS(v_diferencia) >= v_umbral * 2 THEN
+    RAISE EXCEPTION 'DIFERENCIA_CRITICA|diferencia=%|esperado=%|umbral=%|ajeno=%',
+      ROUND(v_diferencia, 2), ROUND(v_monto_esperado, 2), ROUND(v_umbral, 2), v_es_ajeno;
+  END IF;
+
   IF ABS(v_diferencia) > v_umbral THEN
     INSERT INTO alerta_pos (turno_id, tipo, nivel, mensaje)
     VALUES (p_turno_id, 'diferencia_caja',

@@ -3,6 +3,7 @@ import { productosService, categoriasService } from '../../services/productosSer
 import { supabase } from '../../services/api.js';
 import { resolveProductoImagen } from '../../utils/productoImagen.js';
 import { formatCurrency } from '../../utils/format.js';
+import { esNombreDuplicado } from '../../utils/productoUnico.js';
 import RequirePermiso from '../../components/common/RequirePermiso.jsx';
 import Button from '../../components/common/Button.jsx';
 import Card from '../../components/common/Card.jsx';
@@ -127,8 +128,19 @@ export default function Productos() {
     setAlert(null); // limpia el verde de "Foto subida" para que no quede pegado
   };
 
+  // Validacion en vivo: mismo nombre (trim + case-insensitive) en la misma categoria.
+  const nombreDuplicado = esNombreDuplicado(items, {
+    nombre: form.nombre,
+    categoria_id: form.categoria_id || null,
+    excluirId: editando,
+  });
+
   const guardar = async (ev) => {
     ev.preventDefault();
+    if (nombreDuplicado) {
+      setAlert({ tone: 'error', message: 'Ya existe en esta categoría' });
+      return;
+    }
     setAlert(null);
     try {
       const payload = {
@@ -191,7 +203,7 @@ export default function Productos() {
         <Card title={editando ? 'Editar producto' : 'Nuevo producto'}>
           <form onSubmit={guardar}>
             <div className="row-inline">
-              <Input label="Nombre" placeholder="Ej. Cono Simple" value={form.nombre} onChange={(e) => setForm({ ...form, nombre: e.target.value })} required />
+              <Input label="Nombre" placeholder="Ej. Cono Simple" value={form.nombre} onChange={(e) => setForm({ ...form, nombre: e.target.value })} error={nombreDuplicado ? 'Ya existe en esta categoría' : undefined} required />
               <Input label="Precio (Bs, IVA incluido)" placeholder="12,00" type="number" step="0.01" min="0.01" value={form.precio} onChange={(e) => setForm({ ...form, precio: e.target.value })} required style={{ width: 160 }} />
               <Select label="Categoría" value={form.categoria_id} onChange={(e) => setForm({ ...form, categoria_id: e.target.value })}>
                 <option value="">Sin categoría</option>
@@ -229,7 +241,7 @@ export default function Productos() {
                   <Button type="button" variant="ghost" size="sm" onClick={quitarFoto}>Quitar</Button>
                 </>
               )}
-              <Button type="submit" loading={subiendo} disabled={subiendo}>{editando ? 'Guardar' : 'Crear'}</Button>
+              <Button type="submit" loading={subiendo} disabled={subiendo || nombreDuplicado}>{editando ? 'Guardar' : 'Crear'}</Button>
               {editando && !subiendo && <Button type="button" variant="secondary" onClick={cancelar}>Cancelar</Button>}
             </div>
           </form>
@@ -269,7 +281,7 @@ export default function Productos() {
                     </td>
                     <td>{p.nombre}</td>
                     <td>{p.categoria || '—'}</td>
-                    <td>{formatCurrency(Number(p.precio) || 0)}</td>
+                    <td style={{ fontFamily: 'var(--bs-font-numeric)', fontVariantNumeric: 'tabular-nums' }}>{formatCurrency(Number(p.precio) || 0)}</td>
                     <td>
                       {p.stock}{' '}
                       {bajo && <Badge tone="warning">Stock bajo</Badge>}
