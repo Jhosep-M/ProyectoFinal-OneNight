@@ -93,6 +93,7 @@ export default function PedidosPage() {
   const [detallesCuenta, setDetallesCuenta] = useState({});
   const [cargandoDetalle, setCargandoDetalle] = useState(false);
   const [cobrandoCuenta, setCobrandoCuenta] = useState(false);
+  const [cobrandoId, setCobrandoId] = useState(null);
   const [progresoCuenta, setProgresoCuenta] = useState(null);
   const promoMap = usePromocionesVigentes();
 
@@ -306,7 +307,26 @@ export default function PedidosPage() {
   };
 
   const cobrar = async (pedido) => {
+    if (cobrandoId) return;
     try {
+      // Cobro rápido en fila: 1 clic cobra ese pedido sin cambiar el select de mesa.
+      // Si la mesa tiene N pendientes, se indica 1/N y la mesa se libera sola al cobrar el último (backend).
+      const esMesa = !!pedido.mesa_id;
+      const pendientesMesa = esMesa
+        ? (Array.isArray(pedidos) ? pedidos : []).filter(
+            (x) => String(x.mesa_id || '') === String(pedido.mesa_id) && esCobrable(x)
+          )
+        : [];
+      const nombreMesa = esMesa ? mesaLabel(pedido) : 'Mostrador';
+      const totalFmt = fmtMoney(pedido.total);
+      const idxEnCuenta = esMesa
+        ? pendientesMesa.findIndex((x) => x.id_pedido === pedido.id_pedido)
+        : -1;
+      const detalleCuenta = pendientesMesa.length > 1
+        ? ` (${(idxEnCuenta >= 0 ? idxEnCuenta + 1 : 1)}/${pendientesMesa.length} de la cuenta; la mesa sigue ocupada hasta el último)`
+        : ' (último/único; libera la mesa)';
+      if (!window.confirm(`¿Cobrar ${totalFmt} de ${nombreMesa}?${esMesa ? detalleCuenta : ''}`)) return;
+      setCobrandoId(pedido.id_pedido);
       // Opción A: mesero/cajero cobran sobre el turno abierto de caja,
       // sin abrir caja propia (GET /shifts/abierto exige venta.crear).
       const [turno, metodos] = await Promise.all([
@@ -332,11 +352,13 @@ export default function PedidosPage() {
         turno_id: turno.id_turno || turno.id,
         pagos: [{ metodo_pago_id: metodoId, monto }],
       });
-      setAlert({ tone: 'success', message: 'Pedido cobrado' });
+      setAlert({ tone: 'success', message: esMesa && pendientesMesa.length <= 1 ? `Cuenta cobrada: ${nombreMesa} — ${totalFmt}. Mesa liberada.` : `Pedido cobrado: ${nombreMesa} — ${totalFmt}` });
       // Optimista: lo saca de "por cobrar" al instante.
       setPedidos((prev) => prev.map((p) => (p.id_pedido === pedido.id_pedido ? { ...p, estado: 'cerrado', fecha_cierre: new Date().toISOString() } : p)));
       recargar();
-    } catch (e) { setAlert({ tone: 'error', message: e.message }); }
+    } catch (e) { setAlert({ tone: 'error', message: e.message }); } finally {
+      setCobrandoId(null);
+    }
   };
 
   const cargarDetalleCuenta = async () => {
@@ -722,11 +744,19 @@ export default function PedidosPage() {
                             <Badge tone="neutral">Cobrado en ventas</Badge>
                           ) : (
                             <>
-                              {esCobrable(p) && !p.mesa_id && (
-                                <Button size="sm" onClick={() => cobrar(p)} title="Cobro directo (mostrador)">Cobrar</Button>
+                              {esCobrable(p) && (
+                                <Button
+                                  size="sm"
+                                  onClick={() => cobrar(p)}
+                                  loading={cobrandoId === p.id_pedido}
+                                  disabled={cobrandoId === p.id_pedido}
+                                  title={p.mesa_id ? `Cobro rápido de ${mesaLabel(p)} sin cambiar el select` : 'Cobro directo (mostrador)'}
+                                >
+                                  {`Cobrar ${fmtMoney(p.total)}`}
+                                </Button>
                               )}
                               {esCobrable(p) && p.mesa_id && (
-                                <Badge tone="info">Se cobra en cuenta</Badge>
+                                <span style={{ marginLeft: 6, opacity: 0.65, fontSize: '0.75rem' }}>en cuenta</span>
                               )}
                             </>
                           )}

@@ -125,16 +125,16 @@ describe('PedidosPage', () => {
     });
   });
 
-  it('sin Cobrar por fila con mesa; sí con mostrador', async () => {
+  it('cobro rápido por fila: mesa y mostrador tienen botón Cobrar', async () => {
     mocks.mockListarPedidos.mockResolvedValue([
       { id_pedido: 'p1', mesa_id: 'm1', mesa_numero: 1, estado: 'abierto', total: 8 },
       { id_pedido: 'p2', mesa_id: null, estado: 'abierto', total: 5 },
     ]);
     renderPedidos();
     await screen.findAllByText('abierto');
-    const cobrarBotones = screen.queryAllByRole('button', { name: 'Cobrar' });
-    expect(cobrarBotones).toHaveLength(1);
-    expect(screen.getByText('Se cobra en cuenta')).toBeInTheDocument();
+    const cobrarBotones = screen.queryAllByRole('button', { name: /Cobrar Bs/ });
+    expect(cobrarBotones).toHaveLength(2);
+    expect(screen.getByText('en cuenta')).toBeInTheDocument();
   });
 
   it('espejo de venta_directa: oculto por defecto, visible con Ver mostrador', async () => {
@@ -147,7 +147,7 @@ describe('PedidosPage', () => {
     // Por defecto el tablero es salón: solo el mostrador legítimo.
     await screen.findByText('abierto');
     expect(screen.queryByText('Cobrado en ventas')).not.toBeInTheDocument();
-    expect(screen.getAllByRole('button', { name: 'Cobrar' })).toHaveLength(1);
+    expect(screen.getAllByRole('button', { name: /Cobrar Bs/ })).toHaveLength(1);
     // Al activar Ver mostrador aparecen los espejos ya cobrados.
     await userEvent.click(screen.getByLabelText(/Mostrar mostrador/i));
     await screen.findAllByText('Cobrado en ventas');
