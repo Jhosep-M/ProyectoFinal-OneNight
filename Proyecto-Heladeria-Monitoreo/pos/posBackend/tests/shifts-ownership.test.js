@@ -28,7 +28,12 @@ jest.mock('../src/middlewares/authorize', () => {
   authorize.__setAllowed = (list) => {
     perms.allowed = new Set(list);
   };
-  return { authorize, requirePermission: authorize };
+  const authorizeAny = (list) => (_req, res, next) => {
+    const arr = Array.isArray(list) ? list : [list];
+    if (arr.some((p) => perms.allowed.has(p))) return next();
+    return res.status(403).json({ error: 'Forbidden' });
+  };
+  return { authorize, requirePermission: authorize, authorizeAny };
 });
 
 jest.mock('../src/services/turnoService', () => ({

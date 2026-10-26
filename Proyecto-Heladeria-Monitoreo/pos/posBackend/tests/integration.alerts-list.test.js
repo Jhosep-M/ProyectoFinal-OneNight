@@ -22,6 +22,7 @@ jest.mock('../src/middlewares/authenticate', () => ({
 jest.mock('../src/middlewares/authorize', () => ({
   authorize: () => (_req, res, next) => (mockPermitir ? next() : res.status(403).json({ error: 'Forbidden' })),
   requirePermission: () => (_req, _res, next) => next(),
+  authorizeAny: () => (_req, res, next) => (mockPermitir ? next() : res.status(403).json({ error: 'Forbidden' })),
 }));
 
 const request = require('supertest');

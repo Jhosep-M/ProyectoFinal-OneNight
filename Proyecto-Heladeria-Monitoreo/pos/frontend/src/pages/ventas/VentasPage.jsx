@@ -319,10 +319,10 @@ export default function VentasPage() {
                           <i className="bi bi-image text-muted" aria-hidden="true"></i>
                         )}
                       </div>
-                      <h6 className="mb-1" style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>
+                      <h6 className="mb-1" style={{ fontFamily: 'var(--bs-font-serif)' }}>
                         {p.nombre}
                       </h6>
-                      <div className="fw-bold" style={{ fontFamily: "'Source Serif 4', Georgia, serif", color: '#8B6914' }}>
+                      <div className="fw-bold" style={{ fontFamily: 'var(--bs-font-numeric)', fontVariantNumeric: 'tabular-nums', color: '#8B6914' }}>
                         {formatCurrency(p.precio || 0)}
                       </div>
                     </Card>
@@ -336,7 +336,7 @@ export default function VentasPage() {
 
       <div className="col-12 col-lg-4">
         <Card className="sticky-top" style={{ top: '80px' }}>
-          <h5 className="mb-3" style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>
+          <h5 className="mb-3" style={{ fontFamily: 'var(--bs-font-serif)' }}>
             Ticket Actual
           </h5>
 
@@ -476,7 +476,7 @@ export default function VentasPage() {
               </div>
               <div className="d-flex justify-content-between mb-3">
                 <span className="fw-bold">Total</span>
-                <span className="fw-bold fs-5" style={{ fontFamily: "'Source Serif 4', Georgia, serif", color: '#8B6914' }}>
+                <span className="fw-bold fs-5" style={{ fontFamily: 'var(--bs-font-numeric)', fontVariantNumeric: 'tabular-nums', color: '#8B6914' }}>
                   {formatCurrency(total)}
                 </span>
               </div>

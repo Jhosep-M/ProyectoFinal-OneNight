@@ -1,7 +1,7 @@
 const { Router } = require('express');
 const { authenticateJWT } = require('../middlewares/authenticate');
 const { authorize } = require('../middlewares/authorize');
-const { createPagoSchema } = require('../validators/payments');
+const { createPagoSchema, createMetodoSchema, updateMetodoSchema } = require('../validators/payments');
 const { sequelize } = require('../config/database');
 const { auditLog } = require('../utils/audit');
 
@@ -13,6 +13,41 @@ router.get('/metodos', authorize('pago.consultar'), async (_req, res, next) => {
     const [rows] = await sequelize.query(`SELECT * FROM metodo_pago WHERE estado='activo' ORDER BY nombre`);
     res.json(rows);
   } catch (e) { next(e); }
+});
+
+// Catálogo admin de métodos: crear y desactivar (permiso pago.gestionar).
+router.post('/metodos', authorize('pago.gestionar'), async (req, res, next) => {
+  try {
+    const parsed = createMetodoSchema.parse(req.body);
+    const [rows] = await sequelize.query(
+      `INSERT INTO metodo_pago (nombre, estado) VALUES (:nombre, 'activo') RETURNING *`,
+      { replacements: { nombre: parsed.nombre } }
+    );
+    await auditLog({ usuario_id: req.user.id, accion: 'metodo_pago.crear', entidad: 'metodo_pago', entidad_id: rows[0].id_metodo_pago, resultado: 'exito', detalle: parsed, ip: req.ip, userAgent: req.headers['user-agent'] });
+    res.status(201).json(rows[0]);
+  } catch (e) {
+    if (e.name === 'ZodError') return res.status(400).json({ error: 'Validation failed', details: e.errors });
+    if (e.original?.code === '23505' || e.parent?.code === '23505') {
+      return res.status(409).json({ error: 'Método de pago duplicado' });
+    }
+    next(e);
+  }
+});
+
+router.patch('/metodos/:id', authorize('pago.gestionar'), async (req, res, next) => {
+  try {
+    const parsed = updateMetodoSchema.parse(req.body);
+    const [rows] = await sequelize.query(
+      `UPDATE metodo_pago SET estado=:estado WHERE id_metodo_pago=:id RETURNING *`,
+      { replacements: { estado: parsed.estado, id: req.params.id } }
+    );
+    if (!rows[0]) return res.status(404).json({ error: 'Método de pago no encontrado' });
+    await auditLog({ usuario_id: req.user.id, accion: 'metodo_pago.actualizar', entidad: 'metodo_pago', entidad_id: req.params.id, resultado: 'exito', detalle: parsed, ip: req.ip, userAgent: req.headers['user-agent'] });
+    res.json(rows[0]);
+  } catch (e) {
+    if (e.name === 'ZodError') return res.status(400).json({ error: 'Validation failed', details: e.errors });
+    next(e);
+  }
 });
 
 router.get('/', authorize('pago.consultar'), async (req, res, next) => {

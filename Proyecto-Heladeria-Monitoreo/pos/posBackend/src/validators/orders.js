@@ -38,4 +38,10 @@ const cobrarPedidoSchema = z.object({
     .min(1, 'al menos un pago requerido'),
 });
 
-module.exports = { orderSchema, pedidoSchema, createOrderSchema, updateOrderSchema, orderItemSchema, cobrarPedidoSchema };
+// HU-04 Cocina: solo puede avanzar abierto -> en_preparacion -> listo.
+// Ni cerrar/cobrar ni cancelar desde este endpoint (409 con mensaje humano).
+const estadoCocinaSchema = z.object({
+  estado: z.enum(['abierto', 'en_preparacion', 'listo']),
+});
+
+module.exports = { orderSchema, pedidoSchema, createOrderSchema, updateOrderSchema, orderItemSchema, cobrarPedidoSchema, estadoCocinaSchema };

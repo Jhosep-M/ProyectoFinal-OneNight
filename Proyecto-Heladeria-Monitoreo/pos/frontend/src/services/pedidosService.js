@@ -8,3 +8,5 @@ export const actualizarPedido = (id, cambios) =>
 export const verPedido = (id) => apiFetch(`/orders/${id}`);
 export const cobrarPedido = (id, { turno_id, pagos }) =>
   apiFetch(`/orders/${id}/cobrar`, { method: 'POST', body: { turno_id, pagos } });
+export const actualizarEstadoPedido = (id, estado) =>
+  apiFetch(`/orders/${id}/estado`, { method: 'PATCH', body: { estado } });

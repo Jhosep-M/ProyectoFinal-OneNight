@@ -6,6 +6,7 @@ import Header from './Header.jsx';
 const TITULOS = {
   '/dashboard': { title: 'Panel Principal', breadcrumb: 'Hoy, 28 sept 2026' },
   '/ventas': { title: 'Punto de Venta', breadcrumb: 'Nueva venta' },
+  '/ventas/historial': { title: 'Historial de Ventas', breadcrumb: 'Ventas' },
   '/caja': { title: 'Caja / Turno Actual', breadcrumb: 'Turno Mañana' },
   '/pedidos': { title: 'Pedidos', breadcrumb: 'Gestión de pedidos' },
   '/mesas': { title: 'Gestión de Salón y Mesas', breadcrumb: 'Cargando mesas…' },
@@ -16,6 +17,8 @@ const TITULOS = {
   '/catalogo/promociones': { title: 'Promociones', breadcrumb: 'Catálogo' },
   '/integracion': { title: 'Integración', breadcrumb: 'Sistema' },
   '/auditoria': { title: 'Auditoría', breadcrumb: 'Sistema' },
+  '/reportes': { title: 'Reportes', breadcrumb: 'Cierre' },
+  '/pagos': { title: 'Métodos de Pago', breadcrumb: 'Catálogo' },
   '/usuarios': { title: 'Usuarios', breadcrumb: 'Sistema' },
 };
 

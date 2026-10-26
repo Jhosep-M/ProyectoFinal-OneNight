@@ -153,7 +153,7 @@ export default function DashboardPage() {
                     <div className="text-muted small text-uppercase" style={{ fontSize: '0.75rem', letterSpacing: '0.04em' }}>
                       {m.titulo}
                     </div>
-                    <div className="fw-bold fs-4" style={{ fontFamily: "'Source Serif 4', Georgia, serif" }}>
+                    <div className="fw-bold fs-4" style={{ fontFamily: 'var(--bs-font-numeric)' }}>
                       {m.valor}
                     </div>
                   </div>
@@ -167,7 +167,7 @@ export default function DashboardPage() {
       <motion.div variants={item} className="mt-3">
         <Card>
           <div className="d-flex justify-content-between align-items-center mb-3">
-            <h5 className="mb-0" style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>
+            <h5 className="mb-0" style={{ fontFamily: 'var(--bs-font-serif)' }}>
               Pedidos recientes
             </h5>
             <Badge variant="secondary">{pedidosRecientes.length} pedidos</Badge>
@@ -212,7 +212,7 @@ export default function DashboardPage() {
       <motion.div variants={item} className="mt-3">
         <Card>
           <div className="d-flex justify-content-between align-items-center mb-3">
-            <h5 className="mb-0" style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>
+            <h5 className="mb-0" style={{ fontFamily: 'var(--bs-font-serif)' }}>
               Alertas de Monitoreo
             </h5>
             <Badge variant={alertas.length ? 'warning' : 'secondary'}>{alertas.length} alertas</Badge>

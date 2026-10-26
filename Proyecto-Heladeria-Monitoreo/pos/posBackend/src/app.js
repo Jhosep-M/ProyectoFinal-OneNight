@@ -22,6 +22,7 @@ const { returnsRouter } = require('./routes/returns');
 const { promotionsRouter } = require('./routes/promotions');
 const { recipesRouter } = require('./routes/recipes');
 const { auditRouter } = require('./routes/audit');
+const { reportsRouter } = require('./routes/reports');
 const { integrationsRouter } = require('./routes/integrations');
 const { configRouter } = require('./routes/config');
 const { meRouter } = require('./routes/me');
@@ -62,6 +63,7 @@ function createApp() {
   app.use('/api/v1/promotions', promotionsRouter);
   app.use('/api/v1/recipes', recipesRouter);
   app.use('/api/v1/audit', auditRouter);
+  app.use('/api/v1/reports', reportsRouter);
   app.use('/api/v1/integrations/alerts', authLimiter);
   app.use('/api/v1/integrations', integrationsRouter);
   app.use('/api/v1/config', configRouter);

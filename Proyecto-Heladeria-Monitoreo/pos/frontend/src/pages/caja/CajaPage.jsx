@@ -196,7 +196,7 @@ export default function CajaPage() {
         <motion.div variants={item} className="caja-turno-sticky">
           <Card className="h-100 p-3 p-lg-4">
             <div className="d-flex justify-content-between align-items-center mb-3">
-              <h5 className="mb-0" style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>
+              <h5 className="mb-0" style={{ fontFamily: 'var(--bs-font-serif)' }}>
                 Turno Actual
               </h5>
               {turnoActivo ? (
@@ -282,7 +282,7 @@ export default function CajaPage() {
                 <div className="turno-empty-icon mb-3" aria-hidden="true">
                   <i className="bi bi-clock"></i>
                 </div>
-                <p className="fw-semibold text-center mb-1" style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: '1.05rem' }}>No hay un turno activo</p>
+                <p className="fw-semibold text-center mb-1" style={{ fontFamily: 'var(--bs-font-serif)', fontSize: '1.05rem' }}>No hay un turno activo</p>
                 <p className="text-muted small text-center mb-3 mx-auto" style={{ maxWidth: '30ch' }}>
                   Abre el turno para empezar a vender. Se registrará con tu usuario y la hora actual.
                 </p>
@@ -328,7 +328,7 @@ export default function CajaPage() {
         <motion.div variants={item}>
           <Card className="h-100 p-3 p-lg-4 caja-transacciones">
             <div className="d-flex justify-content-between align-items-center mb-3 gap-2 flex-wrap">
-              <h5 className="mb-0" style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>
+              <h5 className="mb-0" style={{ fontFamily: 'var(--bs-font-serif)' }}>
                 Transacciones del Turno
               </h5>
               <Badge variant="accent">{ventasTurno.length} transacciones</Badge>
@@ -378,7 +378,7 @@ export default function CajaPage() {
               </span>
               <span className="d-flex align-items-baseline gap-2">
                 <span className="text-muted small">Total cobrado</span>
-                <span className="fw-bold" style={{ fontFamily: "'Source Serif 4', Georgia, serif", fontSize: '1.25rem', color: '#6B4F0F', fontVariantNumeric: 'tabular-nums' }}>
+                <span className="fw-bold" style={{ fontFamily: 'var(--bs-font-numeric)', fontSize: '1.25rem', color: '#6B4F0F', fontVariantNumeric: 'tabular-nums' }}>
                   {formatCurrency(totalVentas)}
                 </span>
               </span>
