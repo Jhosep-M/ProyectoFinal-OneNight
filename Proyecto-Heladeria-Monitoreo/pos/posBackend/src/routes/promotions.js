@@ -53,10 +53,17 @@ async function existeSolape({ productoIds, fechaInicio, fechaFin, excluirId }) {
 router.get('/', authorize('promocion.consultar'), async (_req, res, next) => {
   try {
     const [rows] = await sequelize.query(`SELECT * FROM promocion ORDER BY fecha_inicio DESC LIMIT 100`);
-    // adjuntar conteo productos
-    const [all] = await sequelize.query(`SELECT promocion_id, COUNT(*) as productos FROM promocion_producto GROUP BY promocion_id`);
-    const map = new Map(all.map(r => [r.promocion_id, r.productos]));
-    res.json(rows.map(r => ({ ...r, productos_count: map.get(r.id_promocion) || 0 })));
+    // adjuntar productos (nombres) + conteo para la vista de vigentes
+    const [pp] = await sequelize.query(
+      `SELECT pp.promocion_id, pp.producto_id, pr.nombre AS producto_nombre
+       FROM promocion_producto pp LEFT JOIN producto pr ON pr.id_producto = pp.producto_id`
+    );
+    const byId = new Map();
+    for (const r of pp) {
+      if (!byId.has(r.promocion_id)) byId.set(r.promocion_id, []);
+      byId.get(r.promocion_id).push(r);
+    }
+    res.json(rows.map(r => ({ ...r, productos: byId.get(r.id_promocion) || [], productos_count: (byId.get(r.id_promocion) || []).length })));
   } catch (e) { next(e); }
 });
 
@@ -72,6 +79,10 @@ router.get('/:id', authorize('promocion.consultar'), async (req, res, next) => {
 router.post('/', authorize('promocion.gestionar'), async (req, res, next) => {
   try {
     const parsed = createPromoSchema.parse(req.body);
+    const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
+    if (parsed.fecha_inicio && new Date(parsed.fecha_inicio) < hoy) {
+      return res.status(400).json({ error: 'Validation failed', details: [{ message: 'fecha_inicio no puede ser anterior a hoy' }] });
+    }
     if (parsed.estado === 'activa' && parsed.producto_ids?.length) {
       const solape = await existeSolape({
         productoIds: parsed.producto_ids,
@@ -109,6 +120,10 @@ router.patch('/:id', authorize('promocion.gestionar'), async (req, res, next) =>
     const effFin = parsed.fecha_fin !== undefined ? parsed.fecha_fin : vigente.fecha_fin;
     if (effIni && effFin && new Date(effFin) < new Date(effIni)) {
       return res.status(400).json({ error: 'Validation failed', details: [{ message: 'fecha_fin debe ser >= fecha_inicio' }] });
+    }
+    const hoyUpd = new Date(); hoyUpd.setHours(0, 0, 0, 0);
+    if (parsed.fecha_inicio && new Date(parsed.fecha_inicio) < hoyUpd) {
+      return res.status(400).json({ error: 'Validation failed', details: [{ message: 'fecha_inicio no puede ser anterior a hoy' }] });
     }
     const effEstado = parsed.estado !== undefined ? parsed.estado : vigente.estado;
     let effProductoIds;
@@ -161,6 +176,18 @@ router.patch('/:id', authorize('promocion.gestionar'), async (req, res, next) =>
     if (e.name === 'ZodError') return res.status(400).json({ error: 'Validation failed', details: e.issues ?? e.errors });
     next(e);
   }
+});
+
+router.delete('/:id', authorize('promocion.gestionar'), async (req, res, next) => {
+  try {
+    const [rows] = await sequelize.query(
+      `UPDATE promocion SET estado='inactiva' WHERE id_promocion=:id RETURNING *`,
+      { replacements: { id: req.params.id } }
+    );
+    if (!rows[0]) return res.status(404).json({ error: 'Promoción no encontrada' });
+    await auditLog({ usuario_id: req.user.id, accion: 'promocion.eliminar', entidad: 'promocion', entidad_id: req.params.id, resultado: 'exito', detalle: {}, ip: req.ip, userAgent: req.headers['user-agent'] });
+    res.json({ ok: true, promocion: rows[0] });
+  } catch (e) { next(e); }
 });
 
 module.exports = { promotionsRouter: router, createPromoSchema, updatePromoSchema };

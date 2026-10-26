@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { listarPromociones, verPromocion, crearPromocion, actualizarPromocion } from '../../services/promotionsService.js';
+import { listarPromociones, verPromocion, crearPromocion, actualizarPromocion, eliminarPromocion } from '../../services/promotionsService.js';
 import { productosService } from '../../services/productosService.js';
 import Button from '../../components/common/Button.jsx';
 import Card from '../../components/common/Card.jsx';
@@ -20,6 +20,18 @@ export default function PromocionesPage() {
   const [form, setForm] = useState(empty);
   const [editando, setEditando] = useState(null);
   const [alert, setAlert] = useState(null);
+  const [soloVigentes, setSoloVigentes] = useState(false);
+  const hoyISO = new Date().toISOString().slice(0, 10);
+
+  const esVigente = (p) => {
+    if (p.estado !== 'activa') return false;
+    const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
+    if (p.fecha_inicio && new Date(p.fecha_inicio) < new Date(new Date().toISOString().slice(0, 10))) return false;
+    if (p.fecha_fin && new Date(p.fecha_fin) < hoy) return false;
+    return true;
+  };
+
+  const promosVisibles = soloVigentes ? promos.filter(esVigente) : promos;
 
   const recargar = async () => {
     setLoading(true);
@@ -36,6 +48,14 @@ export default function PromocionesPage() {
   const guardar = async (e) => {
     e.preventDefault();
     setAlert(null);
+    if (form.fecha_inicio && form.fecha_inicio < hoyISO) {
+      setAlert({ tone: 'error', message: 'La fecha de inicio no puede ser anterior a hoy.' });
+      return;
+    }
+    if (form.fecha_inicio && form.fecha_fin && form.fecha_fin < form.fecha_inicio) {
+      setAlert({ tone: 'error', message: 'La fecha de fin debe ser mayor o igual a la de inicio.' });
+      return;
+    }
     const payload = {
       ...form,
       porcentaje_descuento: Number(form.porcentaje_descuento),
@@ -82,6 +102,16 @@ export default function PromocionesPage() {
 
   const cancelar = () => { setEditando(null); setForm(empty); };
 
+  const eliminar = async (p) => {
+    if (!window.confirm(`¿Eliminar "${p.nombre}"? Se marcará como inactiva.`)) return;
+    setAlert(null);
+    try {
+      await eliminarPromocion(p.id_promocion);
+      setAlert({ tone: 'success', message: 'Promoción eliminada' });
+      recargar();
+    } catch (e) { setAlert({ tone: 'error', message: e.message }); }
+  };
+
   return (
     <div>
       <h1>Promociones</h1>
@@ -92,7 +122,25 @@ export default function PromocionesPage() {
           <form onSubmit={guardar}>
             <div className="row-inline">
               <Input placeholder="nombre" value={form.nombre} onChange={(e) => setForm({ ...form, nombre: e.target.value })} required />
-              <Input type="number" min={0} max={100} placeholder="descuento %" value={form.porcentaje_descuento} onChange={(e) => setForm({ ...form, porcentaje_descuento: e.target.value })} required style={{ width: 90 }} />
+              <div className="field" style={{ maxWidth: 160 }}>
+                <label htmlFor="descuento">Descuento</label>
+                <div style={{ position: 'relative' }}>
+                  <input
+                    id="descuento"
+                    name="descuento"
+                    className="input"
+                    type="number"
+                    min={0}
+                    max={100}
+                    placeholder="descuento %"
+                    value={form.porcentaje_descuento}
+                    onChange={(e) => setForm({ ...form, porcentaje_descuento: e.target.value })}
+                    required
+                    style={{ width: '100%', paddingRight: 30, fontVariantNumeric: 'tabular-nums' }}
+                  />
+                  <span aria-hidden="true" style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', fontFamily: 'var(--bs-font-numeric)', fontVariantNumeric: 'tabular-nums', opacity: 0.7 }}>%</span>
+                </div>
+              </div>
               <Select value={form.estado} onChange={(e) => setForm({ ...form, estado: e.target.value })}>
                 <option value="activa">activa</option>
                 <option value="inactiva">inactiva</option>
@@ -100,8 +148,8 @@ export default function PromocionesPage() {
               </Select>
             </div>
             <div className="row-inline">
-              <label>Inicio: <input type="date" className="input" value={form.fecha_inicio} onChange={(e) => setForm({ ...form, fecha_inicio: e.target.value })} /></label>
-              <label>Fin: <input type="date" className="input" value={form.fecha_fin} onChange={(e) => setForm({ ...form, fecha_fin: e.target.value })} /></label>
+              <label>Inicio: <input type="date" className="input" min={hoyISO} value={form.fecha_inicio} onChange={(e) => setForm({ ...form, fecha_inicio: e.target.value })} /></label>
+              <label>Fin: <input type="date" className="input" min={form.fecha_inicio || hoyISO} value={form.fecha_fin} onChange={(e) => setForm({ ...form, fecha_fin: e.target.value })} /></label>
             </div>
             <div className="row-inline">
               <span>Productos:</span>
@@ -121,6 +169,12 @@ export default function PromocionesPage() {
       </RequirePermiso>
 
       <Card title="Promociones">
+        <div className="row-inline" style={{ marginBottom: 8 }}>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <input type="checkbox" checked={soloVigentes} onChange={(e) => setSoloVigentes(e.target.checked)} />
+            Solo vigentes
+          </label>
+        </div>
         {loading ? (
           <p>Cargando…</p>
         ) : (
@@ -128,15 +182,15 @@ export default function PromocionesPage() {
           <table className="data-table">
             <thead><tr><th>Nombre</th><th>Descuento</th><th>Inicio</th><th>Fin</th><th>Estado</th><th>Productos</th><th></th></tr></thead>
             <tbody>
-              {promos.map((p) => (
+              {promosVisibles.map((p) => (
                 <tr key={p.id_promocion}>
                   <td>{p.nombre}</td>
-                  <td>{p.porcentaje_descuento}%</td>
+                  <td style={{ fontFamily: 'var(--bs-font-numeric)', fontVariantNumeric: 'tabular-nums' }}>{p.porcentaje_descuento}%</td>
                   <td>{p.fecha_inicio ? new Date(p.fecha_inicio).toLocaleDateString() : '—'}</td>
                   <td>{p.fecha_fin ? new Date(p.fecha_fin).toLocaleDateString() : '—'}</td>
-                  <td><Badge tone={TONE_ESTADO[p.estado] || 'neutral'}>{p.estado}</Badge></td>
-                  <td>{p.productos_count ?? 0}</td>
-                  <td><RequirePermiso permiso="promocion.gestionar"><Button size="sm" variant="secondary" onClick={() => editar(p)}>Editar</Button></RequirePermiso></td>
+                  <td><Badge tone={TONE_ESTADO[p.estado] || 'neutral'}>{p.estado}{esVigente(p) ? ' · vigente' : ''}</Badge></td>
+                  <td>{(p.productos || []).map((x) => x.producto_nombre || x.nombre).filter(Boolean).join(', ') || (p.productos_count ? `${p.productos_count} prod.` : '—')}</td>
+                  <td><RequirePermiso permiso="promocion.gestionar"><span style={{ display: 'flex', gap: 6 }}><Button size="sm" variant="secondary" onClick={() => editar(p)}>Editar</Button><Button size="sm" variant="danger" onClick={() => eliminar(p)}>Eliminar</Button></span></RequirePermiso></td>
                 </tr>
               ))}
             </tbody>
