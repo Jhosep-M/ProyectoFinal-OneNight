@@ -803,6 +803,17 @@ Reglas:
 4. La jerarquía es fija: serif para títulos, sans para todo el texto de interfaz. No usar serif en etiquetas, placeholders, botones ni tablas (excepto cifras destacadas).
 5. Al crear un componente nuevo, verificar que hereda la tipografía mediante `inherit` o tokens sin declarar familias literal.
 
+### 15.2 Regla de actualización automática del frontend (estricta y obligatoria)
+
+Toda acción del usuario debe reflejarse en el frontend sin pulsar "Recargar" manualmente.
+
+Reglas:
+
+1. Cada mutación (`crear`, `actualizar`, `cobrar`, `cancelar`, `avanzar estado`) debe hacer actualización optimista local inmediata (`setState`) y luego `await recargar()`.
+2. Toda vista operativa (Pedidos, Mesas, Mesero, Cocina, Caja, Ventas, Dashboards) debe usar el hook `useAutoRefresh(recargar, { intervalMs, onFocus })`: polling 15s por defecto (cocina 10-15s, turno de ventas 30s) + revalidación en `focus`/`visibilitychange`, con limpieza en unmount y sin solapar llamadas en vuelo.
+3. El polling operativo es silencioso: no debe mostrar skeletons/spinners ni borrar el `alert` de éxito de la acción recién hecha. El botón "Recargar" queda solo como respaldo, nunca como requisito.
+4. Los espejos de venta directa (`pedido.origen='venta_directa'`) nunca ofrecen "Cobrar": en Pedidos/Mesero se muestran como "Cobrado en ventas" y el backend los rechaza con 409. Solo Cocina los procesa (`abierto → en_preparacion → listo`).
+
 ---
 
 ## 16. Prioridad de implementación

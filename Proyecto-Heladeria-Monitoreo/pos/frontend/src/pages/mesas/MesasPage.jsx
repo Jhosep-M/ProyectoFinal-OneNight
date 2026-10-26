@@ -7,6 +7,7 @@ import Button from '../../components/ui/Button.jsx';
 import Skeleton from '../../components/ui/Skeleton.jsx';
 import { listarMesas, verMesa, crearMesa, actualizarMesa, eliminarMesa } from '../../services/mesasService.js';
 import { formatCurrency } from '../../utils/format.js';
+import { useAutoRefresh } from '../../hooks/useAutoRefresh.js';
 
 const container = {
   hidden: { opacity: 0 },
@@ -91,6 +92,18 @@ export default function MesasPage() {
     };
     fetchData();
   }, []);
+
+  // Regla de refresco automático: la ocupación/cuenta cambia al crear o cobrar
+  // pedidos en Pedidos/Mesero/Ventas. Poll silencioso (sin skeleton) + foco.
+  useAutoRefresh(async () => {
+    try {
+      const data = await listarMesas();
+      setMesas((data || []).map(normMesa));
+      setError(null);
+    } catch {
+      /* conserva la vista actual; el error inicial ya se muestra */
+    }
+  }, { intervalMs: 15000, onFocus: true });
 
   const mesasFiltradas = filtro === 'todas'
     ? mesas

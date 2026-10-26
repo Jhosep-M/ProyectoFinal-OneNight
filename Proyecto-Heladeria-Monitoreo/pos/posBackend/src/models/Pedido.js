@@ -6,6 +6,10 @@ module.exports = (sequelize) => sequelize.define('Pedido', {
   mesa_id: { type: DataTypes.UUID, allowNull: true, field: 'mesa_id' },
   mesero_id: { type: DataTypes.UUID, field: 'mesero_id' },
   estado: { type: DataTypes.STRING, defaultValue: 'abierto', field: 'estado' },
+  // Origen del pedido (migracion 025): 'mesa' por defecto, 'mostrador' para
+  // mostrador/para llevar, 'venta_directa' para el espejo que Ventas crea solo
+  // para visibilidad en Cocina (ya cobrado, no se puede volver a cobrar).
+  origen: { type: DataTypes.STRING, defaultValue: 'mesa', field: 'origen' },
   fecha: { type: DataTypes.DATE, defaultValue: DataTypes.NOW, field: 'fecha' },
   fecha_cierre: { type: DataTypes.DATE, field: 'fecha_cierre' },
 }, { tableName: 'pedido', timestamps: false });

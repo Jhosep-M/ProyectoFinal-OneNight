@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { listarPedidos, actualizarEstadoPedido, verPedido } from '../../services/pedidosService.js';
+import { useAutoRefresh } from '../../hooks/useAutoRefresh.js';
 import Card from '../../components/common/Card.jsx';
 import Button from '../../components/common/Button.jsx';
 import Badge from '../../components/common/Badge.jsx';
@@ -68,11 +69,10 @@ export default function CocinaPage() {
 
   useEffect(() => {
     recargar();
-    const id = setInterval(() => {
-      recargar().catch(() => {});
-    }, 15000);
-    return () => clearInterval(id);
   }, []);
+
+  // Regla de refresco automático: polling + foco (antes solo intervalo).
+  useAutoRefresh(recargar, { intervalMs: 15000, onFocus: true });
 
   const activos = (Array.isArray(pedidos) ? pedidos : []).filter((p) => ACTIVOS.includes(p.estado));
 

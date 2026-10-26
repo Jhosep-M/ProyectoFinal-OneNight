@@ -4,6 +4,7 @@ import { listarMesas } from '../../services/mesasService.js';
 import { listarTurnoAbiertoParaCobro } from '../../services/cajaService.js';
 import { listarMetodosPago } from '../../services/ventasService.js';
 import { productosService, categoriasService } from '../../services/productosService.js';
+import { useAutoRefresh } from '../../hooks/useAutoRefresh.js';
 import Card from '../../components/common/Card.jsx';
 import Button from '../../components/common/Button.jsx';
 import Badge from '../../components/common/Badge.jsx';
@@ -12,6 +13,9 @@ import Select from '../../components/common/Select.jsx';
 import RequirePermiso from '../../components/common/RequirePermiso.jsx';
 
 const ACTIVOS = ['abierto', 'pendiente', 'en_preparacion', 'listo'];
+
+// Espejo de venta directa: ya cobrado en Ventas, solo cocina. Sin botón Cobrar.
+const esEspejoVenta = (p) => p?.origen === 'venta_directa' || !!p?.venta_id;
 
 const fmtMoney = (v) => {
   const n = Number(v);
@@ -33,8 +37,9 @@ export default function MeseroPage() {
   const [turnoCaja, setTurnoCaja] = useState(null);
   const [cobrandoId, setCobrandoId] = useState(null);
 
-  const recargar = async () => {
-    setLoading(true);
+  const recargar = async (opts = {}) => {
+    const silencioso = !!opts.silent;
+    if (!silencioso) setLoading(true);
     try {
       const [p, m, prods, cats, turno] = await Promise.all([
         listarPedidos().catch(() => []),
@@ -51,13 +56,17 @@ export default function MeseroPage() {
       setCategorias(Array.isArray(cats) ? cats : []);
       setTurnoCaja(turno || null);
     } finally {
-      setLoading(false);
+      if (!silencioso) setLoading(false);
     }
   };
 
   useEffect(() => {
     recargar();
   }, []);
+
+  // Regla de refresco automático: los pedidos cambian en Cocina/Caja/Pedidos.
+  // Poll silencioso (sin "Cargando…") + foco.
+  useAutoRefresh(() => recargar({ silent: true }), { intervalMs: 15000, onFocus: true });
 
   const pendientes = useMemo(
     () => (Array.isArray(pedidos) ? pedidos.filter((p) => ACTIVOS.includes(p.estado)) : []),
@@ -69,6 +78,10 @@ export default function MeseroPage() {
   // auditoría registra al mesero (registrar_venta: p_usuario_id=JWT).
   const cobrar = async (pedido) => {
     setAlert(null);
+    if (esEspejoVenta(pedido)) {
+      setAlert({ tone: 'error', message: 'Este pedido ya fue cobrado en Ventas (solo cocina).' });
+      return;
+    }
     const monto = Number(pedido.total) || 0;
     if (!(monto > 0)) {
       setAlert({ tone: 'error', message: 'El pedido no tiene total para cobrar.' });
@@ -114,7 +127,7 @@ export default function MeseroPage() {
     }
     setCreando(true);
     try {
-      await crearPedido({ mesa_id: mesaId || null, items: [{ producto_id: productoId, cantidad: Number(cantidad) }] });
+      await crearPedido({ mesa_id: mesaId || null, items: [{ producto_id: productoId, cantidad: Number(cantidad) }], origen: mesaId ? 'mesa' : 'mostrador' });
       setAlert({ tone: 'success', message: 'Pedido creado.' });
       setProductoId('');
       setCantidad(1);
@@ -182,17 +195,21 @@ export default function MeseroPage() {
                   <td>{fmtMoney(p.total)}</td>
                   <td><Badge tone="warning">{p.estado}</Badge></td>
                   <td style={{ textAlign: 'right' }}>
-                    <RequirePermiso permiso="venta.crear" fallback={null}>
-                      <Button
-                        size="sm"
-                        onClick={() => cobrar(p)}
-                        loading={cobrandoId === p.id_pedido}
-                        disabled={cobrandoId === p.id_pedido}
-                        title={turnoCaja ? `Cobrar en turno de ${turnoCaja.cajero_email || 'caja'}` : 'Cobrar en turno de caja'}
-                      >
-                        Cobrar
-                      </Button>
-                    </RequirePermiso>
+                    {esEspejoVenta(p) ? (
+                      <Badge tone="neutral">Cobrado en ventas</Badge>
+                    ) : (
+                      <RequirePermiso permiso="venta.crear" fallback={null}>
+                        <Button
+                          size="sm"
+                          onClick={() => cobrar(p)}
+                          loading={cobrandoId === p.id_pedido}
+                          disabled={cobrandoId === p.id_pedido}
+                          title={turnoCaja ? `Cobrar en turno de ${turnoCaja.cajero_email || 'caja'}` : 'Cobrar en turno de caja'}
+                        >
+                          Cobrar
+                        </Button>
+                      </RequirePermiso>
+                    )}
                   </td>
                 </tr>
               ))}

@@ -136,4 +136,17 @@ describe('PedidosPage', () => {
     expect(cobrarBotones).toHaveLength(1);
     expect(screen.getByText('Se cobra en cuenta')).toBeInTheDocument();
   });
+
+  it('espejo de venta_directa: sin Cobrar, muestra Cobrado en ventas', async () => {
+    mocks.mockListarPedidos.mockResolvedValue([
+      { id_pedido: 'e1', mesa_id: null, estado: 'abierto', total: 25, origen: 'venta_directa' },
+      { id_pedido: 'e2', mesa_id: null, estado: 'listo', total: 10, venta_id: 'v-1' },
+      { id_pedido: 'p2', mesa_id: null, estado: 'abierto', total: 5, origen: 'mostrador' },
+    ]);
+    renderPedidos();
+    await screen.findAllByText('Cobrado en ventas');
+    expect(screen.getAllByText('Cobrado en ventas')).toHaveLength(2);
+    // Solo el mostrador legitimo ofrece Cobrar.
+    expect(screen.getAllByRole('button', { name: 'Cobrar' })).toHaveLength(1);
+  });
 });

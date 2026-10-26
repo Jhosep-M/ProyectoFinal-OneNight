@@ -7,6 +7,7 @@ import { listarMetodosPago } from '../../services/ventasService.js';
 import { usePermisos } from '../../context/PermisosContext.jsx';
 import { productosService } from '../../services/productosService.js';
 import { usePromocionesVigentes } from '../../hooks/usePromocionesVigentes.js';
+import { useAutoRefresh } from '../../hooks/useAutoRefresh.js';
 import Button from '../../components/common/Button.jsx';
 import Card from '../../components/common/Card.jsx';
 import Badge from '../../components/common/Badge.jsx';
@@ -31,6 +32,10 @@ const TONE_ESTADO = {
 const esAbierto = (e) => e === 'abierto' || e === 'pendiente' || e === 'en_preparacion';
 const esListo = (e) => e === 'listo';
 const esCerrado = (e) => e === 'cerrado' || e === 'cobrado';
+// Espejo de venta directa (Ventas → Cocina): ya cobrado, solo visible en Cocina.
+// Nunca ofrece Cobrar en Pedidos/Mesero (evita doble venta + doble stock).
+const esEspejoVenta = (p) => p?.origen === 'venta_directa' || !!p?.venta_id;
+const esCobrable = (p) => (esAbierto(p.estado) || esListo(p.estado)) && !esEspejoVenta(p);
 
 const emptyItem = () => ({ producto_id: '', cantidad: 1 });
 
@@ -126,10 +131,10 @@ export default function PedidosPage() {
 
   const stats = useMemo(() => {
     const list = Array.isArray(pedidos) ? pedidos : [];
-    const pendientes = list.filter((p) => esAbierto(p.estado) || esListo(p.estado));
+    const pendientes = list.filter((p) => esCobrable(p));
     return {
-      abiertos: list.filter((p) => esAbierto(p.estado)).length,
-      listos: list.filter((p) => esListo(p.estado)).length,
+      abiertos: list.filter((p) => esAbierto(p.estado) && !esEspejoVenta(p)).length,
+      listos: list.filter((p) => esListo(p.estado) && !esEspejoVenta(p)).length,
       porCobrar: pendientes.reduce((acc, p) => acc + (Number(p.total) || 0), 0),
     };
   }, [pedidos]);
@@ -235,6 +240,9 @@ export default function PedidosPage() {
     setLoading(false);
   };
   useEffect(() => { recargar(); }, []);
+  // Regla de refresco automático: polling 15s + foco, sin Recargar manual.
+  // Cubre cobros/avances hechos en Ventas, Cocina, Mesero u otra pestaña.
+  useAutoRefresh(recargar, { intervalMs: 15000, onFocus: true });
   // Llegada desde Mesas ("Nuevo pedido" / "Ver cuenta"): preselecciona la mesa.
   useEffect(() => {
     if (mesaDeURL) setMesaId(mesaDeURL);
@@ -266,7 +274,7 @@ export default function PedidosPage() {
     try {
       // Sin mesa = mostrador / para llevar. Con mesa = se suma a su cuenta
       // y la mesa se ocupa sola (backend).
-      await crearPedido({ mesa_id: mesaId || null, items: limpios });
+      await crearPedido({ mesa_id: mesaId || null, items: limpios, origen: mesaId ? 'mesa' : 'mostrador' });
       const destino = mesaId ? mesaLabel({ mesa_id: mesaId }) : 'Mostrador';
       setAlert({ tone: 'success', message: `Pedido creado para ${destino} — ${fmtMoney(totalNuevo)}` });
       setItems([emptyItem()]);
@@ -281,6 +289,8 @@ export default function PedidosPage() {
   const cambiarEstado = async (id, estado) => {
     try {
       await actualizarPedido(id, { estado });
+      // Optimista: refleja el cambio al instante, el poll lo confirma.
+      setPedidos((prev) => prev.map((p) => (p.id_pedido === id ? { ...p, estado } : p)));
       recargar();
     } catch (e) { setAlert({ tone: 'error', message: e.message }); }
   };
@@ -318,6 +328,8 @@ export default function PedidosPage() {
         pagos: [{ metodo_pago_id: metodoId, monto }],
       });
       setAlert({ tone: 'success', message: 'Pedido cobrado' });
+      // Optimista: lo saca de "por cobrar" al instante.
+      setPedidos((prev) => prev.map((p) => (p.id_pedido === pedido.id_pedido ? { ...p, estado: 'cerrado', fecha_cierre: new Date().toISOString() } : p)));
       recargar();
     } catch (e) { setAlert({ tone: 'error', message: e.message }); }
   };
@@ -356,11 +368,11 @@ export default function PedidosPage() {
     if (next) await cargarDetalleCuenta();
   };
 
-  // Cobrar cuenta completa: cobra cada pedido abierto en secuencia con el mismo turno.
+  // Cobrar cuenta completa: cobra cada pedido cobrable en secuencia con el mismo turno.
   // La mesa queda libre sola al cobrar el último (backend). Si falla uno, se detiene
   // y deja el resto pendiente con mensaje de reintento.
   const cobrarCuenta = async () => {
-    const lista = (cuentaMesa?.pedidos || []).filter((p) => esAbierto(p.estado) || esListo(p.estado));
+    const lista = (cuentaMesa?.pedidos || []).filter((p) => esCobrable(p));
     if (lista.length === 0 || cobrandoCuenta) return;
     setAlert(null);
     setCobrandoCuenta(true);
@@ -399,6 +411,11 @@ export default function PedidosPage() {
         setAlert({ tone: 'success', message: `Cuenta cobrada: ${ok}/${lista.length} pedidos — ${fmtMoney(cuentaMesa.total)}` });
       } else {
         setAlert({ tone: 'error', message: `Se cobraron ${ok}/${lista.length}. Falló ${shortId(fail.pedido.id_pedido)}: ${fail.message}. Reintenta los restantes.` });
+      }
+      // Optimista: marca los cobrados (ok) como cerrados al instante.
+      const cobradosIds = new Set(lista.slice(0, ok).map((p) => p.id_pedido));
+      if (cobradosIds.size > 0) {
+        setPedidos((prev) => prev.map((p) => (cobradosIds.has(p.id_pedido) ? { ...p, estado: 'cerrado', fecha_cierre: new Date().toISOString() } : p)));
       }
       recargar();
     } finally {
@@ -676,11 +693,17 @@ export default function PedidosPage() {
                           )}
                         </RequirePermiso>
                         <RequirePermiso permiso="venta.crear">
-                          {(esAbierto(p.estado) || esListo(p.estado)) && !p.mesa_id && (
-                            <Button size="sm" onClick={() => cobrar(p)} title="Cobro directo (mostrador)">Cobrar</Button>
-                          )}
-                          {(esAbierto(p.estado) || esListo(p.estado)) && p.mesa_id && (
-                            <Badge tone="info">Se cobra en cuenta</Badge>
+                          {esEspejoVenta(p) ? (
+                            <Badge tone="neutral">Cobrado en ventas</Badge>
+                          ) : (
+                            <>
+                              {esCobrable(p) && !p.mesa_id && (
+                                <Button size="sm" onClick={() => cobrar(p)} title="Cobro directo (mostrador)">Cobrar</Button>
+                              )}
+                              {esCobrable(p) && p.mesa_id && (
+                                <Badge tone="info">Se cobra en cuenta</Badge>
+                              )}
+                            </>
                           )}
                         </RequirePermiso>
                       </span>

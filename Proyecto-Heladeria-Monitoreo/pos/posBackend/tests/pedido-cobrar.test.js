@@ -42,7 +42,8 @@ const MESA = 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee';
 
 function mockExito() {
   sequelize.query.mockImplementation(async (sql) => {
-    if (sql.includes('FROM pedido')) return [[{ id_pedido: PEDIDO, estado: 'abierto' }]];
+    if (sql.includes('FROM pedido')) return [[{ id_pedido: PEDIDO, estado: 'abierto', origen: 'mesa' }]];
+    if (sql.includes('FROM venta WHERE pedido_id')) return [[]];
     if (sql.includes('FROM detalle_pedido')) {
       return [[{ producto_id: PROD, cantidad: 2, precio_unitario: 10 }]];
     }
@@ -74,8 +75,7 @@ describe('POST /api/v1/orders/:id/cobrar', () => {
     sequelize.query.mockImplementation(async (sql) => {
       if (sql.includes('FROM pedido')) return [[{ id_pedido: PEDIDO, estado: 'cerrado' }]];
       return [[]];
-    });
-    const res = await request(app).post(`/api/v1/orders/${PEDIDO}/cobrar`).send({
+    });    const res = await request(app).post(`/api/v1/orders/${PEDIDO}/cobrar`).send({
       turno_id: TURNO,
       pagos: [{ metodo_pago_id: METODO, monto: 20 }],
     });
@@ -100,7 +100,8 @@ describe('POST /api/v1/orders/:id/cobrar', () => {
 
   test('registrar_venta P0001 stock insuficiente -> 400 humano y sin cerrar pedido', async () => {
     sequelize.query.mockImplementation(async (sql) => {
-      if (sql.includes('FROM pedido')) return [[{ id_pedido: PEDIDO, estado: 'abierto' }]];
+      if (sql.includes('FROM pedido')) return [[{ id_pedido: PEDIDO, estado: 'abierto', origen: 'mesa' }]];
+      if (sql.includes('FROM venta WHERE pedido_id')) return [[]];
       if (sql.includes('FROM detalle_pedido')) {
         return [[{ producto_id: PROD, cantidad: 2, precio_unitario: 10 }]];
       }
@@ -121,6 +122,7 @@ describe('POST /api/v1/orders/:id/cobrar', () => {
   test('cobrar ultimo pedido de la mesa la libera (COUNT 0 -> UPDATE libre)', async () => {
     sequelize.query.mockImplementation(async (sql) => {
       if (sql.includes('COUNT(*)')) return [[{ n: 0 }]];
+      if (sql.includes('FROM venta WHERE pedido_id')) return [[]];
       if (sql.includes('FROM detalle_pedido')) {
         return [[{ producto_id: PROD, cantidad: 2, precio_unitario: 10 }]];
       }
@@ -141,6 +143,7 @@ describe('POST /api/v1/orders/:id/cobrar', () => {
   test('cobrar con otros pedidos abiertos no libera la mesa (COUNT 1 -> sin UPDATE libre)', async () => {
     sequelize.query.mockImplementation(async (sql) => {
       if (sql.includes('COUNT(*)')) return [[{ n: 1 }]];
+      if (sql.includes('FROM venta WHERE pedido_id')) return [[]];
       if (sql.includes('FROM detalle_pedido')) {
         return [[{ producto_id: PROD, cantidad: 2, precio_unitario: 10 }]];
       }
@@ -155,5 +158,33 @@ describe('POST /api/v1/orders/:id/cobrar', () => {
     expect(res.status).toBe(201);
     expect(sequelize.query.mock.calls.some(([s]) => s.includes('COUNT(*)'))).toBe(true);
     expect(sequelize.query.mock.calls.some(([s]) => s.includes("SET estado='libre'"))).toBe(false);
+  });
+
+  test('espejo venta_directa -> 409 sin crear venta (ya cobrado en Ventas)', async () => {
+    sequelize.query.mockImplementation(async (sql) => {
+      if (sql.includes('FROM pedido')) return [[{ id_pedido: PEDIDO, estado: 'listo', origen: 'venta_directa' }]];
+      return [[]];
+    });
+    const res = await request(app).post(`/api/v1/orders/${PEDIDO}/cobrar`).send({
+      turno_id: TURNO,
+      pagos: [{ metodo_pago_id: METODO, monto: 20 }],
+    });
+    expect(res.status).toBe(409);
+    expect(res.body.error).toMatch(/ya cobrado en ventas/i);
+    expect(sequelize.query.mock.calls.some(([s]) => s.includes('registrar_venta'))).toBe(false);
+  });
+
+  test('pedido con venta enlazada -> 409 sin crear segunda venta', async () => {
+    sequelize.query.mockImplementation(async (sql) => {
+      if (sql.includes('FROM pedido')) return [[{ id_pedido: PEDIDO, estado: 'abierto', origen: 'mesa' }]];
+      if (sql.includes('FROM venta WHERE pedido_id')) return [[{ id_venta: 'v-previa' }]];
+      return [[]];
+    });
+    const res = await request(app).post(`/api/v1/orders/${PEDIDO}/cobrar`).send({
+      turno_id: TURNO,
+      pagos: [{ metodo_pago_id: METODO, monto: 20 }],
+    });
+    expect(res.status).toBe(409);
+    expect(sequelize.query.mock.calls.some(([s]) => s.includes('registrar_venta'))).toBe(false);
   });
 });

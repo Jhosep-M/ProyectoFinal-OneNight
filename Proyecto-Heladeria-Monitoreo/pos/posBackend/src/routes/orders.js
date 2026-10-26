@@ -13,14 +13,16 @@ router.get('/', authorize('pedido.consultar'), async (_req, res, next) => {
   try {
     // mesa no tiene columna nombre (solo numero/estado) — usar numero.
     // pedido tampoco tiene columna total: se calcula desde detalle_pedido.
-    const [rows] = await sequelize.query(`SELECT p.*, m.numero as mesa_numero, u.nombre as mesero_nombre, COALESCE((SELECT SUM(cantidad * precio_unitario) FROM detalle_pedido WHERE pedido_id = p.id_pedido), 0) AS total FROM pedido p LEFT JOIN mesa m ON m.id_mesa=p.mesa_id LEFT JOIN usuario u ON u.id_usuario=p.mesero_id ORDER BY p.fecha DESC LIMIT 100`);
+    // origen='venta_directa' = espejo de venta ya cobrada (solo cocina, no cobrable).
+    // venta_id expone el enlace venta.pedido_id para que el frontend oculte Cobrar.
+    const [rows] = await sequelize.query(`SELECT p.*, m.numero as mesa_numero, u.nombre as mesero_nombre, COALESCE((SELECT SUM(cantidad * precio_unitario) FROM detalle_pedido WHERE pedido_id = p.id_pedido), 0) AS total, v.id_venta AS venta_id FROM pedido p LEFT JOIN mesa m ON m.id_mesa=p.mesa_id LEFT JOIN usuario u ON u.id_usuario=p.mesero_id LEFT JOIN venta v ON v.pedido_id=p.id_pedido ORDER BY p.fecha DESC LIMIT 100`);
     res.json(rows);
   } catch (e) { next(e); }
 });
 
 router.get('/:id', authorize('pedido.consultar'), async (req, res, next) => {
   try {
-    const [rows] = await sequelize.query(`SELECT p.*, m.numero AS mesa_numero, COALESCE((SELECT SUM(cantidad * precio_unitario) FROM detalle_pedido WHERE pedido_id = p.id_pedido), 0) AS total FROM pedido p LEFT JOIN mesa m ON m.id_mesa = p.mesa_id WHERE p.id_pedido=:id`, { replacements: { id: req.params.id } });
+    const [rows] = await sequelize.query(`SELECT p.*, m.numero AS mesa_numero, COALESCE((SELECT SUM(cantidad * precio_unitario) FROM detalle_pedido WHERE pedido_id = p.id_pedido), 0) AS total, v.id_venta AS venta_id FROM pedido p LEFT JOIN mesa m ON m.id_mesa = p.mesa_id LEFT JOIN venta v ON v.pedido_id = p.id_pedido WHERE p.id_pedido=:id`, { replacements: { id: req.params.id } });
     if (!rows[0]) return res.status(404).json({ error: 'Pedido no encontrado' });
     const [detalles] = await sequelize.query(`SELECT dp.*, pr.nombre as producto_nombre, pr.precio, (dp.cantidad * dp.precio_unitario) AS subtotal_calc FROM detalle_pedido dp LEFT JOIN producto pr ON pr.id_producto=dp.producto_id WHERE dp.pedido_id=:id`, { replacements: { id: req.params.id } });
     res.json({ ...rows[0], detalles });
@@ -34,8 +36,8 @@ router.post('/', authorize('pedido.crear'), async (req, res, next) => {
     const meseroId = req.user.id;
     const result = await sequelize.transaction(async (t) => {
       const [pedidoRows] = await sequelize.query(
-        `INSERT INTO pedido (mesa_id, mesero_id, estado) VALUES (:mesa, :mesero, :estado) RETURNING *`,
-        { replacements: { mesa: parsed.mesa_id || null, mesero: meseroId, estado: parsed.estado }, transaction: t }
+        `INSERT INTO pedido (mesa_id, mesero_id, estado, origen) VALUES (:mesa, :mesero, :estado, :origen) RETURNING *`,
+        { replacements: { mesa: parsed.mesa_id || null, mesero: meseroId, estado: parsed.estado, origen: parsed.origen || 'mesa' }, transaction: t }
       );
       const pedido = pedidoRows[0];
       for (const item of parsed.items) {
@@ -89,6 +91,18 @@ router.post('/:id/cobrar', authorize('venta.crear'), async (req, res, next) => {
       }
       if (pedido.estado === 'cerrado' || pedido.estado === 'cancelado') {
         throw Object.assign(new Error(`Pedido ya ${pedido.estado}`), { status: 409 });
+      }
+      // Espejo de venta directa: ya cobrado en Ventas, solo visible en Cocina.
+      // No se puede volver a cobrar (evita doble venta + doble descuento de stock).
+      if (pedido.origen === 'venta_directa') {
+        throw Object.assign(new Error('Pedido ya cobrado en ventas (solo cocina)'), { status: 409 });
+      }
+      const [ventaPrevia] = await sequelize.query(
+        `SELECT id_venta FROM venta WHERE pedido_id=:id LIMIT 1`,
+        { replacements: { id: pedidoId }, transaction: t }
+      );
+      if (ventaPrevia.length) {
+        throw Object.assign(new Error('Pedido ya cobrado en ventas'), { status: 409 });
       }
       const [detalles] = await sequelize.query(
         `SELECT producto_id, cantidad, precio_unitario FROM detalle_pedido WHERE pedido_id=:id`,
@@ -194,6 +208,7 @@ router.patch('/:id', authorize('pedido.gestionar'), async (req, res, next) => { 
     const repl = { id: req.params.id };
     if (parsed.mesa_id !== undefined) { sets.push('mesa_id=:mesa'); repl.mesa = parsed.mesa_id; }
     if (parsed.estado !== undefined) { sets.push('estado=:estado'); repl.estado = parsed.estado; }
+    if (parsed.origen !== undefined) { sets.push('origen=:origen'); repl.origen = parsed.origen; }
     if (parsed.estado === 'cancelado' || parsed.estado === 'cerrado') { sets.push('fecha_cierre=NOW()'); }
     if (sets.length > 0) {
       const updatedPedido = await sequelize.transaction(async (t) => {
@@ -235,7 +250,7 @@ router.patch('/:id', authorize('pedido.gestionar'), async (req, res, next) => { 
         }
       } catch { /* no bloquear la respuesta por el sync de mesa */ }
       await auditLog({ usuario_id: req.user.id, accion: 'pedido.actualizar', entidad: 'pedido', entidad_id: req.params.id, resultado: 'exito', detalle: parsed, ip: req.ip, userAgent: req.headers['user-agent'] });
-      const [updated] = await sequelize.query(`SELECT p.*, m.numero AS mesa_numero, COALESCE((SELECT SUM(cantidad * precio_unitario) FROM detalle_pedido WHERE pedido_id = p.id_pedido), 0) AS total FROM pedido p LEFT JOIN mesa m ON m.id_mesa = p.mesa_id WHERE p.id_pedido=:id`, { replacements: { id: req.params.id } });
+      const [updated] = await sequelize.query(`SELECT p.*, m.numero AS mesa_numero, COALESCE((SELECT SUM(cantidad * precio_unitario) FROM detalle_pedido WHERE pedido_id = p.id_pedido), 0) AS total, (SELECT id_venta FROM venta WHERE pedido_id = p.id_pedido LIMIT 1) AS venta_id FROM pedido p LEFT JOIN mesa m ON m.id_mesa = p.mesa_id WHERE p.id_pedido=:id`, { replacements: { id: req.params.id } });
       const [detalles] = await sequelize.query(`SELECT *, (cantidad * precio_unitario) AS subtotal_calc FROM detalle_pedido WHERE pedido_id=:id`, { replacements: { id: req.params.id } });
       return res.json({ ...updated[0], detalles });
     }
