@@ -81,6 +81,38 @@ describe('POST /api/v1/mesas', () => {
     const res = await request(app).post('/api/v1/mesas').send({ numero: -2 });
     expect(res.status).toBe(400);
   });
+
+  test('numero ocupado por inactiva → 200 reactiva (no 409)', async () => {
+    // Opción A: si el numero existe pero está inactiva, se reactiva
+    // en vez de responder 409. El frontend calcula max+1 solo con
+    // visibles, así que este caso es el que hoy rompe "Nueva Mesa".
+    sequelize.query.mockImplementation(async (sql) => {
+      if (/FROM mesa WHERE numero/i.test(sql)) {
+        return [[{ id_mesa: 'm-old', numero: 6, estado: 'inactiva' }]];
+      }
+      if (/UPDATE mesa SET estado/i.test(sql)) {
+        return [[{ id_mesa: 'm-old', numero: 6, estado: 'libre' }]];
+      }
+      throw new Error(`query inesperada en test: ${sql}`);
+    });
+    const res = await request(app).post('/api/v1/mesas').send({ numero: 6 });
+    expect(res.status).toBe(200);
+    expect(res.body.estado).toBe('libre');
+    expect(res.body.numero).toBe(6);
+  });
+
+  test('numero ocupado por activa → 409 sin INSERT', async () => {
+    sequelize.query.mockImplementation(async (sql) => {
+      if (/FROM mesa WHERE numero/i.test(sql)) {
+        return [[{ id_mesa: 'm1', numero: 1, estado: 'libre' }]];
+      }
+      throw new Error(`no debió llegar a INSERT: ${sql}`);
+    });
+    const res = await request(app).post('/api/v1/mesas').send({ numero: 1 });
+    expect(res.status).toBe(409);
+    expect(res.body.error).toBe('Número de mesa duplicado');
+    expect(sequelize.query).toHaveBeenCalledTimes(1);
+  });
 });
 
 describe('PATCH /api/v1/mesas/:id liberar con guard', () => {

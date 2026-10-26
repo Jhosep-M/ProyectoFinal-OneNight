@@ -35,6 +35,7 @@ services:
       CORS_ORIGIN: ${CORS_ORIGIN}
       RATE_LIMIT_WINDOW_MS: ${RATE_LIMIT_WINDOW_MS:-900000}
       RATE_LIMIT_MAX: ${RATE_LIMIT_MAX:-100}
+      RATE_LIMIT_READ_MAX: ${RATE_LIMIT_READ_MAX:-600}
       MONITOREO_URL: ${MONITOREO_URL:-http://monitoreo-backend:4000/api/v1/integrations/consumption}
       MONITOREO_API_KEY: ${MONITOREO_API_KEY}
       POS_ALERT_API_KEY: ${POS_ALERT_API_KEY}
@@ -74,6 +75,7 @@ services:
       CORS_ORIGIN: ${CORS_ORIGIN}
       RATE_LIMIT_WINDOW_MS: ${RATE_LIMIT_WINDOW_MS:-900000}
       RATE_LIMIT_MAX: ${RATE_LIMIT_MAX:-100}
+      RATE_LIMIT_READ_MAX: ${RATE_LIMIT_READ_MAX:-600}
       POS_ALERTS_URL: ${POS_ALERTS_URL:-http://pos-backend:3000/api/v1/integrations/alerts}
       # El código de Monitoreo lee POS_ALERTS_API_KEY (plural). Mismo secreto que el
       # POS valida como POS_ALERT_API_KEY (singular) — ver monitoreo/backend/src/config/environment.js.

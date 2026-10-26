@@ -28,6 +28,9 @@ const env = {
   corsOrigin: (process.env.CORS_ORIGIN || 'http://localhost:5173').split(',').map(s => s.trim()),
   rateLimitWindowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS || '900000', 10),
   rateLimitMax: parseInt(process.env.RATE_LIMIT_MAX || '100', 10),
+  // Límite generoso para GET idempotentes (polling operativo multi-pestaña).
+  // Default 600/15min ≈ 3 pestañas x 12 req/min sin llegar a 429.
+  rateLimitReadMax: parseInt(process.env.RATE_LIMIT_READ_MAX || '600', 10),
   monitoreoUrl: process.env.MONITOREO_URL || '',
   monitoreoApiKey: process.env.MONITOREO_API_KEY || '',
   monitoreoTimeoutMs: Number(process.env.MONITOREO_TIMEOUT_MS) > 0 ? Number(process.env.MONITOREO_TIMEOUT_MS) : 5000,

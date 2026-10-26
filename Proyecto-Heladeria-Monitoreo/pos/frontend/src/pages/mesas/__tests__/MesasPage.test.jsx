@@ -103,6 +103,31 @@ describe('MesasPage', () => {
     });
   });
 
+  it('reintenta con el siguiente número si el backend responde 409', async () => {
+    const err409 = new Error('Número de mesa duplicado');
+    err409.status = 409;
+    mocks.mockCrear.mockRejectedValueOnce(err409).mockResolvedValueOnce({ id_mesa: 'm4', numero: 4, estado: 'libre' });
+    renderMesas();
+    await screen.findByText('1');
+    await userEvent.click(screen.getByRole('button', { name: /Nueva Mesa/ }));
+    await waitFor(() => {
+      expect(mocks.mockCrear).toHaveBeenCalledTimes(2);
+    });
+    expect(mocks.mockCrear).toHaveBeenNthCalledWith(1, 3);
+    expect(mocks.mockCrear).toHaveBeenNthCalledWith(2, 4);
+    expect(screen.queryByText(/Número de mesa duplicado/)).not.toBeInTheDocument();
+  });
+
+  it('si los reintentos se agotan muestra mensaje accionable', async () => {
+    const err409 = new Error('Número de mesa duplicado');
+    err409.status = 409;
+    mocks.mockCrear.mockRejectedValue(err409);
+    renderMesas();
+    await screen.findByText('1');
+    await userEvent.click(screen.getByRole('button', { name: /Nueva Mesa/ }));
+    expect(await screen.findByText(/ya está en uso.*Recarga/i)).toBeInTheDocument();
+  });
+
   it('ocupar mesa llama al servicio', async () => {
     mocks.mockActualizar.mockResolvedValue({ id_mesa: 'm1', numero: 1, estado: 'ocupada' });
     renderMesas();

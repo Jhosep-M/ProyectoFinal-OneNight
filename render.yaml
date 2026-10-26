@@ -67,6 +67,8 @@ services:
         value: "900000"
       - key: RATE_LIMIT_MAX
         value: "100"
+      - key: RATE_LIMIT_READ_MAX
+        value: "600"
       - key: POS_ALERTS_URL
         # Si el servicio pos-backend recibe sufijo, corregir aquí:
         value: https://heladeria-pos-backend.onrender.com/api/v1/integrations/alerts
@@ -101,6 +103,8 @@ services:
         value: "900000"
       - key: RATE_LIMIT_MAX
         value: "100"
+      - key: RATE_LIMIT_READ_MAX
+        value: "600"
       # El pooler de Supabase suele requerir no validar la cadena de CA propia.
       - key: DB_SSL_REJECT_UNAUTHORIZED
         value: "false"
