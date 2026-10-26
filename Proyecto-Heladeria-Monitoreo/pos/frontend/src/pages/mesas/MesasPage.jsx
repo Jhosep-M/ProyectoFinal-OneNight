@@ -8,6 +8,7 @@ import Skeleton from '../../components/ui/Skeleton.jsx';
 import { listarMesas, verMesa, crearMesa, actualizarMesa, eliminarMesa } from '../../services/mesasService.js';
 import { formatCurrency } from '../../utils/format.js';
 import { useAutoRefresh } from '../../hooks/useAutoRefresh.js';
+import ConfirmDialog from '../../components/modals/ConfirmDialog.jsx';
 
 const container = {
   hidden: { opacity: 0 },
@@ -77,6 +78,7 @@ export default function MesasPage() {
   const [creando, setCreando] = useState(false);
   const [cambiandoEstado, setCambiandoEstado] = useState(false);
   const [eliminando, setEliminando] = useState(false);
+  const [confirmEliminar, setConfirmEliminar] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -214,10 +216,14 @@ export default function MesasPage() {
   const cuentaSel = Number(mesaSeleccionada?.cuenta_total) || cuentaSeleccionada || 0;
   const tieneCuentaPendiente = pedidosAbiertosSel > 0 || cuentaSel > 0;
 
-  const handleEliminarMesa = async () => {
+  const handleEliminarMesa = () => {
     if (!mesaSeleccionada || eliminando) return;
-    const numero = mesaSeleccionada.numero ?? mesaId;
-    if (!window.confirm(`¿Eliminar la mesa ${numero}? Solo se puede eliminar sin pedidos abiertos ni cuenta pendiente.`)) return;
+    setConfirmEliminar(true);
+  };
+
+  const ejecutarEliminarMesa = async () => {
+    if (!mesaSeleccionada || eliminando) return;
+    setConfirmEliminar(false);
     setAccionError(null);
     setEliminando(true);
     try {
@@ -409,6 +415,16 @@ export default function MesasPage() {
           </Card>
         )}
       </div>
+
+      <ConfirmDialog
+        open={confirmEliminar}
+        onClose={() => setConfirmEliminar(false)}
+        onConfirm={ejecutarEliminarMesa}
+        title="Eliminar mesa"
+        message={`¿Eliminar la mesa ${mesaSeleccionada?.numero ?? mesaId}? Solo se puede eliminar sin pedidos abiertos ni cuenta pendiente.`}
+        confirmText="Eliminar"
+        danger
+      />
     </div>
   );
 }

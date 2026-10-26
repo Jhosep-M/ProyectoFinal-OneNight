@@ -12,6 +12,7 @@ import Button from '../../components/common/Button.jsx';
 import Card from '../../components/common/Card.jsx';
 import Badge from '../../components/common/Badge.jsx';
 import Alert from '../../components/alerts/Alert.jsx';
+import ConfirmDialog from '../../components/modals/ConfirmDialog.jsx';
 import Input from '../../components/common/Input.jsx';
 import Select from '../../components/common/Select.jsx';
 import RequirePermiso from '../../components/common/RequirePermiso.jsx';
@@ -95,6 +96,7 @@ export default function PedidosPage() {
   const [cobrandoCuenta, setCobrandoCuenta] = useState(false);
   const [cobrandoId, setCobrandoId] = useState(null);
   const [progresoCuenta, setProgresoCuenta] = useState(null);
+  const [confirmDialog, setConfirmDialog] = useState(null);
   const promoMap = usePromocionesVigentes();
 
   const productosById = useMemo(() => {
@@ -302,30 +304,62 @@ export default function PedidosPage() {
   };
 
   const cancelar = async (id) => {
-    if (!window.confirm('¿Cancelar este pedido?')) return;
-    await cambiarEstado(id, 'cancelado');
+    setConfirmDialog({ tipo: 'cancelar', id });
   };
 
-  const cobrar = async (pedido) => {
+  const confirmarDialog = async () => {
+    const cur = confirmDialog;
+    setConfirmDialog(null);
+    if (!cur) return;
+    if (cur.tipo === 'cancelar') {
+      await cambiarEstado(cur.id, 'cancelado');
+      return;
+    }
+    if (cur.tipo === 'cobrar' && cur.pedido) {
+      await ejecutarCobro(cur.pedido);
+    }
+  };
+
+  const pedirCobro = (pedido) => {
     if (cobrandoId) return;
+    // Cobro rápido en fila: 1 clic abre el modal sin cambiar el select de mesa.
+    // Si la mesa tiene N pendientes, se indica 1/N y la mesa se libera sola al cobrar el último (backend).
+    const esMesa = !!pedido.mesa_id;
+    const pendientesMesa = esMesa
+      ? (Array.isArray(pedidos) ? pedidos : []).filter(
+          (x) => String(x.mesa_id || '') === String(pedido.mesa_id) && esCobrable(x)
+        )
+      : [];
+    const nombreMesa = esMesa ? mesaLabel(pedido) : 'Mostrador';
+    const totalFmt = fmtMoney(pedido.total);
+    const idxEnCuenta = esMesa
+      ? pendientesMesa.findIndex((x) => x.id_pedido === pedido.id_pedido)
+      : -1;
+    const detalleCuenta = pendientesMesa.length > 1
+      ? ` (${(idxEnCuenta >= 0 ? idxEnCuenta + 1 : 1)}/${pendientesMesa.length} de la cuenta; la mesa sigue ocupada hasta el último)`
+      : ' (último/único; libera la mesa)';
+    setConfirmDialog({
+      tipo: 'cobrar',
+      pedido,
+      titulo: `Cobrar ${totalFmt}`,
+      mensaje: `¿Cobrar ${totalFmt} de ${nombreMesa}?${esMesa ? detalleCuenta : ''}`,
+      textoBoton: `Cobrar ${totalFmt}`,
+    });
+  };
+
+  const cobrar = (pedido) => pedirCobro(pedido);
+
+  const ejecutarCobro = async (pedido) => {
+    if (cobrandoId) return;
+    const esMesa = !!pedido.mesa_id;
+    const pendientesMesa = esMesa
+      ? (Array.isArray(pedidos) ? pedidos : []).filter(
+          (x) => String(x.mesa_id || '') === String(pedido.mesa_id) && esCobrable(x)
+        )
+      : [];
+    const nombreMesa = esMesa ? mesaLabel(pedido) : 'Mostrador';
+    const totalFmt = fmtMoney(pedido.total);
     try {
-      // Cobro rápido en fila: 1 clic cobra ese pedido sin cambiar el select de mesa.
-      // Si la mesa tiene N pendientes, se indica 1/N y la mesa se libera sola al cobrar el último (backend).
-      const esMesa = !!pedido.mesa_id;
-      const pendientesMesa = esMesa
-        ? (Array.isArray(pedidos) ? pedidos : []).filter(
-            (x) => String(x.mesa_id || '') === String(pedido.mesa_id) && esCobrable(x)
-          )
-        : [];
-      const nombreMesa = esMesa ? mesaLabel(pedido) : 'Mostrador';
-      const totalFmt = fmtMoney(pedido.total);
-      const idxEnCuenta = esMesa
-        ? pendientesMesa.findIndex((x) => x.id_pedido === pedido.id_pedido)
-        : -1;
-      const detalleCuenta = pendientesMesa.length > 1
-        ? ` (${(idxEnCuenta >= 0 ? idxEnCuenta + 1 : 1)}/${pendientesMesa.length} de la cuenta; la mesa sigue ocupada hasta el último)`
-        : ' (último/único; libera la mesa)';
-      if (!window.confirm(`¿Cobrar ${totalFmt} de ${nombreMesa}?${esMesa ? detalleCuenta : ''}`)) return;
       setCobrandoId(pedido.id_pedido);
       // Opción A: mesero/cajero cobran sobre el turno abierto de caja,
       // sin abrir caja propia (GET /shifts/abierto exige venta.crear).
@@ -770,6 +804,16 @@ export default function PedidosPage() {
           </div>
         )}
       </Card>
+
+      <ConfirmDialog
+        open={!!confirmDialog}
+        onClose={() => setConfirmDialog(null)}
+        onConfirm={confirmarDialog}
+        title={confirmDialog?.tipo === 'cancelar' ? 'Cancelar pedido' : confirmDialog?.titulo || 'Cobrar'}
+        message={confirmDialog?.tipo === 'cancelar' ? '¿Cancelar este pedido?' : confirmDialog?.mensaje || ''}
+        confirmText={confirmDialog?.tipo === 'cancelar' ? 'Sí, cancelar' : confirmDialog?.textoBoton || 'Confirmar'}
+        danger={confirmDialog?.tipo === 'cancelar'}
+      />
     </div>
   );
 }

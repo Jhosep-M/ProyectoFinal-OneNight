@@ -5,6 +5,7 @@ import Input from '../../../components/common/Input.jsx';
 import Select from '../../../components/common/Select.jsx';
 import EmptyState from '../../../components/common/EmptyState.jsx';
 import RequirePermiso from '../../../components/common/RequirePermiso.jsx';
+import ConfirmDialog from '../../../components/modals/ConfirmDialog.jsx';
 import { getAlertaInsumo } from '../../../utils/inventario.js';
 import { validarCantidad } from '../../../utils/receta.js';
 import RecetaCostoBar from './RecetaCostoBar.jsx';
@@ -23,6 +24,7 @@ export default function RecetaPanel({
   const [formError, setFormError] = useState('');
   const [editandoId, setEditandoId] = useState(null);
   const [editCantidad, setEditCantidad] = useState('');
+  const [pendienteQuitar, setPendienteQuitar] = useState(null);
 
   const porId = useMemo(() => {
     const m = new Map();
@@ -179,7 +181,7 @@ export default function RecetaPanel({
                       ) : (
                         <>
                           <Button size="sm" variant="secondary" onClick={() => empezarEdicion(l)}>Editar</Button>{' '}
-                          <Button size="sm" variant="ghost" onClick={() => { if (window.confirm(`Quitar ${l.insumo_nombre} de la receta?`)) onRemove?.(l.id_receta); }}>
+                          <Button size="sm" variant="ghost" onClick={() => setPendienteQuitar(l)}>
                             Quitar
                           </Button>
                         </>
@@ -193,6 +195,20 @@ export default function RecetaPanel({
         </table>
         </div>
       )}
+
+      <ConfirmDialog
+        open={!!pendienteQuitar}
+        onClose={() => setPendienteQuitar(null)}
+        onConfirm={() => {
+          const id = pendienteQuitar?.id_receta;
+          setPendienteQuitar(null);
+          if (id) onRemove?.(id);
+        }}
+        title="Quitar insumo"
+        message={pendienteQuitar ? `¿Quitar ${pendienteQuitar.insumo_nombre} de la receta?` : ''}
+        confirmText="Quitar"
+        danger
+      />
     </div>
   );
 }

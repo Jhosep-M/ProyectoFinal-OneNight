@@ -98,14 +98,29 @@ describe('Proveedores', () => {
   });
 
   it('confirma la inactivación antes de llamar al servicio', async () => {
-    window.confirm = vi.fn(() => true);
     render(<Proveedores />);
     await screen.findByText('prueba 1');
 
     await userEvent.click(screen.getAllByRole('button', { name: 'Inactivar' })[0]);
 
+    // El modal cuadrado del sistema pide confirmación
+    expect(await screen.findByText('Inactivar proveedor')).toBeInTheDocument();
+    const dialogos = screen.getAllByRole('button', { name: 'Inactivar' });
+    await userEvent.click(dialogos[dialogos.length - 1]);
+
     await waitFor(() => {
       expect(mocks.inactivate).toHaveBeenCalledWith('p1');
     });
+  });
+
+  it('cancelar el modal no inactiva', async () => {
+    render(<Proveedores />);
+    await screen.findByText('prueba 1');
+
+    await userEvent.click(screen.getAllByRole('button', { name: 'Inactivar' })[0]);
+    expect(await screen.findByText('Inactivar proveedor')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Cancelar' }));
+
+    expect(mocks.inactivate).not.toHaveBeenCalled();
   });
 });

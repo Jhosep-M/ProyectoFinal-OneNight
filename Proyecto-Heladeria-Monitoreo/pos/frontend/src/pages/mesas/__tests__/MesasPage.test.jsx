@@ -139,19 +139,21 @@ describe('MesasPage', () => {
     expect(await screen.findByText(/cobra antes de liberar/i)).toBeInTheDocument();
   });
 
-  it('eliminar con confirm llama DELETE y quita la tarjeta', async () => {
-    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+  it('eliminar con modal llama DELETE y quita la tarjeta', async () => {
     mocks.mockEliminar.mockResolvedValue({ id_mesa: 'm1', numero: 1, estado: 'inactiva' });
     renderMesas();
     await screen.findByText('1');
     await userEvent.click(screen.getByText('1'));
     await userEvent.click(await screen.findByRole('button', { name: /Eliminar/ }));
+    // El modal cuadrado del sistema pide confirmación
+    expect(await screen.findByText('Eliminar mesa')).toBeInTheDocument();
+    const botones = screen.getAllByRole('button', { name: 'Eliminar' });
+    await userEvent.click(botones[botones.length - 1]);
     await waitFor(() => {
       expect(mocks.mockEliminar).toHaveBeenCalledWith('m1');
     });
     await waitFor(() => {
       expect(screen.queryByText('1')).not.toBeInTheDocument();
     });
-    confirmSpy.mockRestore();
   });
 });

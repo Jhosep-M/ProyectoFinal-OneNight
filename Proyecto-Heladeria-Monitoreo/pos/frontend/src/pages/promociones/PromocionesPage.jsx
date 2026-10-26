@@ -8,6 +8,7 @@ import Alert from '../../components/alerts/Alert.jsx';
 import Input from '../../components/common/Input.jsx';
 import Select from '../../components/common/Select.jsx';
 import RequirePermiso from '../../components/common/RequirePermiso.jsx';
+import ConfirmDialog from '../../components/modals/ConfirmDialog.jsx';
 
 const empty = { nombre: '', porcentaje_descuento: 0, fecha_inicio: '', fecha_fin: '', estado: 'activa', producto_ids: [] };
 
@@ -21,6 +22,7 @@ export default function PromocionesPage() {
   const [editando, setEditando] = useState(null);
   const [alert, setAlert] = useState(null);
   const [soloVigentes, setSoloVigentes] = useState(false);
+  const [promoPendiente, setPromoPendiente] = useState(null);
   const hoyISO = new Date().toISOString().slice(0, 10);
 
   const esVigente = (p) => {
@@ -102,8 +104,14 @@ export default function PromocionesPage() {
 
   const cancelar = () => { setEditando(null); setForm(empty); };
 
-  const eliminar = async (p) => {
-    if (!window.confirm(`¿Eliminar "${p.nombre}"? Se quitará de la lista.`)) return;
+  const eliminar = (p) => {
+    setPromoPendiente(p);
+  };
+
+  const ejecutarEliminar = async () => {
+    const p = promoPendiente;
+    setPromoPendiente(null);
+    if (!p) return;
     setAlert(null);
     try {
       await eliminarPromocion(p.id_promocion);
@@ -199,6 +207,16 @@ export default function PromocionesPage() {
           </div>
         )}
       </Card>
+
+      <ConfirmDialog
+        open={!!promoPendiente}
+        onClose={() => setPromoPendiente(null)}
+        onConfirm={ejecutarEliminar}
+        title="Eliminar promoción"
+        message={promoPendiente ? `¿Eliminar "${promoPendiente.nombre}"? Se quitará de la lista.` : ''}
+        confirmText="Eliminar"
+        danger
+      />
     </div>
   );
 }
