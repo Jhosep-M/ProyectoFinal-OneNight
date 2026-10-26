@@ -226,6 +226,7 @@ export default function Inventario() {
         ) : insumosFiltrados.length === 0 ? (
           <EmptyState title={busqueda ? 'Sin resultados' : 'Sin insumos'} description={busqueda ? 'Prueba con otro nombre.' : 'Crea el primer insumo con el formulario de arriba.'} />
         ) : (
+          <div className="table-wrap">
           <table className="data-table">
             <thead><tr><th>Nombre</th><th>Unidad</th><th>Stock</th><th>Mín</th><th>Vencimiento</th><th>Estado</th><th>Alerta</th><th></th></tr></thead>
             <tbody>
@@ -254,6 +255,7 @@ export default function Inventario() {
               })}
             </tbody>
           </table>
+          </div>
         )}
       </Card>
 
@@ -273,6 +275,7 @@ export default function Inventario() {
         ) : movsFiltrados.length === 0 ? (
           <EmptyState title="Sin movimientos" description="Registra el primer ingreso con el formulario de arriba." />
         ) : (
+          <div className="table-wrap">
           <table className="data-table">
             <thead><tr><th>Fecha</th><th>Insumo</th><th>Tipo</th><th>Cantidad</th><th>Motivo</th></tr></thead>
             <tbody>
@@ -287,6 +290,7 @@ export default function Inventario() {
               ))}
             </tbody>
           </table>
+          </div>
         )}
       </Card>
     </div>

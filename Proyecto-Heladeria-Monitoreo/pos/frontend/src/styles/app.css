@@ -71,9 +71,11 @@
   text-align: center;
 }
 
-.sidebar-link:hover {
-  background: #3D2317;
-  color: #FDF8F3;
+@media (hover: hover) and (pointer: fine) {
+  .sidebar-link:hover {
+    background: #3D2317;
+    color: #FDF8F3;
+  }
 }
 
 .sidebar-link.active {
@@ -144,6 +146,12 @@
   gap: 12px;
 }
 
+/* Botón hamburguesa: solo existe en móvil (ver media query abajo). */
+.menu-toggle { display: none; }
+
+/* El bloque de títulos debe poder encogerse para el ellipsis en móvil. */
+.header-titles { min-width: 0; }
+
 .main-content {
   flex: 1;
   padding: 28px 32px;
@@ -159,10 +167,12 @@
 
 .auth-wrap {
   min-height: 100vh;
+  min-height: 100svh;
   display: flex;
   align-items: center;
   justify-content: center;
   background: #2C1810;
+  padding: 16px;
 }
 
 .auth-card {
@@ -170,7 +180,7 @@
   border: 1px solid #D4C4B0;
   border-radius: 0;
   padding: 32px;
-  width: 360px;
+  width: min(360px, 100%);
 }
 
 .auth-card h1 {
@@ -207,3 +217,62 @@
 .bg-soft-danger { background-color: #F5E0E0; }
 .bg-soft-warning { background-color: #F5E6D3; }
 .bg-soft-info { background-color: #E0EBF0; }
+
+/* ===== Navegación móvil =====
+   Debajo de lg (992px, breakpoint de Bootstrap) el sidebar fijo de 220px
+   aplastaría el contenido en un teléfono: se convierte en drawer deslizable
+   con hamburguesa en el header. En desktop no cambia nada. */
+@media (max-width: 991.98px) {
+  .menu-toggle { display: inline-flex; }
+
+  .sidebar {
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    height: 100vh;
+    height: 100dvh;
+    width: min(280px, 82vw);
+    z-index: var(--z-modal);
+    transform: translateX(-105%);
+    visibility: hidden;
+    transition:
+      transform var(--duration) var(--ease-out),
+      visibility 0s linear var(--duration);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  .sidebar.open {
+    transform: translateX(0);
+    visibility: visible;
+    transition: transform var(--duration) var(--ease-out);
+    box-shadow: 20px 0 50px rgba(44, 24, 16, 0.25);
+  }
+  .sidebar-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(44, 24, 16, 0.42);
+    z-index: var(--z-modal-backdrop);
+  }
+
+  .header {
+    padding: 0 16px;
+    padding-top: env(safe-area-inset-top, 0px);
+    gap: 8px;
+  }
+  .header-title {
+    font-size: 1.1rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .header-breadcrumb {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}
+
+@media (max-width: 480px) {
+  .auth-card { padding: 24px 20px; }
+  .header-actions { gap: 8px; }
+}

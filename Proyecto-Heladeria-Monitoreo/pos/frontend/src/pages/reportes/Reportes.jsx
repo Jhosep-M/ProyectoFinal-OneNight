@@ -191,6 +191,7 @@ export default function Reportes() {
             {(cierre.porMetodo || []).length === 0 ? (
               <EmptyState title="Sin pagos" description="No hay pagos en el rango." />
             ) : (
+              <div className="table-wrap">
               <table className="data-table">
                 <thead><tr><th>Método</th><th>Pagos</th><th>Total</th></tr></thead>
                 <tbody>
@@ -203,6 +204,7 @@ export default function Reportes() {
                   ))}
                 </tbody>
               </table>
+              </div>
             )}
           </Card>
 
@@ -210,6 +212,7 @@ export default function Reportes() {
             {(cierre.topProductos || []).length === 0 ? (
               <EmptyState title="Sin productos" description="No hay ventas de productos en el rango." />
             ) : (
+              <div className="table-wrap">
               <table className="data-table">
                 <thead><tr><th>Producto</th><th>Cantidad</th><th>Total</th></tr></thead>
                 <tbody>
@@ -222,6 +225,7 @@ export default function Reportes() {
                   ))}
                 </tbody>
               </table>
+              </div>
             )}
           </Card>
 
@@ -229,6 +233,7 @@ export default function Reportes() {
             {(cierre.porTurno || []).length === 0 ? (
               <EmptyState title="Sin turnos" description="No hay ventas por turno en el rango." />
             ) : (
+              <div className="table-wrap">
               <table className="data-table">
                 <thead><tr><th>Turno</th><th>Ventas</th><th>Total</th></tr></thead>
                 <tbody>
@@ -241,6 +246,7 @@ export default function Reportes() {
                   ))}
                 </tbody>
               </table>
+              </div>
             )}
           </Card>
         </div>

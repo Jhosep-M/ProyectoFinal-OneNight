@@ -68,8 +68,10 @@
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
-.card:hover {
-  border-color: #C9B49A;
+@media (hover: hover) and (pointer: fine) {
+  .card:hover {
+    border-color: #C9B49A;
+  }
 }
 
 .badge {

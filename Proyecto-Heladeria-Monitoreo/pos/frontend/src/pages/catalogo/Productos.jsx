@@ -266,6 +266,7 @@ export default function Productos() {
             description={busqueda ? 'Prueba con otro nombre.' : 'Crea el primer producto con el formulario de arriba.'}
           />
         ) : (
+          <div className="table-wrap">
           <table className="data-table">
             <thead><tr><th>Foto</th><th>Nombre</th><th>Categoría</th><th>Precio</th><th>Stock</th><th>Estado</th><th></th></tr></thead>
             <tbody>
@@ -298,6 +299,7 @@ export default function Productos() {
               })}
             </tbody>
           </table>
+          </div>
         )}
       </Card>
     </div>
@@ -346,6 +348,7 @@ export function Categorias() {
         ) : items.length === 0 ? (
           <EmptyState title="Sin categorías" description="Crea la primera categoría con el formulario de arriba." />
         ) : (
+          <div className="table-wrap">
           <table className="data-table">
             <thead><tr><th>Nombre</th><th>Estado</th></tr></thead>
             <tbody>
@@ -357,6 +360,7 @@ export function Categorias() {
               ))}
             </tbody>
           </table>
+          </div>
         )}
       </Card>
     </div>

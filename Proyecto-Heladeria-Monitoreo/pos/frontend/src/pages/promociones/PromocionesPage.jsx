@@ -124,6 +124,7 @@ export default function PromocionesPage() {
         {loading ? (
           <p>Cargando…</p>
         ) : (
+          <div className="table-wrap">
           <table className="data-table">
             <thead><tr><th>Nombre</th><th>Descuento</th><th>Inicio</th><th>Fin</th><th>Estado</th><th>Productos</th><th></th></tr></thead>
             <tbody>
@@ -140,6 +141,7 @@ export default function PromocionesPage() {
               ))}
             </tbody>
           </table>
+          </div>
         )}
       </Card>
     </div>
