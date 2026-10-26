@@ -26,6 +26,17 @@ router.get('/permisos', async (req, res, next) => {
   } catch (e) { next(e); }
 });
 
+// Turno abierto para cobro (Opción A mesero): exige venta.crear, NO
+// turno.consultar. Devuelve el abierto más reciente de cualquier cajero.
+// Va antes de POST /:id/cerrar para no colisionar. Sin turno -> 404 SIN_TURNO.
+router.get('/abierto', authorize('venta.crear'), async (_req, res, next) => {
+  try {
+    const turno = await shiftsController.turnoAbiertoParaCobro();
+    if (!turno) return res.status(404).json({ code: 'SIN_TURNO', error: 'No hay caja abierta' });
+    res.json(turno);
+  } catch (e) { next(e); }
+});
+
 router.post('/', authorize('turno.abrir'), async (req, res, next) => {
   try {
     res.status(201).json(await shiftsController.abrir(req.body, req.user.id));

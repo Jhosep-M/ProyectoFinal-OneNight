@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
-import { listarPedidos, crearPedido } from '../../services/pedidosService.js';
+import { listarPedidos, crearPedido, cobrarPedido } from '../../services/pedidosService.js';
 import { listarMesas } from '../../services/mesasService.js';
+import { listarTurnoAbiertoParaCobro } from '../../services/cajaService.js';
+import { listarMetodosPago } from '../../services/ventasService.js';
 import { productosService, categoriasService } from '../../services/productosService.js';
 import Card from '../../components/common/Card.jsx';
 import Button from '../../components/common/Button.jsx';
@@ -28,20 +30,26 @@ export default function MeseroPage() {
   const [productoId, setProductoId] = useState('');
   const [cantidad, setCantidad] = useState(1);
   const [creando, setCreando] = useState(false);
+  const [turnoCaja, setTurnoCaja] = useState(null);
+  const [cobrandoId, setCobrandoId] = useState(null);
 
   const recargar = async () => {
     setLoading(true);
     try {
-      const [p, m, prods, cats] = await Promise.all([
+      const [p, m, prods, cats, turno] = await Promise.all([
         listarPedidos().catch(() => []),
         listarMesas().catch(() => []),
         productosService.list().catch(() => []),
         categoriasService.list().catch(() => []),
+        // Opción A: turno abierto de caja para cobrar sin abrir caja propia.
+        // Sin venta.crear o sin turno -> null (no bloquea la vista de pedidos).
+        listarTurnoAbiertoParaCobro().catch(() => null),
       ]);
       setPedidos(Array.isArray(p) ? p : []);
       setMesas(Array.isArray(m) ? m : []);
       setProductos(Array.isArray(prods) ? prods : []);
       setCategorias(Array.isArray(cats) ? cats : []);
+      setTurnoCaja(turno || null);
     } finally {
       setLoading(false);
     }
@@ -55,6 +63,44 @@ export default function MeseroPage() {
     () => (Array.isArray(pedidos) ? pedidos.filter((p) => ACTIVOS.includes(p.estado)) : []),
     [pedidos]
   );
+
+  // Opción A: el mesero cobra sobre el turno abierto de caja.
+  // No abre/cierra caja; la venta queda en turno_caja de caja y la
+  // auditoría registra al mesero (registrar_venta: p_usuario_id=JWT).
+  const cobrar = async (pedido) => {
+    setAlert(null);
+    const monto = Number(pedido.total) || 0;
+    if (!(monto > 0)) {
+      setAlert({ tone: 'error', message: 'El pedido no tiene total para cobrar.' });
+      return;
+    }
+    setCobrandoId(pedido.id_pedido);
+    try {
+      const turno = turnoCaja || (await listarTurnoAbiertoParaCobro().catch(() => null));
+      if (!turno) {
+        setAlert({ tone: 'error', message: 'No hay caja abierta. Pide a caja que abra turno para cobrar.' });
+        return;
+      }
+      setTurnoCaja(turno);
+      const metodos = await listarMetodosPago().catch(() => []);
+      const metodo = (metodos || [])[0];
+      const metodoId = metodo?.id_metodo_pago || metodo?.id_metodo || metodo?.id;
+      if (!metodoId) {
+        setAlert({ tone: 'error', message: 'No hay métodos de pago configurados.' });
+        return;
+      }
+      await cobrarPedido(pedido.id_pedido, {
+        turno_id: turno.id_turno || turno.id,
+        pagos: [{ metodo_pago_id: metodoId, monto }],
+      });
+      setAlert({ tone: 'success', message: `Pedido cobrado en turno de ${turno.cajero_email || 'caja'}. Entrega el efectivo a caja.` });
+      await recargar();
+    } catch (e) {
+      setAlert({ tone: 'error', message: e.message });
+    } finally {
+      setCobrandoId(null);
+    }
+  };
 
   const crear = async () => {
     setAlert(null);
@@ -83,7 +129,10 @@ export default function MeseroPage() {
   return (
     <div>
       <h1>Mis pedidos</h1>
-      <p className="text-muted">Crea pedidos a mesa y consulta el catálogo. El cobro lo hace caja.</p>
+      <p className="text-muted">
+        Crea pedidos a mesa y cóbralos en el turno abierto de caja. No necesitas abrir caja propia.
+        {turnoCaja ? ` Turno de caja: ${turnoCaja.cajero_email || 'caja'} — el efectivo se entrega a caja.` : ' Sin turno de caja abierto: pide a caja que abra turno para cobrar.'}
+      </p>
       {alert && <Alert tone={alert.tone} message={alert.message} onClose={() => setAlert(null)} />}
 
       <Card title="Nuevo pedido">
@@ -134,13 +183,15 @@ export default function MeseroPage() {
                   <td><Badge tone="warning">{p.estado}</Badge></td>
                   <td style={{ textAlign: 'right' }}>
                     <RequirePermiso permiso="venta.crear" fallback={null}>
-                      <Button size="sm">Cobrar</Button>
-                    </RequirePermiso>
-                    <RequirePermiso permiso="pedido.gestionar" fallback={null}>
-                      <Button size="sm" variant="ghost">Anular</Button>
-                    </RequirePermiso>
-                    <RequirePermiso permiso="turno.cerrar" fallback={null}>
-                      <Button size="sm" variant="ghost">Cerrar</Button>
+                      <Button
+                        size="sm"
+                        onClick={() => cobrar(p)}
+                        loading={cobrandoId === p.id_pedido}
+                        disabled={cobrandoId === p.id_pedido}
+                        title={turnoCaja ? `Cobrar en turno de ${turnoCaja.cajero_email || 'caja'}` : 'Cobrar en turno de caja'}
+                      >
+                        Cobrar
+                      </Button>
                     </RequirePermiso>
                   </td>
                 </tr>

@@ -2,8 +2,9 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { listarPedidos, crearPedido, actualizarPedido, cobrarPedido, verPedido } from '../../services/pedidosService.js';
 import { listarMesas } from '../../services/mesasService.js';
-import { listarTurnos } from '../../services/cajaService.js';
+import { listarTurnoAbiertoParaCobro } from '../../services/cajaService.js';
 import { listarMetodosPago } from '../../services/ventasService.js';
+import { usePermisos } from '../../context/PermisosContext.jsx';
 import { productosService } from '../../services/productosService.js';
 import { usePromocionesVigentes } from '../../hooks/usePromocionesVigentes.js';
 import Button from '../../components/common/Button.jsx';
@@ -61,6 +62,11 @@ const horaPedido = (p) => {
 const pesoEstado = (p) => (esAbierto(p.estado) ? 0 : esListo(p.estado) ? 1 : esCerrado(p.estado) ? 2 : 3);
 
 export default function PedidosPage() {
+  const { tienePermiso } = usePermisos();
+  const puedeAbrirTurno = tienePermiso('turno.abrir');
+  const msgSinTurno = puedeAbrirTurno
+    ? 'No hay turno abierto. Abre uno en Caja.'
+    : 'No hay caja abierta. Pide a caja que abra turno para cobrar.';
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const mesaDeURL = searchParams.get('mesa') || '';
@@ -286,13 +292,14 @@ export default function PedidosPage() {
 
   const cobrar = async (pedido) => {
     try {
-      const [turnos, metodos] = await Promise.all([
-        listarTurnos().catch(() => []),
+      // Opción A: mesero/cajero cobran sobre el turno abierto de caja,
+      // sin abrir caja propia (GET /shifts/abierto exige venta.crear).
+      const [turno, metodos] = await Promise.all([
+        listarTurnoAbiertoParaCobro().catch(() => null),
         listarMetodosPago().catch(() => []),
       ]);
-      const turno = (turnos || []).find((t) => t.estado === 'abierto');
       if (!turno) {
-        setAlert({ tone: 'error', message: 'No hay turno abierto. Abre uno en Caja.' });
+        setAlert({ tone: 'error', message: msgSinTurno });
         return;
       }
       const metodo = (metodos || [])[0];
@@ -359,13 +366,12 @@ export default function PedidosPage() {
     setCobrandoCuenta(true);
     setProgresoCuenta({ done: 0, total: lista.length });
     try {
-      const [turnos, metodos] = await Promise.all([
-        listarTurnos().catch(() => []),
+      const [turno, metodos] = await Promise.all([
+        listarTurnoAbiertoParaCobro().catch(() => null),
         listarMetodosPago().catch(() => []),
       ]);
-      const turno = (turnos || []).find((t) => t.estado === 'abierto');
       if (!turno) {
-        setAlert({ tone: 'error', message: 'No hay turno abierto. Abre uno en Caja.' });
+        setAlert({ tone: 'error', message: msgSinTurno });
         return;
       }
       const metodo = (metodos || [])[0];
@@ -449,11 +455,13 @@ export default function PedidosPage() {
             <Button variant="secondary" size="sm" onClick={toggleCuenta}>
               {cuentaExpandida ? 'Ocultar detalle' : 'Ver detalle'}
             </Button>
-            <Button size="sm" onClick={cobrarCuenta} loading={cobrandoCuenta} disabled={cobrandoCuenta || cuentaMesa.n === 0}>
-              {cobrandoCuenta && progresoCuenta
-                ? `Cobrando ${progresoCuenta.done + 1}/${progresoCuenta.total}…`
-                : `Cobrar cuenta ${fmtMoney(cuentaMesa.total)} (${cuentaMesa.n})`}
-            </Button>
+            <RequirePermiso permiso="venta.crear" fallback={null}>
+              <Button size="sm" onClick={cobrarCuenta} loading={cobrandoCuenta} disabled={cobrandoCuenta || cuentaMesa.n === 0}>
+                {cobrandoCuenta && progresoCuenta
+                  ? `Cobrando ${progresoCuenta.done + 1}/${progresoCuenta.total}…`
+                  : `Cobrar cuenta ${fmtMoney(cuentaMesa.total)} (${cuentaMesa.n})`}
+              </Button>
+            </RequirePermiso>
           </div>
           {cuentaExpandida && (
             <div style={{ marginTop: 12 }}>

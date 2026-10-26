@@ -13,7 +13,7 @@ const mocks = vi.hoisted(() => ({
   mockActualizarPedido: vi.fn(),
   mockCobrarPedido: vi.fn(),
   mockVerPedido: vi.fn(),
-  mockListarTurnos: vi.fn(),
+  mockTurnoAbierto: vi.fn(),
   mockListarMetodos: vi.fn(),
 }));
 
@@ -25,7 +25,7 @@ vi.mock('../../../services/pedidosService.js', () => ({
   verPedido: mocks.mockVerPedido,
 }));
 
-vi.mock('../../../services/cajaService.js', () => ({ listarTurnos: mocks.mockListarTurnos }));
+vi.mock('../../../services/cajaService.js', () => ({ listarTurnos: mocks.mockTurnoAbierto, listarTurnoAbiertoParaCobro: mocks.mockTurnoAbierto }));
 vi.mock('../../../services/ventasService.js', () => ({ listarMetodosPago: mocks.mockListarMetodos }));
 
 vi.mock('../../../services/mesasService.js', () => ({ listarMesas: mocks.mockListarMesas }));
@@ -52,7 +52,7 @@ describe('PedidosPage', () => {
     ]);
     mocks.mockListarMesas.mockResolvedValue([{ id_mesa: 'm1', numero: '1' }]);
     mocks.mockProductosList.mockResolvedValue([{ id_producto: 'pr1', nombre: 'Helado' }]);
-    mocks.mockListarTurnos.mockResolvedValue([{ id_turno: 't1', estado: 'abierto' }]);
+    mocks.mockTurnoAbierto.mockResolvedValue({ id_turno: 't1', estado: 'abierto', cajero_email: 'caja@h.com' });
     mocks.mockListarMetodos.mockResolvedValue([{ id_metodo_pago: 'mp1', nombre: 'Efectivo' }]);
   });
 
