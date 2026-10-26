@@ -93,6 +93,23 @@ describe('Task3 proveedores', () => {
     expect(res.body.error).toBe('Correo duplicado');
   });
 
+  it('PATCH NIT duplicado -> 409 NIT duplicado', async () => {
+    sequelize.query.mockRejectedValueOnce(uniqueError('proveedor_nit_key'));
+    const res = await request(app).patch(`/api/v1/suppliers/${VALID_ID}`).send({ nit: '123' });
+    expect(res.status).toBe(409);
+    expect(res.body.error).toBe('NIT duplicado');
+  });
+
+  it.each([
+    ['GET', '/api/v1/suppliers/no-uuid'],
+    ['PATCH', '/api/v1/suppliers/no-uuid'],
+    ['DELETE', '/api/v1/suppliers/no-uuid'],
+  ])('%s %s con id no-UUID -> 400 (no 500 por 22P02)', async (method, url) => {
+    const res = await request(app)[method.toLowerCase()](url).send(method === 'PATCH' ? { nombre: 'X' } : undefined);
+    expect(res.status).toBe(400);
+    expect(res.body.error).toBe('Validation failed');
+  });
+
   it('POST exitoso envia el correo normalizado', async () => {
     sequelize.query.mockResolvedValueOnce([[{ id_proveedor: VALID_ID }]]);
     const res = await request(app).post('/api/v1/suppliers').send({ nombre: 'Proveedor', correo: ' A@B.COM ' });

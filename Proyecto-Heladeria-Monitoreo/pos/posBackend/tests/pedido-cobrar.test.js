@@ -38,6 +38,7 @@ const PEDIDO = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const TURNO = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
 const METODO = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
 const PROD = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd';
+const MESA = 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee';
 
 function mockExito() {
   sequelize.query.mockImplementation(async (sql) => {
@@ -115,5 +116,44 @@ describe('POST /api/v1/orders/:id/cobrar', () => {
     expect(res.status).toBe(400);
     expect(res.body.error).toBe('Stock insuficiente para completar la operación');
     expect(sequelize.query.mock.calls.some(([s]) => s.includes("estado='cerrado'"))).toBe(false);
+  });
+
+  test('cobrar ultimo pedido de la mesa la libera (COUNT 0 -> UPDATE libre)', async () => {
+    sequelize.query.mockImplementation(async (sql) => {
+      if (sql.includes('COUNT(*)')) return [[{ n: 0 }]];
+      if (sql.includes('FROM detalle_pedido')) {
+        return [[{ producto_id: PROD, cantidad: 2, precio_unitario: 10 }]];
+      }
+      if (sql.includes('FROM pedido')) return [[{ id_pedido: PEDIDO, estado: 'abierto', mesa_id: MESA }]];
+      if (sql.includes('registrar_venta')) return [[{ venta_id: 'v-9' }]];
+      if (sql.includes("SET estado='libre'")) return [[{ id_mesa: MESA, estado: 'libre' }]];
+      return [[{ id_pedido: PEDIDO, estado: 'cerrado', mesa_id: MESA }]];
+    });
+    const res = await request(app).post(`/api/v1/orders/${PEDIDO}/cobrar`).send({
+      turno_id: TURNO,
+      pagos: [{ metodo_pago_id: METODO, monto: 20 }],
+    });
+    expect(res.status).toBe(201);
+    expect(sequelize.query.mock.calls.some(([s]) => s.includes('COUNT(*)'))).toBe(true);
+    expect(sequelize.query.mock.calls.some(([s]) => s.includes("SET estado='libre'"))).toBe(true);
+  });
+
+  test('cobrar con otros pedidos abiertos no libera la mesa (COUNT 1 -> sin UPDATE libre)', async () => {
+    sequelize.query.mockImplementation(async (sql) => {
+      if (sql.includes('COUNT(*)')) return [[{ n: 1 }]];
+      if (sql.includes('FROM detalle_pedido')) {
+        return [[{ producto_id: PROD, cantidad: 2, precio_unitario: 10 }]];
+      }
+      if (sql.includes('FROM pedido')) return [[{ id_pedido: PEDIDO, estado: 'abierto', mesa_id: MESA }]];
+      if (sql.includes('registrar_venta')) return [[{ venta_id: 'v-9' }]];
+      return [[{ id_pedido: PEDIDO, estado: 'cerrado', mesa_id: MESA }]];
+    });
+    const res = await request(app).post(`/api/v1/orders/${PEDIDO}/cobrar`).send({
+      turno_id: TURNO,
+      pagos: [{ metodo_pago_id: METODO, monto: 20 }],
+    });
+    expect(res.status).toBe(201);
+    expect(sequelize.query.mock.calls.some(([s]) => s.includes('COUNT(*)'))).toBe(true);
+    expect(sequelize.query.mock.calls.some(([s]) => s.includes("SET estado='libre'"))).toBe(false);
   });
 });
