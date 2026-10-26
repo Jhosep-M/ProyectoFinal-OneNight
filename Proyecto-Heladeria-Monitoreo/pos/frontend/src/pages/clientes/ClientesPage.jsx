@@ -113,13 +113,21 @@ export default function ClientesPage() {
     const c = eliminarTarget;
     if (!c) return;
     setAlert(null);
+    const id = c.id_cliente;
+    // Actualización optimista: quitar de la lista de inmediato
+    setClientes((prev) => prev.filter((x) => x.id_cliente !== id));
+    if (editando === id) { setEditando(null); setForm(empty); }
+    if (detalle?.id_cliente === id) { setDetalle(null); setVentas([]); }
+    setEliminarTarget(null);
     try {
-      await eliminarCliente(c.id_cliente);
-      setAlert({ tone: 'success', message: 'Cliente inactivado' });
-      if (editando === c.id_cliente) { setEditando(null); setForm(empty); }
-      setEliminarTarget(null);
-      recargar();
-    } catch (e) { setAlert({ tone: 'error', message: e.message }); }
+      await eliminarCliente(id);
+      setAlert({ tone: 'success', message: 'Cliente eliminado' });
+    } catch (e) {
+      const msg = e?.message || 'No se pudo eliminar';
+      setAlert({ tone: 'error', message: e?.status === 409 ? msg : msg });
+    } finally {
+      await recargar();
+    }
   };
 
   return (
@@ -202,9 +210,7 @@ export default function ClientesPage() {
                           <Button size="sm" variant="primary" onClick={() => setAjusteCliente(c)}>Ajustar</Button>
                         </RequirePermiso>
                         <RequirePermiso permiso="cliente.gestionar" fallback={null}>
-                          {c.estado === 'activo' && (
-                            <Button size="sm" variant="danger" onClick={() => setEliminarTarget(c)}>Eliminar</Button>
-                          )}
+                          <Button size="sm" variant="danger" onClick={() => setEliminarTarget(c)}>Eliminar</Button>
                         </RequirePermiso>
                       </div>
                     </td>

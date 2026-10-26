@@ -96,12 +96,13 @@ describe('ClientesPage', () => {
   });
 
   it('eliminar abre modal y confirma con el servicio', async () => {
-    mocks.mockEliminar.mockResolvedValue({ id_cliente: 'cl1', estado: 'inactivo' });
+    mocks.mockEliminar.mockResolvedValue({ ok: true, eliminado: 'cl1' });
     renderClientes();
     await screen.findByText('María');
     await userEvent.click(screen.getByRole('button', { name: 'Eliminar' }));
     expect(await screen.findByRole('alertdialog')).toBeInTheDocument();
-    await userEvent.click(screen.getByRole('button', { name: 'Inactivar' }));
+    const botones = screen.getAllByRole('button', { name: 'Eliminar' });
+    await userEvent.click(botones[botones.length - 1]);
     await waitFor(() => {
       expect(mocks.mockEliminar).toHaveBeenCalledWith('cl1');
     });

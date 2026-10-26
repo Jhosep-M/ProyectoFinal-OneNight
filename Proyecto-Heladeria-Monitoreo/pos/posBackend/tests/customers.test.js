@@ -204,12 +204,19 @@ describe('routes/customers', () => {
     expect(sequelize.transaction).not.toHaveBeenCalled();
   });
 
-  test('DELETE inactiva cliente activo -> 200', async () => {
-    sequelize.query.mockResolvedValueOnce([[{ id_cliente: VALID_ID, estado: 'inactivo' }]]);
+  test('DELETE elimina cliente sin historial -> 200 con DELETE FROM', async () => {
+    sequelize.query
+      .mockResolvedValueOnce([[{ id_cliente: VALID_ID, nombre: 'Ana' }]])
+      .mockResolvedValueOnce([[{ total: 0 }]])
+      .mockResolvedValueOnce([[{ total: 0 }]])
+      .mockResolvedValueOnce([[{ id_cliente: VALID_ID }]]);
     const res = await request(app).delete(`/api/v1/customers/${VALID_ID}`);
     expect(res.status).toBe(200);
-    expect(res.body.estado).toBe('inactivo');
-    expect(sequelize.query.mock.calls[0][0]).toMatch(/UPDATE cliente SET estado='inactivo'/);
+    expect(res.body.eliminado).toBe(VALID_ID);
+    const calls = sequelize.query.mock.calls;
+    expect(calls[1][0]).toMatch(/FROM venta/);
+    expect(calls[2][0]).toMatch(/FROM movimiento_puntos/);
+    expect(calls[3][0]).toMatch(/DELETE FROM cliente/);
   });
 
   test('DELETE con id no-uuid -> 400', async () => {
@@ -219,17 +226,31 @@ describe('routes/customers', () => {
   });
 
   test('DELETE cliente inexistente -> 404', async () => {
-    sequelize.query.mockResolvedValueOnce([[]]).mockResolvedValueOnce([[]]);
+    sequelize.query.mockResolvedValueOnce([[]]);
     const res = await request(app).delete(`/api/v1/customers/${VALID_ID}`);
     expect(res.status).toBe(404);
   });
 
-  test('DELETE cliente ya inactivo -> 409', async () => {
+  test('DELETE cliente con ventas -> 409 sin DELETE', async () => {
     sequelize.query
-      .mockResolvedValueOnce([[]])
-      .mockResolvedValueOnce([[{ id_cliente: VALID_ID }]]);
+      .mockResolvedValueOnce([[{ id_cliente: VALID_ID, nombre: 'Ana' }]])
+      .mockResolvedValueOnce([[{ total: 2 }]]);
     const res = await request(app).delete(`/api/v1/customers/${VALID_ID}`);
     expect(res.status).toBe(409);
-    expect(res.body.error).toBe('Cliente ya inactivo');
+    expect(res.body.error).toMatch(/ventas/);
+    const sqls = sequelize.query.mock.calls.map((c) => c[0]).join(' ');
+    expect(sqls).not.toMatch(/DELETE FROM cliente/);
+  });
+
+  test('DELETE cliente con movimientos puntos -> 409 sin DELETE', async () => {
+    sequelize.query
+      .mockResolvedValueOnce([[{ id_cliente: VALID_ID, nombre: 'Ana' }]])
+      .mockResolvedValueOnce([[{ total: 0 }]])
+      .mockResolvedValueOnce([[{ total: 3 }]]);
+    const res = await request(app).delete(`/api/v1/customers/${VALID_ID}`);
+    expect(res.status).toBe(409);
+    expect(res.body.error).toMatch(/movimientos/);
+    const sqls = sequelize.query.mock.calls.map((c) => c[0]).join(' ');
+    expect(sqls).not.toMatch(/DELETE FROM cliente/);
   });
 });
