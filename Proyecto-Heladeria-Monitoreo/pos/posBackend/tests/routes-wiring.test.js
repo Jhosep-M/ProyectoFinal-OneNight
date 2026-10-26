@@ -21,6 +21,7 @@ jest.mock('../src/middlewares/authenticate', () => ({
 jest.mock('../src/middlewares/authorize', () => ({
   authorize: () => (_req, _res, next) => next(),
   requirePermission: () => (_req, _res, next) => next(),
+  authorizeAny: () => (_req, _res, next) => next(),
 }));
 
 jest.mock('../src/services/ventaService', () => ({

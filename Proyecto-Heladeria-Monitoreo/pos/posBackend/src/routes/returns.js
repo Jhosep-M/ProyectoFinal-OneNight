@@ -41,6 +41,21 @@ router.post('/', authorize('devolucion.procesar'), async (req, res, next) => {
     res.status(201).json(result);
   } catch (e) {
     if (e.name === 'ZodError') return res.status(400).json({ error: 'Validation failed', details: e.errors });
+    // Reglas de negocio de PG (procesar_devolucion): mensajes humanos con 400,
+    // sin exponer stack. Incluye "no devolver más de lo vendido".
+    const msg = String((e && e.message) || '');
+    if (/devuelve más de lo vendido/i.test(msg)) {
+      return res.status(400).json({ error: msg });
+    }
+    if (/producto no vendido en esa venta/i.test(msg)) {
+      return res.status(400).json({ error: 'Ese producto no fue vendido en la venta indicada' });
+    }
+    if (/venta no existe/i.test(msg)) {
+      return res.status(404).json({ error: 'Venta no encontrada' });
+    }
+    if (/cantidad inválida|motivo requerido/i.test(msg)) {
+      return res.status(400).json({ error: msg });
+    }
     next(e);
   }
 });

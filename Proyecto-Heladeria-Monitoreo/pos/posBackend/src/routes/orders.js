@@ -1,7 +1,7 @@
 const { Router } = require('express');
 const { authenticateJWT } = require('../middlewares/authenticate');
 const { authorize } = require('../middlewares/authorize');
-const { createOrderSchema, updateOrderSchema, cobrarPedidoSchema } = require('../validators/orders');
+const { createOrderSchema, updateOrderSchema, cobrarPedidoSchema, estadoCocinaSchema } = require('../validators/orders');
 const { sequelize } = require('../config/database');
 const { auditLog } = require('../utils/audit');
 const { constraintErrorMessage } = require('../utils/dbErrors');
@@ -30,7 +30,8 @@ router.get('/:id', authorize('pedido.consultar'), async (req, res, next) => {
 router.post('/', authorize('pedido.crear'), async (req, res, next) => {
   try {
     const parsed = createOrderSchema.parse(req.body);
-    const meseroId = parsed.mesero_id || req.user.id;
+    // AGENTS §4.1: la identidad sale siempre del JWT, nunca del body.
+    const meseroId = req.user.id;
     const result = await sequelize.transaction(async (t) => {
       const [pedidoRows] = await sequelize.query(
         `INSERT INTO pedido (mesa_id, mesero_id, estado) VALUES (:mesa, :mesero, :estado) RETURNING *`,
@@ -140,6 +141,45 @@ router.post('/:id/cobrar', authorize('venta.crear'), async (req, res, next) => {
     if (e.status === 404 || e.status === 409 || e.status === 400) return res.status(e.status).json({ error: e.message });
     const constraint = constraintErrorMessage(e);
     if (constraint) return res.status(400).json({ error: constraint });
+    next(e);
+  }
+});
+
+// HU-04 Cocina: PATCH /:id/estado — solo abierto -> en_preparacion -> listo.
+// Ni ventas ni caja. Transicion invalida -> 409 humano. Sin permiso -> 403.
+router.patch('/:id/estado', authorize('pedido.estado'), async (req, res, next) => {
+  try {
+    const parsed = estadoCocinaSchema.parse(req.body);
+    const pedidoId = req.params.id;
+    const result = await sequelize.transaction(async (t) => {
+      const [pedRows] = await sequelize.query(
+        `SELECT id_pedido, estado FROM pedido WHERE id_pedido=:id FOR UPDATE`,
+        { replacements: { id: pedidoId }, transaction: t }
+      );
+      const pedido = pedRows[0];
+      if (!pedido) {
+        throw Object.assign(new Error('Pedido no encontrado'), { status: 404 });
+      }
+      const actual = pedido.estado;
+      const siguiente = parsed.estado;
+      const permitidas = { abierto: ['en_preparacion'], en_preparacion: ['listo'] };
+      if (!permitidas[actual] || !permitidas[actual].includes(siguiente)) {
+        throw Object.assign(
+          new Error(`No se puede pasar el pedido de '${actual}' a '${siguiente}'. Secuencia: abierto → en_preparación → listo.`),
+          { status: 409 }
+        );
+      }
+      const [rows] = await sequelize.query(
+        `UPDATE pedido SET estado=:estado WHERE id_pedido=:id RETURNING *`,
+        { replacements: { estado: siguiente, id: pedidoId }, transaction: t }
+      );
+      return rows[0];
+    });
+    await auditLog({ usuario_id: req.user.id, accion: 'pedido.estado', entidad: 'pedido', entidad_id: pedidoId, resultado: 'exito', detalle: { estado: parsed.estado }, ip: req.ip, userAgent: req.headers['user-agent'] });
+    res.json(result);
+  } catch (e) {
+    if (e.name === 'ZodError') return res.status(400).json({ error: 'Validation failed', details: e.errors });
+    if (e.status === 404 || e.status === 409) return res.status(e.status).json({ error: e.message });
     next(e);
   }
 });

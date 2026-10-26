@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import Card from '../../components/ui/Card.jsx';
 import Button from '../../components/ui/Button.jsx';
@@ -37,7 +37,7 @@ export default function LoginPage() {
       >
         <Card className="auth-card" hover={false}>
           <div className="text-center mb-4">
-            <h1 style={{ fontFamily: "'Playfair Display', Georgia, serif", fontStyle: 'italic' }}>
+            <h1 style={{ fontFamily: 'var(--bs-font-serif)', fontStyle: 'italic' }}>
               Helados Pariente
             </h1>
             <div
@@ -46,7 +46,7 @@ export default function LoginPage() {
                 fontSize: '0.75rem',
                 letterSpacing: '0.08em',
                 textTransform: 'uppercase',
-                fontFamily: "'Source Sans 3', sans-serif",
+                fontFamily: 'var(--bs-font-sans-serif)',
               }}
             >
               Sistema de Punto de Venta
@@ -80,6 +80,9 @@ export default function LoginPage() {
             <Button type="submit" variant="primary" size="lg" className="w-100" disabled={loading}>
               {loading ? 'Ingresando...' : 'Ingresar'}
             </Button>
+            <div className="text-center mt-3">
+              <Link to="/recuperar">¿Olvidaste tu contraseña?</Link>
+            </div>
           </form>
         </Card>
       </motion.div>

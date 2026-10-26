@@ -10,4 +10,12 @@ const createPagoSchema = z.object({
   estado: z.enum(['pendiente', 'confirmado', 'anulado']).optional().default('confirmado'),
 });
 
-module.exports = { createPagoSchema };
+const createMetodoSchema = z.object({
+  nombre: z.string().trim().min(2, 'nombre >= 2 chars').max(80),
+});
+
+const updateMetodoSchema = z.object({
+  estado: z.enum(['activo', 'inactivo']),
+});
+
+module.exports = { createPagoSchema, createMetodoSchema, updateMetodoSchema };

@@ -6,10 +6,13 @@ const salesController = require('../controllers/salesController');
 const router = Router();
 router.use(authenticateJWT);
 
-router.get('/', authorize('venta.consultar'), async (_req, res, next) => {
+router.get('/', authorize('venta.consultar'), async (req, res, next) => {
   try {
-    res.json(await salesController.listar());
-  } catch (e) { next(e); }
+    res.json(await salesController.listar(req.query, req.user.id));
+  } catch (e) {
+    if (e.status === 400) return res.status(400).json({ error: e.message });
+    next(e);
+  }
 });
 
 router.post('/', authorize('venta.crear'), async (req, res, next) => {

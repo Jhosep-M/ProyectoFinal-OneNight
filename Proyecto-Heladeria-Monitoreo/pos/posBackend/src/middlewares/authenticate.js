@@ -26,24 +26,16 @@ async function authenticateJWT(req, res, next) {
     });
     const { data, error } = await supabase.auth.getUser(token);
     const user = data && data.user;
-    // [TEMP-DEBUG] diagnóstico 401 en Render — REVERTIR.
     if (error || !user) {
-      const dbg = {
-        url: env.supabaseUrl,
-        keyHead: (env.supabaseAnonKey || '').slice(0, 24),
-        keyLen: (env.supabaseAnonKey || '').length,
-        err: error ? { message: error.message, status: error.status, code: error.code } : null,
-      };
-      console.error('[AUTHDBG]', JSON.stringify(dbg));
-      return res.status(401).json({ error: 'Unauthorized', debug: dbg });
+      return res.status(401).json({ error: 'Unauthorized' });
     }
     // Solo datos del JWT verificado.
     req.user = { id: user.id, email: user.email };
     return next();
   } catch (e) {
     // Sin fugas: no devolver e.message ni stack al cliente.
-    console.error('[AUTHDBG-CATCH]', e.message);
-    return res.status(401).json({ error: 'Unauthorized', debug: 'catch:' + e.message });
+    console.error('[auth] verify failed');
+    return res.status(401).json({ error: 'Unauthorized' });
   }
 }
 
