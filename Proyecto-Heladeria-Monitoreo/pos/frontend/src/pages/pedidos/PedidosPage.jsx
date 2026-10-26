@@ -417,7 +417,7 @@ export default function PedidosPage() {
           </span>
           <span className="chip-stat">
             <span className="chip-stat__label">Por cobrar</span>
-            <span className="chip-stat__value">{fmtMoney(stats.porCobrar)}</span>
+            <span className="chip-stat__value" style={{ fontFamily: 'var(--bs-font-numeric)', fontVariantNumeric: 'tabular-nums' }}>{fmtMoney(stats.porCobrar)}</span>
           </span>
         </div>
       </div>
@@ -435,7 +435,7 @@ export default function PedidosPage() {
             className="cuenta-resumen"
             title="Presiona para ver todos los productos de la cuenta"
           >
-            <span className="cuenta-resumen__amount">{fmtMoney(cuentaMesa.total)}</span>
+            <span className="cuenta-resumen__amount" style={{ fontFamily: 'var(--bs-font-numeric)', fontVariantNumeric: 'tabular-nums' }}>{fmtMoney(cuentaMesa.total)}</span>
             <span className="cuenta-resumen__meta">
               {cuentaMesa.n} pedido(s) sin cobrar. Toca para ver los productos; el último cobro libera la mesa.
             </span>
@@ -586,7 +586,7 @@ export default function PedidosPage() {
             </Button>
             <div className="pedido-footer__total">
               <span className="pedido-footer__label">Total estimado</span>
-              <strong className="pedido-footer__amount">{fmtMoney(totalNuevo)}</strong>
+              <strong className="pedido-footer__amount" style={{ fontFamily: 'var(--bs-font-numeric)', fontVariantNumeric: 'tabular-nums' }}>{fmtMoney(totalNuevo)}</strong>
               <Button type="submit" loading={creando} disabled={creando}>
                 Crear pedido
               </Button>
@@ -645,7 +645,7 @@ export default function PedidosPage() {
                     <td><strong>{mesaLabel(p)}</strong></td>
                     <td>{p.mesero_nombre || shortId(p.mesero_id)}</td>
                     <td>{horaPedido(p)}</td>
-                    <td>{fmtMoney(p.total)}</td>
+                    <td style={{ fontFamily: 'var(--bs-font-numeric)', fontVariantNumeric: 'tabular-nums' }}>{fmtMoney(p.total)}</td>
                     <td><Badge tone={TONE_ESTADO[p.estado] || 'neutral'}>{p.estado}</Badge></td>
                     <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
                       <span className="row-actions">

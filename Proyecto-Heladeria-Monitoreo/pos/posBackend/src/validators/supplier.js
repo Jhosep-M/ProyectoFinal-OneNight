@@ -23,4 +23,6 @@ const updateSupplierSchema = z.object({
   estado: z.enum(['activo', 'inactivo']).optional(),
 }).refine((d) => Object.keys(d).length > 0, { message: 'al menos un campo requerido' });
 
-module.exports = { createSupplierSchema, updateSupplierSchema };
+const uuidParamSchema = z.string().uuid();
+
+module.exports = { createSupplierSchema, updateSupplierSchema, uuidParamSchema };

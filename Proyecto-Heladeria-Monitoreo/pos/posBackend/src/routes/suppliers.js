@@ -1,7 +1,7 @@
 const { Router } = require('express');
 const { authenticateJWT } = require('../middlewares/authenticate');
 const { authorize } = require('../middlewares/authorize');
-const { createSupplierSchema, updateSupplierSchema } = require('../validators/supplier');
+const { createSupplierSchema, updateSupplierSchema, uuidParamSchema } = require('../validators/supplier');
 const { uniqueViolationTarget } = require('../utils/dbErrors');
 const { sequelize } = require('../config/database');
 const { auditLog } = require('../utils/audit');
@@ -18,6 +18,11 @@ router.get('/', authorize('inventario.consultar'), async (_req, res, next) => {
 
 router.get('/:id', authorize('inventario.consultar'), async (req, res, next) => {
   try {
+    try {
+      uuidParamSchema.parse(req.params.id);
+    } catch (e) {
+      return res.status(400).json({ error: 'Validation failed', details: e.errors ?? e.issues });
+    }
     const [rows] = await sequelize.query(`SELECT * FROM proveedor WHERE id_proveedor=:id`, { replacements: { id: req.params.id } });
     if (!rows[0]) return res.status(404).json({ error: 'Proveedor no encontrado' });
     res.json(rows[0]);
@@ -46,6 +51,11 @@ router.post('/', authorize('inventario.movimiento'), async (req, res, next) => {
 
 router.patch('/:id', authorize('inventario.movimiento'), async (req, res, next) => {
   try {
+    try {
+      uuidParamSchema.parse(req.params.id);
+    } catch (e) {
+      return res.status(400).json({ error: 'Validation failed', details: e.errors ?? e.issues });
+    }
     const parsed = updateSupplierSchema.parse(req.body);
     const sets = [];
     const repl = { id: req.params.id };
@@ -71,6 +81,11 @@ router.patch('/:id', authorize('inventario.movimiento'), async (req, res, next) 
 
 router.delete('/:id', authorize('inventario.movimiento'), async (req, res, next) => {
   try {
+    try {
+      uuidParamSchema.parse(req.params.id);
+    } catch (e) {
+      return res.status(400).json({ error: 'Validation failed', details: e.errors ?? e.issues });
+    }
     const [rows] = await sequelize.query(`UPDATE proveedor SET estado='inactivo' WHERE id_proveedor=:id RETURNING *`, { replacements: { id: req.params.id } });
     if (!rows[0]) return res.status(404).json({ error: 'Proveedor no encontrado' });
     await auditLog({ usuario_id: req.user.id, accion: 'proveedor.inactivar', entidad: 'proveedor', entidad_id: req.params.id, resultado: 'exito', detalle: {}, ip: req.ip, userAgent: req.headers['user-agent'] });

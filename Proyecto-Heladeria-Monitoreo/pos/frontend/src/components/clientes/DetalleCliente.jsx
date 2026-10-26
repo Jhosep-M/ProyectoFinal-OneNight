@@ -2,6 +2,13 @@ import { useState } from 'react';
 import Button from '../common/Button.jsx';
 import Badge from '../common/Badge.jsx';
 import EmptyState from '../common/EmptyState.jsx';
+import { formatCurrency } from '../../utils/format.js';
+
+// Montos con token numérico + tabular-nums (AGENTS §15.1), igual que HistorialVentas.
+const montoStyle = {
+  fontFamily: 'var(--bs-font-numeric)',
+  fontVariantNumeric: 'tabular-nums',
+};
 
 export default function DetalleCliente({ detalle, ventas = [], onClose }) {
   const [tab, setTab] = useState('movimientos');
@@ -70,7 +77,7 @@ export default function DetalleCliente({ detalle, ventas = [], onClose }) {
                     {listaVentas.map((v, i) => (
                       <tr key={v.id_venta || v.id || i}>
                         <td>{v.fecha || v.fecha_venta ? new Date(v.fecha || v.fecha_venta).toLocaleString() : '—'}</td>
-                        <td className="numeric">{v.total}</td>
+                        <td className="numeric" style={montoStyle}>{v.total != null ? formatCurrency(v.total) : '—'}</td>
                         <td><Badge tone={v.estado === 'activa' ? 'success' : 'neutral'}>{v.estado || '—'}</Badge></td>
                       </tr>
                     ))}
