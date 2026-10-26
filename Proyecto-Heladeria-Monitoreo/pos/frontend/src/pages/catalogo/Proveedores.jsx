@@ -23,6 +23,7 @@ export default function Proveedores() {
   const [busqueda, setBusqueda] = useState('');
   const [fieldErrors, setFieldErrors] = useState({});
   const [provPendiente, setProvPendiente] = useState(null);
+  const [provEliminarPendiente, setProvEliminarPendiente] = useState(null);
   const nombreRef = useRef(null);
   const nitRef = useRef(null);
   const correoRef = useRef(null);
@@ -131,6 +132,24 @@ export default function Proveedores() {
     }
   };
 
+  const eliminar = (p) => {
+    setProvEliminarPendiente(p);
+  };
+
+  const ejecutarEliminar = async () => {
+    const p = provEliminarPendiente;
+    setProvEliminarPendiente(null);
+    if (!p) return;
+    setError(null);
+    try {
+      await proveedoresService.eliminarDefinitivo(p.id_proveedor);
+      setAviso(`Proveedor "${p.nombre}" eliminado`);
+      await cargar();
+    } catch (e) {
+      setError(e.message);
+    }
+  };
+
   const filtrados = items.filter((p) => {
     const q = busqueda.trim().toLowerCase();
     if (!q) return true;
@@ -150,7 +169,7 @@ export default function Proveedores() {
     <div className="d-flex flex-column gap-3">
       <div>
         <h1>Proveedores</h1>
-        <p className="text-muted">Alta, edición e inactivación de proveedores (NIT y correo únicos).</p>
+        <p className="text-muted">Alta, edición, inactivación y eliminación de proveedores (NIT y correo únicos).</p>
       </div>
 
       {error && <Alert variant="danger" icon="bi-exclamation-triangle-fill">{error}</Alert>}
@@ -271,6 +290,9 @@ export default function Proveedores() {
                       {p.estado === 'activo' && (
                         <Button size="sm" variant="ghost" onClick={() => inactivar(p)}>Inactivar</Button>
                       )}
+                      {p.estado !== 'activo' && (
+                        <Button size="sm" variant="dangerOutline" onClick={() => eliminar(p)}>Eliminar</Button>
+                      )}
                     </RequirePermiso>
                   </td>
                 </tr>
@@ -288,6 +310,16 @@ export default function Proveedores() {
         title="Inactivar proveedor"
         message={provPendiente ? `¿Inactivar al proveedor "${provPendiente.nombre}"?` : ''}
         confirmText="Inactivar"
+      />
+
+      <ConfirmDialog
+        open={!!provEliminarPendiente}
+        onClose={() => setProvEliminarPendiente(null)}
+        onConfirm={ejecutarEliminar}
+        title="Eliminar proveedor"
+        message={provEliminarPendiente ? `¿Eliminar definitivamente al proveedor "${provEliminarPendiente.nombre}"? Esta acción no se puede deshacer.` : ''}
+        confirmText="Eliminar"
+        danger
       />
     </div>
   );

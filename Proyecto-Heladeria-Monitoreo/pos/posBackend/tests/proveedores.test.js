@@ -126,4 +126,49 @@ describe('Task3 proveedores', () => {
     expect(sql).toMatch(/CREATE UNIQUE INDEX IF NOT EXISTS ux_proveedor_correo_lower/i);
     expect(sql).toMatch(/lower\(correo\)/i);
   });
+
+  describe('DELETE definitivo (?definitivo=true)', () => {
+    it('sin param sigue inactivando (retrocompatible)', async () => {
+      sequelize.query.mockResolvedValueOnce([[{ id_proveedor: VALID_ID, estado: 'inactivo' }]]);
+      const res = await request(app).delete(`/api/v1/suppliers/${VALID_ID}`);
+      expect(res.status).toBe(200);
+      expect(res.body.estado).toBe('inactivo');
+    });
+
+    it('activo + definitivo=true -> 409 PROVEEDOR_ACTIVO', async () => {
+      sequelize.query.mockResolvedValueOnce([[{ id_proveedor: VALID_ID, estado: 'activo' }]]);
+      const res = await request(app).delete(`/api/v1/suppliers/${VALID_ID}?definitivo=true`);
+      expect(res.status).toBe(409);
+      expect(res.body.code).toBe('PROVEEDOR_ACTIVO');
+    });
+
+    it('inactivo sin movimientos + definitivo=true -> 200 elimina fila', async () => {
+      sequelize.query
+        .mockResolvedValueOnce([[{ id_proveedor: VALID_ID, estado: 'inactivo' }]])
+        .mockResolvedValueOnce([[{ count: '0' }]])
+        .mockResolvedValueOnce([[{ id_proveedor: VALID_ID, nombre: 'Viejo' }]]);
+      const { auditLog } = require('../src/utils/audit');
+      const res = await request(app).delete(`/api/v1/suppliers/${VALID_ID}?definitivo=true`);
+      expect(res.status).toBe(200);
+      expect(res.body.id_proveedor).toBe(VALID_ID);
+      expect(auditLog).toHaveBeenCalledWith(expect.objectContaining({ accion: 'proveedor.eliminar' }));
+      const deleteCall = sequelize.query.mock.calls.find(([sql]) => /DELETE FROM proveedor/i.test(sql));
+      expect(deleteCall).toBeTruthy();
+    });
+
+    it('inactivo con movimientos + definitivo=true -> 409 PROVEEDOR_CON_HISTORIAL', async () => {
+      sequelize.query
+        .mockResolvedValueOnce([[{ id_proveedor: VALID_ID, estado: 'inactivo' }]])
+        .mockResolvedValueOnce([[{ count: '2' }]]);
+      const res = await request(app).delete(`/api/v1/suppliers/${VALID_ID}?definitivo=true`);
+      expect(res.status).toBe(409);
+      expect(res.body.code).toBe('PROVEEDOR_CON_HISTORIAL');
+    });
+
+    it('inexistente + definitivo=true -> 404', async () => {
+      sequelize.query.mockResolvedValueOnce([[]]);
+      const res = await request(app).delete(`/api/v1/suppliers/${VALID_ID}?definitivo=true`);
+      expect(res.status).toBe(404);
+    });
+  });
 });

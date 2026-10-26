@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => ({
   create: vi.fn(),
   update: vi.fn(),
   inactivate: vi.fn(),
+  eliminarDefinitivo: vi.fn(),
 }));
 
 vi.mock('../../../services/inventarioService.js', () => ({
@@ -16,6 +17,7 @@ vi.mock('../../../services/inventarioService.js', () => ({
     create: mocks.create,
     update: mocks.update,
     inactivate: mocks.inactivate,
+    eliminarDefinitivo: mocks.eliminarDefinitivo,
   },
 }));
 
@@ -51,6 +53,7 @@ describe('Proveedores', () => {
     mocks.create.mockResolvedValue({});
     mocks.update.mockResolvedValue({});
     mocks.inactivate.mockResolvedValue({});
+    mocks.eliminarDefinitivo.mockResolvedValue({});
   });
 
   it('carga y muestra los proveedores', async () => {
@@ -122,5 +125,64 @@ describe('Proveedores', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Cancelar' }));
 
     expect(mocks.inactivate).not.toHaveBeenCalled();
+  });
+
+  it('muestra Eliminar solo para inactivos', async () => {
+    mocks.list.mockResolvedValueOnce([
+      { id_proveedor: 'p1', nombre: 'activo 1', nit: '1', contacto: '', telefono: '', correo: '', estado: 'activo' },
+      { id_proveedor: 'p2', nombre: 'inactivo 1', nit: '2', contacto: '', telefono: '', correo: '', estado: 'inactivo' },
+    ]);
+    render(<Proveedores />);
+    await screen.findByText('inactivo 1');
+    expect(screen.getByRole('button', { name: 'Eliminar' })).toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: 'Inactivar' })).toHaveLength(1);
+  });
+
+  it('confirma la eliminación definitiva antes de llamar al servicio', async () => {
+    mocks.list.mockResolvedValueOnce([
+      { id_proveedor: 'p9', nombre: 'viejo', nit: '9', contacto: '', telefono: '', correo: '', estado: 'inactivo' },
+    ]);
+    render(<Proveedores />);
+    await screen.findByText('viejo');
+
+    await userEvent.click(screen.getByRole('button', { name: 'Eliminar' }));
+    expect(await screen.findByText('Eliminar proveedor')).toBeInTheDocument();
+    const dialogos = screen.getAllByRole('button', { name: 'Eliminar' });
+    await userEvent.click(dialogos[dialogos.length - 1]);
+
+    await waitFor(() => {
+      expect(mocks.eliminarDefinitivo).toHaveBeenCalledWith('p9');
+    });
+  });
+
+  it('cancelar el modal no elimina', async () => {
+    mocks.list.mockResolvedValueOnce([
+      { id_proveedor: 'p9', nombre: 'viejo', nit: '9', contacto: '', telefono: '', correo: '', estado: 'inactivo' },
+    ]);
+    render(<Proveedores />);
+    await screen.findByText('viejo');
+
+    await userEvent.click(screen.getByRole('button', { name: 'Eliminar' }));
+    expect(await screen.findByText('Eliminar proveedor')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Cancelar' }));
+
+    expect(mocks.eliminarDefinitivo).not.toHaveBeenCalled();
+  });
+
+  it('muestra error si tiene historial asociado', async () => {
+    mocks.list.mockResolvedValueOnce([
+      { id_proveedor: 'p9', nombre: 'viejo', nit: '9', contacto: '', telefono: '', correo: '', estado: 'inactivo' },
+    ]);
+    mocks.eliminarDefinitivo.mockRejectedValueOnce(
+      Object.assign(new Error('No se puede eliminar: tiene movimientos de inventario asociados'), { status: 409 })
+    );
+    render(<Proveedores />);
+    await screen.findByText('viejo');
+
+    await userEvent.click(screen.getByRole('button', { name: 'Eliminar' }));
+    const dialogos = await screen.findAllByRole('button', { name: 'Eliminar' });
+    await userEvent.click(dialogos[dialogos.length - 1]);
+
+    expect(await screen.findByText(/movimientos de inventario/i)).toBeInTheDocument();
   });
 });
