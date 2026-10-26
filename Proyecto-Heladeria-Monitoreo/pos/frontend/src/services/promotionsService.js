@@ -5,3 +5,5 @@ export const verPromocion = (id) => apiFetch(`/promotions/${id}`);
 export const crearPromocion = (data) => apiFetch('/promotions', { method: 'POST', body: data });
 export const actualizarPromocion = (id, data) =>
   apiFetch(`/promotions/${id}`, { method: 'PATCH', body: data });
+export const eliminarPromocion = (id) =>
+  apiFetch(`/promotions/${id}`, { method: 'DELETE' });

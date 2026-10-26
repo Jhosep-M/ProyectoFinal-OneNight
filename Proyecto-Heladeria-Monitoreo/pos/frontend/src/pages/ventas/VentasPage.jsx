@@ -9,6 +9,7 @@ import { formatCurrency, formatTime } from '../../utils/format.js';
 import { IVA_BOLIVIA } from '../../utils/constants.js';
 import { resolveProductoImagen } from '../../utils/productoImagen.js';
 import { productosService, categoriasService } from '../../services/productosService.js';
+import { usePromocionesVigentes, precioConDescuento } from '../../hooks/usePromocionesVigentes.js';
 import { crearVenta } from '../../services/ventasService.js';
 import { listarTurnos } from '../../services/cajaService.js';
 import { listarMetodosPago } from '../../services/ventasService.js';
@@ -48,6 +49,7 @@ export default function VentasPage() {
   const [cliente, setCliente] = useState(null);
   const [usarPuntos, setUsarPuntos] = useState(false);
   const [puntosCaje, setPuntosCaje] = useState(0);
+  const promoMap = usePromocionesVigentes();
 
   // El turno es automático: se detecta el abierto del cajero autenticado.
   // No se pide UUID manual. Se separa su error del error de productos
@@ -322,9 +324,28 @@ export default function VentasPage() {
                       <h6 className="mb-1" style={{ fontFamily: 'var(--bs-font-serif)' }}>
                         {p.nombre}
                       </h6>
-                      <div className="fw-bold" style={{ fontFamily: 'var(--bs-font-numeric)', fontVariantNumeric: 'tabular-nums', color: '#8B6914' }}>
-                        {formatCurrency(p.precio || 0)}
-                      </div>
+                      {(() => {
+                        const promo = promoMap.get(String(p.id_producto || p.id || ''));
+                        if (!promo) {
+                          return (
+                            <div className="fw-bold" style={{ fontFamily: 'var(--bs-font-numeric)', fontVariantNumeric: 'tabular-nums', color: '#8B6914' }}>
+                              {formatCurrency(p.precio || 0)}
+                            </div>
+                          );
+                        }
+                        const pct = Number(promo.porcentaje_descuento) || 0;
+                        return (
+                          <div>
+                            <Badge variant="success">-{pct}%</Badge>
+                            <div className="fw-bold" style={{ fontFamily: 'var(--bs-font-numeric)', fontVariantNumeric: 'tabular-nums', color: '#8B6914' }}>
+                              {formatCurrency(precioConDescuento(p.precio || 0, pct))}
+                            </div>
+                            <div className="text-muted small" style={{ textDecoration: 'line-through', fontFamily: 'var(--bs-font-numeric)', fontVariantNumeric: 'tabular-nums' }}>
+                              {formatCurrency(p.precio || 0)}
+                            </div>
+                          </div>
+                        );
+                      })()}
                     </Card>
                   </motion.div>
                 </div>

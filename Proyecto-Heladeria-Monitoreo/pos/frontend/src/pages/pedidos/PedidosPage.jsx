@@ -5,6 +5,7 @@ import { listarMesas } from '../../services/mesasService.js';
 import { listarTurnos } from '../../services/cajaService.js';
 import { listarMetodosPago } from '../../services/ventasService.js';
 import { productosService } from '../../services/productosService.js';
+import { usePromocionesVigentes } from '../../hooks/usePromocionesVigentes.js';
 import Button from '../../components/common/Button.jsx';
 import Card from '../../components/common/Card.jsx';
 import Badge from '../../components/common/Badge.jsx';
@@ -79,6 +80,7 @@ export default function PedidosPage() {
   const [cargandoDetalle, setCargandoDetalle] = useState(false);
   const [cobrandoCuenta, setCobrandoCuenta] = useState(false);
   const [progresoCuenta, setProgresoCuenta] = useState(null);
+  const promoMap = usePromocionesVigentes();
 
   const productosById = useMemo(() => {
     const map = new Map();
@@ -524,6 +526,7 @@ export default function PedidosPage() {
           {items.map((it, k) => {
             const prod = productosById.get(String(it.producto_id || ''));
             const sub = (Number(prod?.precio) || 0) * (Number(it.cantidad) || 0);
+            const promoSel = promoMap.get(String(it.producto_id || ''));
             return (
               <div className="pedido-linea" key={k}>
                 <Select
@@ -533,11 +536,16 @@ export default function PedidosPage() {
                   required
                 >
                   <option value="">Selecciona producto…</option>
-                  {productos.map((p) => (
-                    <option key={p.id_producto || p.id} value={p.id_producto || p.id}>
-                      {p.nombre} — Bs {Number(p.precio ?? 0).toFixed(2)}
-                    </option>
-                  ))}
+                  {productos.map((p) => {
+                    const pid = String(p.id_producto || p.id || '');
+                    const promo = promoMap.get(pid);
+                    const pct = promo ? Number(promo.porcentaje_descuento) || 0 : 0;
+                    return (
+                      <option key={p.id_producto || p.id} value={p.id_producto || p.id}>
+                        {p.nombre} — Bs {Number(p.precio ?? 0).toFixed(2)}{promo ? ` (-${pct}%)` : ''}
+                      </option>
+                    );
+                  })}
                 </Select>
                 <div className="stepper">
                   <Button
@@ -568,7 +576,7 @@ export default function PedidosPage() {
                     +
                   </Button>
                 </div>
-                <div className="pedido-linea__subtotal">{prod ? fmtMoney(sub) : '—'}</div>
+                <div className="pedido-linea__subtotal">{prod ? fmtMoney(sub) : '—'}{promoSel && <div><Badge tone="success">-{Number(promoSel.porcentaje_descuento) || 0}% promo</Badge></div>}</div>
                 <Button
                   type="button"
                   className="icon-btn"
