@@ -246,7 +246,7 @@ export default function VentasPage() {
       // en Pedidos (evita doble cobro). Si falla, la venta ya quedó registrada.
       if (enviarACocina) {
         try {
-          await crearPedido({ mesa_id: null, items, origen: 'venta_directa' });
+          await crearPedido({ mesa_id: null, items, origen: 'venta_directa', venta_id: ventaId });
         } catch (e) {
           setAvisoCocina('Venta cobrada, pero no llegó a cocina: ' + (e.message || 'reintenta desde Pedidos'));
         }

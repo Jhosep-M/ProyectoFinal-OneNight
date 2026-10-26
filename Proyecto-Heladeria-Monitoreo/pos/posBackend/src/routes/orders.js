@@ -57,6 +57,15 @@ router.post('/', authorize('pedido.crear'), async (req, res, next) => {
           { replacements: { mesa: parsed.mesa_id }, transaction: t }
         );
       }
+      // Espejo de venta directa: enlaza la venta ya cobrada al pedido para
+      // trazabilidad. Solo si la venta aún no tiene pedido (no secuestra
+      // ventas ajenas) y solo para origen venta_directa.
+      if (parsed.origen === 'venta_directa' && parsed.venta_id) {
+        await sequelize.query(
+          `UPDATE venta SET pedido_id=:pedido WHERE id_venta=:venta AND pedido_id IS NULL`,
+          { replacements: { pedido: pedido.id_pedido, venta: parsed.venta_id }, transaction: t }
+        );
+      }
       return pedido;
     });
     await auditLog({ usuario_id: req.user.id, accion: 'pedido.crear', entidad: 'pedido', entidad_id: result.id_pedido, resultado: 'exito', detalle: parsed, ip: req.ip, userAgent: req.headers['user-agent'] });
