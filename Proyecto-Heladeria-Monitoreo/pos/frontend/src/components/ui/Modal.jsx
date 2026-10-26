@@ -16,7 +16,7 @@ export default function Modal({ show, onClose, title, children, footer, initialF
     <AnimatePresence>
       {show && (
         <motion.div
-          className="modal-backdrop"
+          className="sys-modal-backdrop"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
@@ -25,8 +25,8 @@ export default function Modal({ show, onClose, title, children, footer, initialF
         >
           <motion.div
             ref={panelRef}
-            className="modal"
-            role="dialog"
+            className="sys-modal sys-modal--md"
+            role="alertdialog"
             aria-modal="true"
             aria-labelledby={title ? titleId : undefined}
             tabIndex={-1}
@@ -36,14 +36,14 @@ export default function Modal({ show, onClose, title, children, footer, initialF
             transition={transition}
             onClick={(event) => event.stopPropagation()}
           >
-            <div className="modal-header">
+            <div className="sys-modal-header">
               {title ? <h3 id={titleId}>{title}</h3> : <span />}
-              <button type="button" className="modal-close" onClick={onClose} aria-label="Cerrar">
+              <button type="button" className="sys-modal-close" onClick={onClose} aria-label="Cerrar">
                 ×
               </button>
             </div>
-            <div className="modal-body">{children}</div>
-            {footer && <div className="modal-footer">{footer}</div>}
+            <div className="sys-modal-body">{children}</div>
+            {footer && <div className="sys-modal-footer">{footer}</div>}
           </motion.div>
         </motion.div>
       )}

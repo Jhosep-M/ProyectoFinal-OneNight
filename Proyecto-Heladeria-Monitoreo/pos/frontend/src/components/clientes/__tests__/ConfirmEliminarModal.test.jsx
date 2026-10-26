@@ -15,7 +15,7 @@ describe('ConfirmEliminarModal', () => {
     );
     expect(screen.getByRole('alertdialog')).toBeInTheDocument();
     expect(screen.getByText(/María/)).toBeInTheDocument();
-    await userEvent.click(screen.getByRole('button', { name: 'Inactivar' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Eliminar' }));
     await waitFor(() => {
       expect(onConfirm).toHaveBeenCalled();
     });

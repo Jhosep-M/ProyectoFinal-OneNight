@@ -1,12 +1,13 @@
 import Modal from './Modal.jsx';
 import Button from '../common/Button.jsx';
 
-export default function ConfirmDialog({ open, onClose, onConfirm, title, message, confirmText = 'Confirmar', danger = false }) {
+export default function ConfirmDialog({ open, onClose, onConfirm, title, message, confirmText = 'Confirmar', danger = false, size = 'sm' }) {
   return (
     <Modal
       open={open}
       onClose={onClose}
       title={title}
+      size={size}
       footer={
         <>
           <Button variant="secondary" onClick={onClose}>Cancelar</Button>

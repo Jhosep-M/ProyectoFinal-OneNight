@@ -195,7 +195,10 @@ router.patch('/:id/estado', authorize('pedido.estado'), async (req, res, next) =
         );
       }
       const [rows] = await sequelize.query(
-        `UPDATE pedido SET estado=:estado WHERE id_pedido=:id RETURNING *`,
+        // Migracion 026: fecha_listo congela el contador de Cocina.
+        // Solo se marca al llegar a 'listo'; el frontend usa
+        // fecha_listo - fecha en vez de NOW() - fecha.
+        `UPDATE pedido SET estado=:estado, fecha_listo=CASE WHEN :estado='listo' THEN COALESCE(fecha_listo, NOW()) ELSE fecha_listo END WHERE id_pedido=:id RETURNING *`,
         { replacements: { estado: siguiente, id: pedidoId }, transaction: t }
       );
       return rows[0];

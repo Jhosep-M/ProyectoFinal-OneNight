@@ -59,13 +59,13 @@ export default function AjustePuntosModal({ cliente, onClose, onDone }) {
 
   return (
     <RequirePermiso permisos={['cliente.puntos', 'cliente.gestionar']}>
-      <div className="modal-backdrop" onClick={onClose}>
-        <div className="modal" role="dialog" aria-modal="true" aria-label={`Ajustar puntos: ${cliente?.nombre}`} onClick={(e) => e.stopPropagation()}>
-          <div className="modal-header">
+      <div className="sys-modal-backdrop" onClick={onClose}>
+        <div className="sys-modal" role="alertdialog" aria-modal="true" aria-label={`Ajustar puntos: ${cliente?.nombre}`} onClick={(e) => e.stopPropagation()}>
+          <div className="sys-modal-header">
             <h3>Ajustar puntos: {cliente?.nombre}</h3>
-            <button type="button" className="modal-close" onClick={onClose} aria-label="Cerrar">×</button>
+            <button type="button" className="sys-modal-close" onClick={onClose} aria-label="Cerrar">×</button>
           </div>
-          <div className="modal-body">
+          <div className="sys-modal-body">
             {error && <Alert tone="error" message={error} onClose={() => setError(null)} />}
             <div className="kpi-grid">
               <div className="kpi">
@@ -88,7 +88,7 @@ export default function AjustePuntosModal({ cliente, onClose, onDone }) {
               <Input label="Motivo" name="motivo" value={motivo} onChange={(e) => setMotivo(e.target.value)} placeholder="Ej. Bono por compra" />
             </form>
           </div>
-          <div className="modal-footer">
+          <div className="sys-modal-footer">
             <Button type="button" variant="secondary" onClick={onClose}>Cancelar</Button>
             <Button type="submit" loading={saving} onClick={guardar}>Guardar</Button>
           </div>
