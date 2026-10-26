@@ -26,7 +26,7 @@ async function findByIdempotencyKeyForUpdate(key, transaction) {
 }
 
 /**
- * Bloquea detalles de venta (uso en devoluciones).
+ * Bloquea detalles de venta (uso en anulaciones).
  */
 async function findDetallesForUpdate(ventaId, transaction) {
   const [rows] = await sequelize.query(

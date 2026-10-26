@@ -30,7 +30,7 @@ Runbook manual end-to-end. Precondiciones:
 | 14 | — | `SELECT * FROM entrega_alerta WHERE alerta_externa_id=...` | 1 fila `recibida`, sin duplicados |
 | 15 | — | `SELECT * FROM alerta_pos` | fila `pendiente` con nivel mapeado (`critico→critico`, `advertencia→medio`, `info→bajo`) |
 | 16 | `POST /api/v1/sales/:id/anular` (supervisor) | `SELECT stock FROM producto` | stock restaurado + `movimiento_inventario` tipo `anulacion` |
-| 17 | — | `SELECT accion,resultado FROM auditoria_accion ORDER BY fecha DESC LIMIT 20` | `REGISTRAR_VENTA`, `CERRAR_TURNO`, `ANULAR_VENTA`, `devolucion.procesar`/`pedido.cobrar` según lo ejercitado, todo `exitoso` |
+| 17 | — | `SELECT accion,resultado FROM auditoria_accion ORDER BY fecha DESC LIMIT 20` | `REGISTRAR_VENTA`, `CERRAR_TURNO`, `ANULAR_VENTA`/`pedido.cobrar` según lo ejercitado, todo `exitoso` |
 
 Criterio de aceptación: pasos 1-17 en verde contra Supabase real
 (schema `monitoreo`, RLS pendiente de activar — ver advisory de seguridad).

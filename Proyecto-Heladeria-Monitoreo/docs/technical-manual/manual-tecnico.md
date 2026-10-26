@@ -16,7 +16,7 @@ Las rutas tienen handlers inline con validación Zod. Los services delegan a fun
 |---------|-----|
 | `public.registrar_venta` | Crea venta, valida stock/precios con `FOR UPDATE`, descuenta producto e insumos, acumula puntos |
 | `public.anular_venta` | Anula venta, restaura stock e insumos, registra auditoría |
-| `public.procesar_devolucion` | Devolución parcial/total, restaura stock e insumos, registra auditoría |
+| `public.procesar_devolucion` | Deprecated: devoluciones eliminadas, sin llamadas (solo histórico) |
 | `public.cerrar_turno` | Cierra turno, calcula ventas/esperado/diferencia, exige motivo (`>=5`) si `\|diferencia\|` supera el umbral o el turno es ajeno (si falta, lanza `MOTIVO_REQUERIDO` → HTTP 422), genera consumo reportado |
 | `usuario_tiene_permiso` | Verifica permisos RBAC (2 args para backend, 1 arg para RLS) |
 

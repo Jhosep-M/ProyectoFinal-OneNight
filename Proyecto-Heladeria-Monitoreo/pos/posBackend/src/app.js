@@ -18,7 +18,6 @@ const { customersRouter } = require('./routes/customers');
 const { ordersRouter } = require('./routes/orders');
 const { mesasRouter } = require('./routes/mesas');
 const { paymentsRouter } = require('./routes/payments');
-const { returnsRouter } = require('./routes/returns');
 const { promotionsRouter } = require('./routes/promotions');
 const { recipesRouter } = require('./routes/recipes');
 const { auditRouter } = require('./routes/audit');
@@ -59,7 +58,6 @@ function createApp() {
   app.use('/api/v1/orders', ordersRouter);
   app.use('/api/v1/mesas', mesasRouter);
   app.use('/api/v1/payments', paymentsRouter);
-  app.use('/api/v1/returns', returnsRouter);
   app.use('/api/v1/promotions', promotionsRouter);
   app.use('/api/v1/recipes', recipesRouter);
   app.use('/api/v1/audit', auditRouter);

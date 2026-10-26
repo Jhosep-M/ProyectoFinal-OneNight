@@ -20,7 +20,6 @@ const DetalleVenta = require('./DetalleVenta')(sequelize);
 const MetodoPago = require('./MetodoPago')(sequelize);
 const Pago = require('./Pago')(sequelize);
 const TurnoCaja = require('./TurnoCaja')(sequelize);
-const Devolucion = require('./Devolucion')(sequelize);
 const Promocion = require('./Promocion')(sequelize);
 const PromocionProducto = require('./PromocionProducto')(sequelize);
 const ConsumoReportado = require('./ConsumoReportado')(sequelize);
@@ -54,7 +53,6 @@ const db = {
   MetodoPago,
   Pago,
   TurnoCaja,
-  Devolucion,
   Promocion,
   PromocionProducto,
   ConsumoReportado,
@@ -128,12 +126,6 @@ MetodoPago.hasMany(Pago, { foreignKey: 'metodo_pago_id', as: 'pagos' });
 // TurnoCaja
 TurnoCaja.belongsTo(Usuario, { foreignKey: 'usuario_id', as: 'usuario' });
 Usuario.hasMany(TurnoCaja, { foreignKey: 'usuario_id', as: 'turnos' });
-
-// Devolucion
-Devolucion.belongsTo(Venta, { foreignKey: 'venta_id', as: 'venta' });
-Venta.hasMany(Devolucion, { foreignKey: 'venta_id', as: 'devoluciones' });
-Devolucion.belongsTo(Producto, { foreignKey: 'producto_id', as: 'producto' });
-Devolucion.belongsTo(Usuario, { foreignKey: 'autorizado_por_id', as: 'autorizadoPor' });
 
 // Promocion
 PromocionProducto.belongsTo(Promocion, { foreignKey: 'promocion_id', as: 'promocion' });

@@ -49,9 +49,9 @@ async function descontarInsumosReceta(productoId, cantidad, opts = {}) {
 async function reintegrarInsumosReceta(productoId, cantidad, opts = {}) {
   if (!productoId) throw new Error('productoId requerido');
   if (!Number.isFinite(Number(cantidad)) || Number(cantidad) <= 0) throw new Error('cantidad invalida');
-  const { transaction, usuarioId = null, devolucionId = null, motivo = 'devolucion', tipo = 'devolucion' } = opts;
+  const { transaction, usuarioId = null, devolucionId = null, motivo = 'anulacion', tipo = 'anulacion' } = opts;
   if (!usuarioId) throw new Error('usuarioId requerido (JWT)');
-  if (!['devolucion', 'anulacion'].includes(tipo)) throw new Error('tipo invalido');
+  if (tipo !== 'anulacion') throw new Error('tipo invalido');
   return runInTx(async (t) => {
     const [receta] = await sequelize.query(
       `SELECT ri.insumo_id, ri.cantidad_requerida FROM receta_insumo ri

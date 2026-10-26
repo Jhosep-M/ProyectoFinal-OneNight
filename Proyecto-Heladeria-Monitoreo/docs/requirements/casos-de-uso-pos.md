@@ -50,12 +50,10 @@ Documento de casos de uso del sistema POS (heladería), con su actor(es) y el pe
 | CU-09 | Consultar pagos | cajero, supervisor, admin | `pago.consultar` | Media |
 | CU-10 | Registrar pago dividido | cajero, supervisor, admin | `pago.gestionar` | Alta |
 
-## Devoluciones
+## Devoluciones (eliminado)
 
-| CU | Caso de uso | Actor(es) | Permiso | Prioridad |
-|---|---|---|---|---|
-| CU-11 | Consultar devoluciones | cajero, supervisor, admin | `devolucion.consultar` | Media |
-| CU-12 | Procesar devolución | supervisor, admin | `devolucion.procesar` | Alta |
+> CU-11 y CU-12 eliminados. La devolución parcial por producto ya no existe.
+> Usar anulación de venta (CU de anulación) que restaura inventario.
 
 ## Caja y Turnos
 

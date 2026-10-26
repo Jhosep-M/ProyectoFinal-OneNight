@@ -49,7 +49,6 @@ usuario_tiene_permiso(p_permiso TEXT) RETURNS BOOLEAN
 | Proveedor | `proveedor.consultar`, `proveedor.gestionar` |
 | Cliente | `cliente.consultar`, `cliente.gestionar` |
 | Pago | `pago.consultar`, `pago.gestionar` |
-| Devolución | `devolucion.consultar`, `devolucion.procesar` |
 | Promoción | `promocion.consultar`, `promocion.gestionar` |
 | Usuario | `usuario.gestionar` |
 | Auditoría | `auditoria.consultar` |

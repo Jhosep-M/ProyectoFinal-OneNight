@@ -55,24 +55,4 @@ async function revertirAnulacionAInventario({ productoId, cantidad, usuarioId, v
   }, transaction);
 }
 
-// Devolución parcial/total: restaura proporcional con tipo 'devolucion'.
-async function aplicarDevolucionAInventario({ productoId, cantidad, usuarioId, devolucionId = null, motivo = 'devolucion', transaction }) {
-  checkBase({ productoId, cantidad, usuarioId });
-  return runOuter(async (t) => {
-    await sequelize.query(`SELECT stock FROM producto WHERE id_producto = :id FOR UPDATE`, {
-      replacements: { id: productoId }, transaction: t,
-    });
-    await sequelize.query(`UPDATE producto SET stock = stock + :c WHERE id_producto = :id`, {
-      replacements: { c: cantidad, id: productoId }, transaction: t,
-    });
-    await sequelize.query(
-      `INSERT INTO movimiento_inventario (producto_id, usuario_id, devolucion_id, tipo, cantidad, motivo)
-       VALUES (:prod, :uid, :dev, 'devolucion', :c, :mot)`,
-      { replacements: { prod: productoId, uid: usuarioId, dev: devolucionId, c: cantidad, mot: motivo }, transaction: t }
-    );
-    const insumos = await reintegrarInsumosReceta(productoId, cantidad, { transaction: t, usuarioId, devolucionId, motivo });
-    return { insumos };
-  }, transaction);
-}
-
-module.exports = { aplicarVentaAInventario, revertirAnulacionAInventario, aplicarDevolucionAInventario };
+module.exports = { aplicarVentaAInventario, revertirAnulacionAInventario };

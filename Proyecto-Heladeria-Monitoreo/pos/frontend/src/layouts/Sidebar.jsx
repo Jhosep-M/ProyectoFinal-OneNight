@@ -10,7 +10,6 @@ const GRUPOS = [
       { to: '/dashboard', texto: 'Dashboard', icono: 'bi-grid', permiso: null },
       { to: '/ventas', texto: 'Ventas', icono: 'bi-cart', permiso: 'venta.consultar' },
       { to: '/ventas/historial', texto: 'Historial', icono: 'bi-clock-history', permiso: 'venta.consultar' },
-      { to: '/devoluciones', texto: 'Devoluciones', icono: 'bi-arrow-counterclockwise', permiso: 'devolucion.consultar' },
       { to: '/caja', texto: 'Caja', icono: 'bi-cash-register', permiso: 'turno.consultar' },
       { to: '/pedidos', texto: 'Pedidos', icono: 'bi-clipboard', permiso: 'pedido.consultar' },
       { to: '/mesero', texto: 'Mesero', icono: 'bi-person', permiso: 'pedido.consultar' },

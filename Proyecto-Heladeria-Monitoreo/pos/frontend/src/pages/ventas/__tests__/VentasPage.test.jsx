@@ -27,7 +27,6 @@ vi.mock('../../../services/ventasService.js', () => ({
   listarMetodosPago: mocks.mockListarMetodos,
   crearVenta: mocks.mockCrearVenta,
   anularVenta: vi.fn(),
-  crearDevolucion: vi.fn(),
 }));
 
 vi.mock('../../../context/AuthContext.jsx', () => ({ useAuth: () => ({ session: { user: { email: 'c@h.com' } }, loading: false, signOut: vi.fn() }), AuthProvider: ({ children }) => children }));

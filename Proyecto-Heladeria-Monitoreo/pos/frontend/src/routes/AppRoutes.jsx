@@ -6,10 +6,9 @@ import RequireAuth from '../components/common/RequireAuth.jsx';
 import RequirePermiso from '../components/common/RequirePermiso.jsx';
 import LoginPage from '../pages/auth/LoginPage.jsx';
 import RecuperarPage from '../pages/auth/Recuperar.jsx';
-import DashboardPage from '../pages/dashboard/DashboardPage.jsx';
+import DashboardRouter from '../pages/dashboard/DashboardRouter.jsx';
 import VentasPage from '../pages/ventas/VentasPage.jsx';
 import HistorialVentas from '../pages/ventas/HistorialVentas.jsx';
-import DevolucionesPage from '../pages/Devoluciones.jsx';
 import CajaPage from '../pages/caja/CajaPage.jsx';
 import PedidosPage from '../pages/pedidos/PedidosPage.jsx';
 import MesasPage from '../pages/mesas/MesasPage.jsx';
@@ -41,10 +40,9 @@ export default function AppRoutes() {
 
         <Route element={<RequireAuth><MainLayout /></RequireAuth>}>
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
-          <Route path="/dashboard" element={<DashboardPage />} />
+          <Route path="/dashboard" element={<DashboardRouter />} />
           <Route path="/ventas" element={<RequirePermiso permiso="venta.consultar"><VentasPage /></RequirePermiso>} />
           <Route path="/ventas/historial" element={<RequirePermiso permiso="venta.consultar"><HistorialVentas /></RequirePermiso>} />
-          <Route path="/devoluciones" element={<RequirePermiso permiso="devolucion.consultar"><DevolucionesPage /></RequirePermiso>} />
           <Route path="/caja" element={<RequirePermiso permiso="turno.consultar"><CajaPage /></RequirePermiso>} />
           <Route path="/admin/turnos" element={<RequirePermiso permiso="turno.consultar.todos"><TurnosAdminPage /></RequirePermiso>} />
           <Route path="/pedidos" element={<RequirePermiso permiso="pedido.consultar"><PedidosPage /></RequirePermiso>} />

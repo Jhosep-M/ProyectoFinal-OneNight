@@ -52,7 +52,7 @@ async function existeSolape({ productoIds, fechaInicio, fechaFin, excluirId }) {
 
 router.get('/', authorize('promocion.consultar'), async (_req, res, next) => {
   try {
-    const [rows] = await sequelize.query(`SELECT * FROM promocion ORDER BY fecha_inicio DESC LIMIT 100`);
+    const [rows] = await sequelize.query(`SELECT * FROM promocion WHERE estado <> 'inactiva' ORDER BY fecha_inicio DESC LIMIT 100`);
     // adjuntar productos (nombres) + conteo para la vista de vigentes
     const [pp] = await sequelize.query(
       `SELECT pp.promocion_id, pp.producto_id, pr.nombre AS producto_nombre

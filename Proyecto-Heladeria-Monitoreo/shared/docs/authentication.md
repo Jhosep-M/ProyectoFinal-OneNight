@@ -23,7 +23,6 @@
 - `producto.*` — consultar, gestionar
 - `inventario.*` — consultar, movimiento
 - `pago.*` — consultar, gestionar
-- `devolucion.*` — consultar, procesar
 - `promocion.*` — consultar, gestionar
 - `usuario.*` — gestionar
 - `auditoria.*` — consultar

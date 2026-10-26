@@ -48,7 +48,6 @@ Sistema de Punto de Venta para heladería/cafetería con gestión de ventas, caj
 │  │ Routes → Controllers → Services → PG Functions       │    │
 │  │  /api/v1/sales        → ventaService    → registrar_venta()    │
 │  │  /api/v1/shifts       → turnoService   → cerrar_turno()       │
-│  │  /api/v1/returns      → devolucionService → procesar_devolucion() │
 │  │  /api/v1/orders       → pedidos                                        │
 │  │  /api/v1/payments     → pagos                                         │
 │  │  /api/v1/inventory    → insumos/movimientos                        │
@@ -170,7 +169,7 @@ Sistema de Punto de Venta para heladería/cafetería con gestión de ventas, caj
 │     • Bloquea el turno (FOR UPDATE)                         │
 │     • Calcula ventas del turno                              │
 │     • Calcula efectivo esperado:                            │
-│       monto_inicial + ventas_efectivo - devoluciones        │
+│       monto_inicial + ventas_efectivo                       │
 │     • Registra monto_final_real                             │
 │     • Calcula diferencia                                    │
 │     • Cambia estado a 'cerrado'                             │
@@ -192,41 +191,10 @@ Sistema de Punto de Venta para heladería/cafetería con gestión de ventas, caj
 
 ---
 
-## Flujo de Devolución
+## Flujo de Devolución (eliminado)
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                   FLUJO DE DEVOLUCIÓN                       │
-├─────────────────────────────────────────────────────────────┤
-│                                                             │
-│  1. CAJERO PROCESA DEVOLUCIÓN                               │
-│     POST /api/v1/returns                                    │
-│     {                                                       │
-│       venta_id: "uuid",                                     │
-│       producto_id: "uuid",                                  │
-│       cantidad: 2,                                          │
-│       motivo: "Producto defectuoso"                         │
-│     }                                                       │
-│                                                             │
-│  2. BACKEND VALIDA                                          │
-│     • JWT válido                                            │
-│     • Permiso devolucion.procesar                           │
-│     • Venta existe y está activa                            │
-│     • Producto pertenece a la venta                         │
-│     • Cantidad devuelta ≤ cantidad vendida                  │
-│                                                             │
-│  3. PG FUNCTION procesar_devolucion EJECUTA                 │
-│     • Restaura stock de producto                            │
-│     • Restaura insumos de receta                            │
-│     • Registra movimiento_inventario (entrada)              │
-│     • Registra devolucion                                   │
-│     • Registra auditoria                                    │
-│                                                             │
-│  4. RESPUESTA                                               │
-│     { id_devolucion: "uuid", monto: 25.00 }                 │
-│                                                             │
-└─────────────────────────────────────────────────────────────┘
-```
+> La devolución parcial por producto fue eliminada. `POST /api/v1/returns`
+> ya no existe. Para revertir una venta usar anulación (`POST /api/v1/sales/:id/anular`).
 
 ---
 
@@ -430,7 +398,6 @@ Todas las acciones importantes se registran en `auditoria_accion`:
 |--------|----------|
 | **Ventas** | `venta.consultar`, `venta.crear`, `venta.anular` |
 | **Turnos** | `turno.consultar`, `turno.consultar.todos`, `turno.abrir`, `turno.cerrar` |
-| **Devoluciones** | `devolucion.procesar`, `devolucion.autorizar` |
 | **Productos** | `producto.consultar`, `producto.crear`, `producto.editar`, `producto.eliminar` |
 | **Inventario** | `inventario.consultar`, `inventario.entrada`, `inventario.salida`, `inventario.ajuste` |
 | **Clientes** | `cliente.consultar`, `cliente.crear`, `cliente.editar` |
@@ -447,7 +414,7 @@ Todas las acciones importantes se registran en `auditoria_accion`:
 2. **JWT obligatorio**: Todas las rutas requieren autenticación
 3. **RBAC estricto**: Cada acción requiere permiso específico
 4. **Validación en PG**: Las funciones SECURITY DEFINER validan stock, precios, etc.
-5. **Transaccionalidad**: Ventas, devoluciones y anulaciones son transaccionales
+5. **Transaccionalidad**: Ventas y anulaciones son transaccionales
 6. **Auditoría completa**: Todo queda registrado
 7. **Idempotencia**: Las integraciones evitan duplicados
 8. **Sin secretos en el frontend**: Solo anon-key pública
@@ -479,7 +446,7 @@ Ambos sistemas se comunican mediante APIs REST autenticadas con mecanismos de id
 │  1. Cajero abre turno de caja                               │
 │  2. Se registran ventas (con descuento de inventario)       │
 │  3. Se procesan pedidos de mesas                            │
-│  4. Se gestionan devoluciones y anulaciones                 │
+│  4. Se gestionan anulaciones                               │
 │  5. Se atienden clientes y puntos de fidelidad              │
 │                                                             │
 │  FASE 2: CIERRE DE TURNO                                    │
@@ -574,7 +541,6 @@ POS                    Monitoreo
 | `MovimientoPuntos` | Puntos de fidelidad |
 | `Promocion` | Promociones activas |
 | `PromocionProducto` | Productos en promoción |
-| `Devolucion` | Devoluciones procesadas |
 | `ConsumoReportado` | Consumos generados para Monitoreo |
 | `ColaIntegracion` | Cola de envío a Monitoreo |
 | `EntregaAlerta` | Alertas recibidas de Monitoreo |
