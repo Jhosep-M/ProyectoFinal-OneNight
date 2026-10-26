@@ -42,7 +42,7 @@ const GRUPOS = [
   },
 ];
 
-export default function Sidebar() {
+export default function Sidebar({ abierto = false, onCerrar }) {
   const { session, signOut } = useAuth();
   const { tienePermiso, loading } = usePermisos();
   const navigate = useNavigate();
@@ -64,7 +64,7 @@ export default function Sidebar() {
   };
 
   return (
-    <aside className="sidebar">
+    <aside className={`sidebar${abierto ? ' open' : ''}`} aria-label="Menú principal">
       <div className="sidebar-brand">
         <span className="brand-name">Helados Pariente</span>
       </div>
@@ -83,6 +83,7 @@ export default function Sidebar() {
                 <NavLink
                   key={e.to}
                   to={e.to}
+                  onClick={onCerrar}
                   className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}
                 >
                   <i className={`bi ${e.icono}`}></i>

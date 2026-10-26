@@ -120,6 +120,7 @@ export default function MeseroPage() {
         ) : pendientes.length === 0 ? (
           <p>Sin pedidos pendientes.</p>
         ) : (
+          <div className="table-wrap">
           <table className="data-table">
             <thead>
               <tr><th>Mesa</th><th>Mesero</th><th>Total</th><th>Estado</th><th style={{ textAlign: 'right' }}>Acciones</th></tr>
@@ -146,6 +147,7 @@ export default function MeseroPage() {
               ))}
             </tbody>
           </table>
+          </div>
         )}
       </Card>
 

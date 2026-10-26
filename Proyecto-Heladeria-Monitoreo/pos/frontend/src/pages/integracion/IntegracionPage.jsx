@@ -71,6 +71,7 @@ export default function IntegracionPage() {
         {loading ? (
           <p>Cargando…</p>
         ) : (
+          <div className="table-wrap">
           <table className="data-table">
             <thead>
               <tr><th>Recurso</th><th>Cantidad</th><th>Estado</th><th>Intentos</th><th>Próximo intento</th><th></th></tr>
@@ -94,6 +95,7 @@ export default function IntegracionPage() {
               ))}
             </tbody>
           </table>
+          </div>
         )}
       </Card>
     </div>

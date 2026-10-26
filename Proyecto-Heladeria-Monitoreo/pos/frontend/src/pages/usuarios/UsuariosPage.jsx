@@ -75,6 +75,7 @@ export default function UsuariosPage() {
         {loading ? (
           <p>Cargando…</p>
         ) : (
+          <div className="table-wrap">
           <table className="data-table">
             <thead><tr><th>Nombre</th><th>Email</th><th>Rol</th><th>Estado</th><th></th></tr></thead>
             <tbody>
@@ -89,6 +90,7 @@ export default function UsuariosPage() {
               ))}
             </tbody>
           </table>
+          </div>
         )}
       </Card>
     </div>

@@ -458,6 +458,7 @@ export default function PedidosPage() {
               {cargandoDetalle ? (
                 <p style={{ opacity: 0.7 }}>Cargando productos…</p>
               ) : productosCuenta.length > 0 ? (
+                <div className="table-wrap">
                 <table className="data-table">
                   <thead>
                     <tr><th>Producto</th><th>Cant.</th><th style={{ textAlign: 'right' }}>Subtotal</th></tr>
@@ -472,6 +473,7 @@ export default function PedidosPage() {
                     ))}
                   </tbody>
                 </table>
+                </div>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                   {cuentaMesa.pedidos.map((p) => (

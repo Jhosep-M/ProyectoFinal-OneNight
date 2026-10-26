@@ -228,6 +228,7 @@ export default function Devoluciones() {
         {ventas.length === 0 ? (
           <EmptyState title="Sin ventas activas" description="No hay ventas pendientes de anulación o devolución." />
         ) : (
+          <div className="table-wrap">
           <table className="data-table">
             <thead><tr><th>Venta</th><th>Fecha</th><th>Total</th><th>Estado</th><th></th></tr></thead>
             <tbody>
@@ -254,6 +255,7 @@ export default function Devoluciones() {
               })}
             </tbody>
           </table>
+          </div>
         )}
       </Card>
 
@@ -262,6 +264,7 @@ export default function Devoluciones() {
         {devoluciones.length === 0 ? (
           <EmptyState title="Sin devoluciones" description="Aún no se registraron devoluciones." />
         ) : (
+          <div className="table-wrap">
           <table className="data-table">
             <thead><tr><th>Fecha</th><th>Producto</th><th>Cantidad</th><th>Motivo</th></tr></thead>
             <tbody>
@@ -275,6 +278,7 @@ export default function Devoluciones() {
               ))}
             </tbody>
           </table>
+          </div>
         )}
       </Card>
     </div>

@@ -112,3 +112,36 @@ input[type="number"] { font-variant-numeric: tabular-nums; }
     transition-duration: 0.01ms !important;
   }
 }
+
+/* ===== Capa plataforma móvil =====
+   Ajustes para que la app se sienta instalada en el teléfono:
+   sin flash gris al tocar, sin zoom al enfocar campos, respuesta inmediata. */
+html {
+  -webkit-tap-highlight-color: transparent;
+  -webkit-text-size-adjust: 100%;
+  overscroll-behavior: none;
+}
+
+button, a, [role="button"] {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* El texto de los controles no se selecciona con pulsación larga. */
+button, [role="button"], .btn {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* iOS hace zoom si el campo enfocado usa menos de 16px. */
+@media (pointer: coarse) {
+  input, textarea, select { font-size: 16px; }
+}
+
+/* Feedback táctil inmediato solo donde no hay hover real. */
+@media (hover: none) {
+  button:active:not(:disabled),
+  a:active {
+    transform: scale(0.97);
+  }
+}

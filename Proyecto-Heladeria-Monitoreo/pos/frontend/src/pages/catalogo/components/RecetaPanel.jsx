@@ -140,6 +140,7 @@ export default function RecetaPanel({
           description="Este producto aún no descuenta insumos. Agrega el primero con el formulario de arriba."
         />
       ) : (
+        <div className="table-wrap">
         <table className="data-table">
           <thead>
             <tr><th>Insumo</th><th>Cantidad</th><th>Stock</th><th>Alerta</th><th></th></tr>
@@ -190,6 +191,7 @@ export default function RecetaPanel({
             })}
           </tbody>
         </table>
+        </div>
       )}
     </div>
   );

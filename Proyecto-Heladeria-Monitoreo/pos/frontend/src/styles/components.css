@@ -25,10 +25,13 @@
   color: #fff;
   box-shadow: var(--shadow-sm);
 }
-.btn-primary:hover:not(:disabled), .btn.btn-primary:hover:not(:disabled) {
-  background: var(--accent-hover);
-  border-color: var(--accent-hover);
-  color: #fff;
+/* Hovers solo con puntero real: en táctil el hover se dispara al tocar y queda pegado. */
+@media (hover: hover) and (pointer: fine) {
+  .btn-primary:hover:not(:disabled), .btn.btn-primary:hover:not(:disabled) {
+    background: var(--accent-hover);
+    border-color: var(--accent-hover);
+    color: #fff;
+  }
 }
 .btn-primary:active:not(:disabled), .btn.btn-primary:active:not(:disabled) {
   background: #5A420D;
@@ -36,20 +39,28 @@
 }
 
 .btn-secondary, .btn.btn-secondary { background: var(--surface); color: var(--ink); border-color: var(--border); }
-.btn-secondary:hover:not(:disabled), .btn.btn-secondary:hover:not(:disabled) { background: var(--surface-sunk); color: var(--ink); }
+@media (hover: hover) and (pointer: fine) {
+  .btn-secondary:hover:not(:disabled), .btn.btn-secondary:hover:not(:disabled) { background: var(--surface-sunk); color: var(--ink); }
+}
 
 .btn-outline-secondary, .btn.btn-outline-secondary {
   background: transparent;
   color: var(--ink-muted);
   border-color: var(--border);
 }
-.btn-outline-secondary:hover:not(:disabled) { background: var(--surface-sunk); color: var(--ink); border-color: var(--accent); }
+@media (hover: hover) and (pointer: fine) {
+  .btn-outline-secondary:hover:not(:disabled) { background: var(--surface-sunk); color: var(--ink); border-color: var(--accent); }
+}
 
 .btn-danger, .btn.btn-danger { background: var(--error); border-color: var(--error); color: #fff; }
-.btn-danger:hover:not(:disabled) { background: #6B1414; border-color: #6B1414; }
+@media (hover: hover) and (pointer: fine) {
+  .btn-danger:hover:not(:disabled) { background: #6B1414; border-color: #6B1414; }
+}
 
 .btn-ghost { background: transparent; border-color: transparent; color: var(--ink-muted); }
-.btn-ghost:hover:not(:disabled) { background: var(--surface-sunk); color: var(--ink); }
+@media (hover: hover) and (pointer: fine) {
+  .btn-ghost:hover:not(:disabled) { background: var(--surface-sunk); color: var(--ink); }
+}
 /* Paginación deshabilitada: mantener borde y texto legible en vez de
    desvanecerse sobre el fondo claro. */
 .btn-ghost:disabled { opacity: 1; color: var(--ink-faint); border-color: var(--border); background: transparent; }
@@ -138,7 +149,7 @@
 .badge-accent { background: var(--accent-soft); color: var(--accent); }
 
 /* DataTable */
-.table-wrap { overflow-x: auto; }
+.table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; overscroll-behavior-x: contain; }
 .data-table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
 .data-table th, .data-table td {
   padding: 8px 12px;
@@ -154,8 +165,10 @@
   z-index: var(--z-sticky);
 }
 .data-table th.sortable { cursor: pointer; user-select: none; }
-.data-table th.sortable:hover { color: var(--ink); }
-.data-table tbody tr:hover { background: var(--surface-sunk); }
+@media (hover: hover) and (pointer: fine) {
+  .data-table th.sortable:hover { color: var(--ink); }
+  .data-table tbody tr:hover { background: var(--surface-sunk); }
+}
 .sort-ind { margin-left: 4px; font-size: 0.75rem; }
 .table-pager {
   display: flex;
@@ -277,7 +290,9 @@
   opacity: 0.6;
   padding: 0;
 }
-.alert-close:hover { opacity: 1; }
+@media (hover: hover) and (pointer: fine) {
+  .alert-close:hover { opacity: 1; }
+}
 
 /* Modal */
 .modal-backdrop {
@@ -318,7 +333,9 @@
   color: var(--ink-faint);
   padding: 0;
 }
-.modal-close:hover { color: var(--ink); }
+@media (hover: hover) and (pointer: fine) {
+  .modal-close:hover { color: var(--ink); }
+}
 .modal-body { padding: 20px; overflow-y: auto; }
 .modal-footer {
   display: flex;
@@ -485,7 +502,9 @@
   color: inherit;
   cursor: pointer;
 }
-.th-sort:hover { color: var(--ink); }
+@media (hover: hover) and (pointer: fine) {
+  .th-sort:hover { color: var(--ink); }
+}
 .th-sort:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
 /* Acciones de fila */
@@ -594,7 +613,9 @@ th.numeric { text-align: right; }
   color: var(--ink-faint);
   padding: 0;
 }
-.drawer-close:hover { color: var(--ink); }
+@media (hover: hover) and (pointer: fine) {
+  .drawer-close:hover { color: var(--ink); }
+}
 
 /* Legacy compat */
 .error { color: var(--error); }
@@ -670,6 +691,24 @@ th.numeric { text-align: right; }
   color: var(--ink);
 }
 
+/* En móvil la línea no cabe en 4 columnas (mín. ~536px): el producto ocupa
+   la fila completa y cantidad/subtotal/quitar comparten la segunda fila. */
+@media (max-width: 640px) {
+  .pedido-lineas__head { display: none; }
+  .pedido-linea {
+    grid-template-columns: 1fr auto auto;
+    align-items: center;
+    row-gap: 10px;
+    padding: 12px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--surface);
+    margin-bottom: 12px;
+  }
+  .pedido-linea > :first-child { grid-column: 1 / -1; }
+  .pedido-linea__subtotal { padding-bottom: 0; }
+}
+
 /* Stepper de cantidad (táctil) */
 .stepper {
   display: inline-flex;
@@ -689,7 +728,9 @@ th.numeric { text-align: right; }
   color: var(--ink-muted);
   line-height: 1;
 }
-.stepper button:hover:not(:disabled) { background: var(--accent-soft); color: var(--accent); }
+@media (hover: hover) and (pointer: fine) {
+  .stepper button:hover:not(:disabled) { background: var(--accent-soft); color: var(--accent); }
+}
 .stepper button:disabled { opacity: 0.35; cursor: not-allowed; }
 .stepper input {
   width: 46px;
@@ -700,7 +741,10 @@ th.numeric { text-align: right; }
   color: var(--ink);
   background: transparent;
 }
-.stepper input:hover, .stepper input:focus { background: var(--surface-sunk); outline: none; }
+.stepper input:focus { background: var(--surface-sunk); outline: none; }
+@media (hover: hover) and (pointer: fine) {
+  .stepper input:hover { background: var(--surface-sunk); }
+}
 .stepper input::-webkit-inner-spin-button { appearance: none; }
 .stepper input { appearance: textfield; -moz-appearance: textfield; font-variant-numeric: tabular-nums; }
 
@@ -750,7 +794,9 @@ th.numeric { text-align: right; }
   line-height: 1;
   flex-shrink: 0;
 }
-.icon-btn:hover:not(:disabled) { color: var(--error); background: var(--error-soft); }
+@media (hover: hover) and (pointer: fine) {
+  .icon-btn:hover:not(:disabled) { color: var(--error); background: var(--error-soft); }
+}
 .icon-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .icon-btn:disabled { opacity: 0.35; cursor: not-allowed; }
 

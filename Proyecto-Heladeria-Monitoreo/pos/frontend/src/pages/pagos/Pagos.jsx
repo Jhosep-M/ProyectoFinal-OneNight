@@ -86,6 +86,7 @@ export default function Pagos() {
         ) : metodos.length === 0 ? (
           <EmptyState title="Sin métodos" description="Crea el primero con el formulario de arriba." />
         ) : (
+          <div className="table-wrap">
           <table className="data-table">
             <thead><tr><th>Nombre</th><th>Estado</th><th></th></tr></thead>
             <tbody>
@@ -102,6 +103,7 @@ export default function Pagos() {
               ))}
             </tbody>
           </table>
+          </div>
         )}
       </Card>
     </div>

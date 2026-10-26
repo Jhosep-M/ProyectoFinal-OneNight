@@ -65,6 +65,7 @@ export default function CocinaPage() {
         ) : activos.length === 0 ? (
           <p>Sin pedidos en cocina.</p>
         ) : (
+          <div className="table-wrap">
           <table className="data-table">
             <thead>
               <tr><th>Mesa</th><th>Total</th><th>Estado</th><th style={{ textAlign: 'right' }}>Acciones</th></tr>
@@ -101,6 +102,7 @@ export default function CocinaPage() {
               ))}
             </tbody>
           </table>
+          </div>
         )}
       </Card>
     </div>

@@ -245,6 +245,7 @@ export default function Proveedores() {
             description={busqueda ? 'Prueba con otro nombre o NIT.' : 'Crea el primer proveedor con el formulario de arriba.'}
           />
         ) : (
+          <div className="table-wrap">
           <table className="data-table">
             <thead><tr><th>Nombre</th><th>NIT</th><th>Contacto</th><th>Teléfono</th><th>Correo</th><th>Estado</th><th></th></tr></thead>
             <tbody>
@@ -268,6 +269,7 @@ export default function Proveedores() {
               ))}
             </tbody>
           </table>
+          </div>
         )}
       </Card>
     </div>
