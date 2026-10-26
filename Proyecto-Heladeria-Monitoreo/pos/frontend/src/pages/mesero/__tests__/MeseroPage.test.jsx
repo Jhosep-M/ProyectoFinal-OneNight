@@ -88,28 +88,11 @@ describe('MeseroPage (HU-11)', () => {
     });
   });
 
-  it('muestra Cobrar en turno de caja y cobra sin abrir caja propia', async () => {
+  it('no ofrece Cobrar: muestra que se cobra en caja', async () => {
     renderMesero();
     await screen.findAllByText(/Mesa 5/);
-    // Sin abrir caja propia: avisa el turno de caja.
-    expect(await screen.findByText(/Turno de caja/i)).toBeInTheDocument();
-    const btn = await screen.findByRole('button', { name: /Cobrar/i });
-    await userEvent.click(btn);
-    await waitFor(() => {
-      expect(mocks.mockCobrarPedido).toHaveBeenCalledWith(
-        'p-1',
-        expect.objectContaining({ turno_id: 't-caja' })
-      );
-    });
-    expect(await screen.findByText(/Pedido cobrado en turno de/i)).toBeInTheDocument();
-  });
-
-  it('sin turno de caja pide que caja abra turno (no abre caja propia)', async () => {
-    mocks.mockTurnoAbierto.mockResolvedValue(null);
-    renderMesero();
-    await screen.findAllByText(/Mesa 5/);
-    await userEvent.click(await screen.findByRole('button', { name: /Cobrar/i }));
-    expect(await screen.findByText(/No hay caja abierta/i)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Cobrar/i })).not.toBeInTheDocument();
+    expect(await screen.findByText(/se cobra en caja/i)).toBeInTheDocument();
     expect(mocks.mockCobrarPedido).not.toHaveBeenCalled();
   });
 

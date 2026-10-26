@@ -288,6 +288,17 @@ export default function VentasPage() {
 
   return (
     <div className="row g-3">
+      <div className="col-12">
+        <div className="alert alert-info d-flex align-items-center justify-content-between gap-2 py-2" role="note">
+          <span className="d-flex align-items-center gap-2">
+            <i className="bi bi-shop"></i>
+            <span>Mostrador / Para llevar: cobro directo aquí. Las mesas se atienden en Pedidos (cuenta por mesa).</span>
+          </span>
+          <Link to="/pedidos" className="btn btn-sm btn-outline-primary">
+            Ir a Pedidos
+          </Link>
+        </div>
+      </div>
       <div className="col-12 col-lg-8">
         <div className="d-flex flex-column gap-3">
           <div className="d-flex gap-2 flex-wrap">
