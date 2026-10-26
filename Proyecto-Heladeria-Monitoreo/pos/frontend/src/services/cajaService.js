@@ -12,6 +12,18 @@ export const listarTodosTurnos = async () => {
     throw e;
   }
 };
+// Opción A mesero cobra: turno abierto de caja (cualquiera) para cobrar
+// sin abrir caja propia. Exige venta.crear. Sin turno -> null (404 SIN_TURNO).
+export const listarTurnoAbiertoParaCobro = async () => {
+  try {
+    return await apiFetch('/shifts/abierto');
+  } catch (e) {
+    const msg = String(e.message || '');
+    if (msg.includes('404') || msg.includes('SIN_TURNO') || msg.includes('No hay caja abierta')) return null;
+    if (msg.includes('403') || msg.includes('Forbidden')) return null;
+    throw e;
+  }
+};
 export const obtenerPermisosTurno = async () => {
   try {
     return await apiFetch('/shifts/permisos');

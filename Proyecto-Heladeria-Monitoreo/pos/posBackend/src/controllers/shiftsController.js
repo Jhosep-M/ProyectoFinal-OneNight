@@ -25,6 +25,21 @@ async function listarTodos() {
   return rows;
 }
 
+/** Turno abierto para cobro (Opción A mesero): el más reciente, de cualquier
+ * cajero, con email del dueño. La ruta exige venta.crear, así que el mesero
+ * (con 023) puede descubrirlo sin turno.consultar ni abrir caja propia.
+ * registrar_venta solo valida turno abierto, no dueño; la auditoría guarda
+ * p_usuario_id=quien cobra y venta.turno_id=caja. */
+async function turnoAbiertoParaCobro() {
+  const [rows] = await sequelize.query(
+    `SELECT tc.*, u.email AS cajero_email FROM turno_caja tc
+     LEFT JOIN usuario u ON u.id_usuario = tc.usuario_id
+     WHERE tc.estado = 'abierto'
+     ORDER BY tc.fecha_apertura DESC LIMIT 1`
+  );
+  return rows && rows[0] ? rows[0] : null;
+}
+
 /** Permisos propios para que la UI decida qué mostrar. */
 async function permisos(userId) {
   const [rows] = await sequelize.query(
@@ -53,4 +68,4 @@ async function cerrar(turnoId, body, userId) {
   return turnoService.cerrar(turnoId, parsed.monto_final_real, userId, parsed.motivo);
 }
 
-module.exports = { listar, listarMios, listarTodos, permisos, abrir, cerrar };
+module.exports = { listar, listarMios, listarTodos, permisos, abrir, cerrar, turnoAbiertoParaCobro };
