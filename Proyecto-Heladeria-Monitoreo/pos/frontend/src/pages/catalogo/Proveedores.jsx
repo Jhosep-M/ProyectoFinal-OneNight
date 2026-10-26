@@ -7,6 +7,7 @@ import EmptyState from '../../components/ui/EmptyState.jsx';
 import Skeleton from '../../components/ui/Skeleton.jsx';
 import Input from '../../components/ui/Input.jsx';
 import RequirePermiso from '../../components/common/RequirePermiso.jsx';
+import ConfirmDialog from '../../components/modals/ConfirmDialog.jsx';
 import { proveedoresService } from '../../services/inventarioService.js';
 
 const formVacio = { nombre: '', nit: '', contacto: '', telefono: '', correo: '', estado: 'activo' };
@@ -21,6 +22,7 @@ export default function Proveedores() {
   const [guardando, setGuardando] = useState(false);
   const [busqueda, setBusqueda] = useState('');
   const [fieldErrors, setFieldErrors] = useState({});
+  const [provPendiente, setProvPendiente] = useState(null);
   const nombreRef = useRef(null);
   const nitRef = useRef(null);
   const correoRef = useRef(null);
@@ -111,8 +113,14 @@ export default function Proveedores() {
     }
   };
 
-  const inactivar = async (p) => {
-    if (!window.confirm(`¿Inactivar al proveedor "${p.nombre}"?`)) return;
+  const inactivar = (p) => {
+    setProvPendiente(p);
+  };
+
+  const ejecutarInactivar = async () => {
+    const p = provPendiente;
+    setProvPendiente(null);
+    if (!p) return;
     setError(null);
     try {
       await proveedoresService.inactivate(p.id_proveedor);
@@ -272,6 +280,15 @@ export default function Proveedores() {
           </div>
         )}
       </Card>
+
+      <ConfirmDialog
+        open={!!provPendiente}
+        onClose={() => setProvPendiente(null)}
+        onConfirm={ejecutarInactivar}
+        title="Inactivar proveedor"
+        message={provPendiente ? `¿Inactivar al proveedor "${provPendiente.nombre}"?` : ''}
+        confirmText="Inactivar"
+      />
     </div>
   );
 }
