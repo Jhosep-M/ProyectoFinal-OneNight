@@ -32,20 +32,20 @@ export default function ConfirmEliminarModal({ cliente, onCancel, onConfirm }) {
         onClick={(e) => e.stopPropagation()}
       >
         <div className="modal-header">
-          <h3 id="confirm-eliminar-titulo">Inactivar cliente</h3>
+          <h3 id="confirm-eliminar-titulo">Eliminar cliente</h3>
           <button type="button" className="modal-close" onClick={onCancel} aria-label="Cerrar">×</button>
         </div>
         <div className="modal-body">
           <p id="confirm-eliminar-desc">
-            ¿Inactivar a <strong>{cliente?.nombre}</strong>
+            ¿Eliminar definitivamente a <strong>{cliente?.nombre}</strong>
             {cliente?.telefono ? ` (${cliente.telefono})` : ''}
             {cliente?.correo ? ` · ${cliente.correo}` : ''}?
           </p>
-          <p className="field-hint">Se oculta del listado activo, pero se conserva su historial de ventas y puntos.</p>
+          <p className="field-hint">Se eliminará de la base de datos. Solo es posible si no tiene ventas ni movimientos de puntos; en caso contrario, inactívelo.</p>
         </div>
         <div className="modal-footer">
           <Button ref={cancelRef} type="button" variant="secondary" onClick={onCancel}>Cancelar</Button>
-          <Button type="button" variant="danger" loading={saving} onClick={confirmar}>Inactivar</Button>
+          <Button type="button" variant="danger" loading={saving} onClick={confirmar}>Eliminar</Button>
         </div>
       </div>
     </div>

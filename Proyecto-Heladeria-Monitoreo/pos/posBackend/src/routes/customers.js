@@ -106,18 +106,41 @@ router.delete('/:id', authorize('cliente.gestionar'), async (req, res, next) => 
     } catch (e) {
       return res.status(400).json({ error: 'Validation failed', details: e.errors ?? e.issues });
     }
-    const [rows] = await sequelize.query(
-      `UPDATE cliente SET estado='inactivo' WHERE id_cliente=:id AND estado='activo' RETURNING *`,
-      { replacements: { id: req.params.id } }
+    const id = req.params.id;
+    const [exists] = await sequelize.query(
+      `SELECT id_cliente, nombre, correo FROM cliente WHERE id_cliente=:id`,
+      { replacements: { id } }
     );
-    if (!rows[0]) {
-      const [exists] = await sequelize.query(`SELECT id_cliente FROM cliente WHERE id_cliente=:id`, { replacements: { id: req.params.id } });
-      if (!exists[0]) return res.status(404).json({ error: 'Cliente no encontrado' });
-      return res.status(409).json({ error: 'Cliente ya inactivo' });
+    if (!exists[0]) return res.status(404).json({ error: 'Cliente no encontrado' });
+    const [ventas] = await sequelize.query(
+      `SELECT COUNT(*)::int AS total FROM venta WHERE cliente_id=:id`,
+      { replacements: { id } }
+    );
+    if (Number(ventas[0]?.total ?? 0) > 0) {
+      await auditLog({ usuario_id: req.user.id, accion: 'cliente.eliminar_bloqueado', entidad: 'cliente', entidad_id: id, resultado: 'bloqueado', detalle: { motivo: 'tiene ventas' }, ip: req.ip, userAgent: req.headers['user-agent'] });
+      return res.status(409).json({ error: 'Cliente con ventas asociadas, no eliminable. Inactívelo en su lugar.' });
     }
-    await auditLog({ usuario_id: req.user.id, accion: 'cliente.inactivar', entidad: 'cliente', entidad_id: req.params.id, resultado: 'exito', detalle: {}, ip: req.ip, userAgent: req.headers['user-agent'] });
-    res.json(rows[0]);
-  } catch (e) { next(e); }
+    const [movs] = await sequelize.query(
+      `SELECT COUNT(*)::int AS total FROM movimiento_puntos WHERE cliente_id=:id`,
+      { replacements: { id } }
+    );
+    if (Number(movs[0]?.total ?? 0) > 0) {
+      await auditLog({ usuario_id: req.user.id, accion: 'cliente.eliminar_bloqueado', entidad: 'cliente', entidad_id: id, resultado: 'bloqueado', detalle: { motivo: 'tiene movimientos de puntos' }, ip: req.ip, userAgent: req.headers['user-agent'] });
+      return res.status(409).json({ error: 'Cliente con movimientos de puntos, no eliminable. Inactívelo en su lugar.' });
+    }
+    const [deleted] = await sequelize.query(
+      `DELETE FROM cliente WHERE id_cliente=:id RETURNING id_cliente`,
+      { replacements: { id } }
+    );
+    if (!deleted[0]) return res.status(404).json({ error: 'Cliente no encontrado' });
+    await auditLog({ usuario_id: req.user.id, accion: 'cliente.eliminar', entidad: 'cliente', entidad_id: id, resultado: 'exito', detalle: { nombre: exists[0].nombre, correo: exists[0].correo }, ip: req.ip, userAgent: req.headers['user-agent'] });
+    res.json({ ok: true, eliminado: id });
+  } catch (e) {
+    if (e.code === '23503' || e.original?.code === '23503' || e.parent?.code === '23503') {
+      return res.status(409).json({ error: 'Cliente con historial asociado, no eliminable. Inactívelo en su lugar.' });
+    }
+    next(e);
+  }
 });
 
 router.post('/:id/ajustes-puntos', authorizeAny(['cliente.puntos', 'cliente.gestionar']), async (req, res, next) => {
