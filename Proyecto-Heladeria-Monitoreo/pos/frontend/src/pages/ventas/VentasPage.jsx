@@ -11,6 +11,7 @@ import { productosService, categoriasService } from '../../services/productosSer
 import { usePromocionesVigentes, precioConDescuento } from '../../hooks/usePromocionesVigentes.js';
 import { crearVenta } from '../../services/ventasService.js';
 import { crearPedido } from '../../services/pedidosService.js';
+import { useAutoRefresh } from '../../hooks/useAutoRefresh.js';
 import TicketNotaVenta from '../../components/ventas/TicketNotaVenta.jsx';
 import ComandaCocina from '../../components/ventas/ComandaCocina.jsx';
 import { listarTurnos } from '../../services/cajaService.js';
@@ -104,6 +105,11 @@ export default function VentasPage() {
     window.addEventListener('focus', onFocus);
     return () => window.removeEventListener('focus', onFocus);
   }, [cargarTurno]);
+
+  // Regla de refresco automático: el turno puede abrirse/cerrarse en Caja u otra
+  // pestaña. Poll silencioso cada 30s (el foco ya está cubierto arriba); no toca
+  // el ticket local.
+  useAutoRefresh(cargarTurno, { intervalMs: 30000, onFocus: false });
 
   const copiarTurnoId = async () => {
     const fullId = turnoActivo?.id_turno || turnoActivo?.id;
@@ -235,11 +241,12 @@ export default function VentasPage() {
       };
       setUltimaVenta(snapshot);
       setAvisoCocina(null);
-      // Enviar a cocina: best-effort, no bloquea la venta (el pedido no descuenta stock,
-      // solo da visibilidad en CocinaPage). Si falla, la venta ya quedó registrada.
+      // Enviar a cocina: best-effort, no bloquea la venta. Se crea como espejo
+      // origen='venta_directa' (ya cobrado): visible en Cocina, sin botón Cobrar
+      // en Pedidos (evita doble cobro). Si falla, la venta ya quedó registrada.
       if (enviarACocina) {
         try {
-          await crearPedido({ mesa_id: null, items });
+          await crearPedido({ mesa_id: null, items, origen: 'venta_directa' });
         } catch (e) {
           setAvisoCocina('Venta cobrada, pero no llegó a cocina: ' + (e.message || 'reintenta desde Pedidos'));
         }

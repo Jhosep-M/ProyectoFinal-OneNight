@@ -10,6 +10,7 @@ const createOrderSchema = z.object({
   mesa_id: z.string().uuid().nullable().optional(),
   mesero_id: z.string().uuid().nullable().optional(),
   estado: z.enum(['abierto', 'en_preparacion', 'listo', 'cerrado', 'cancelado']).optional().default('abierto'),
+  origen: z.enum(['mesa', 'mostrador', 'venta_directa']).optional().default('mesa'),
   items: z.array(orderItemSchema).min(1, 'al menos un item requerido'),
   observacion: z.string().trim().max(500).nullable().optional(),
 });
@@ -17,6 +18,7 @@ const createOrderSchema = z.object({
 const updateOrderSchema = z.object({
   mesa_id: z.string().uuid().nullable().optional(),
   estado: z.enum(['abierto', 'en_preparacion', 'listo', 'cerrado', 'cancelado']).optional(),
+  origen: z.enum(['mesa', 'mostrador', 'venta_directa']).optional(),
   items: z.array(orderItemSchema).min(1).optional(),
   observacion: z.string().trim().max(500).nullable().optional(),
 }).refine((data) => Object.keys(data).length > 0, { message: 'al menos un campo requerido' });
