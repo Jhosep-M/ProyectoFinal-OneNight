@@ -1,8 +1,8 @@
 import { apiFetch } from './api.js';
 
 export const listarPedidos = () => apiFetch('/orders');
-export const crearPedido = ({ mesa_id, items, origen, observacion }) =>
-  apiFetch('/orders', { method: 'POST', body: { mesa_id, items, origen, observacion } });
+export const crearPedido = ({ mesa_id, items, origen, venta_id, observacion }) =>
+  apiFetch('/orders', { method: 'POST', body: { mesa_id, items, origen, venta_id, observacion } });
 export const actualizarPedido = (id, cambios) =>
   apiFetch(`/orders/${id}`, { method: 'PATCH', body: cambios });
 export const verPedido = (id) => apiFetch(`/orders/${id}`);

@@ -11,6 +11,9 @@ const createOrderSchema = z.object({
   mesero_id: z.string().uuid().nullable().optional(),
   estado: z.enum(['abierto', 'en_preparacion', 'listo', 'cerrado', 'cancelado']).optional().default('abierto'),
   origen: z.enum(['mesa', 'mostrador', 'venta_directa']).optional().default('mesa'),
+  // Solo para espejos de venta directa: enlaza la venta ya cobrada al pedido
+  // para trazabilidad (defensa en profundidad junto a origen).
+  venta_id: z.string().uuid().nullable().optional(),
   items: z.array(orderItemSchema).min(1, 'al menos un item requerido'),
   observacion: z.string().trim().max(500).nullable().optional(),
 });
