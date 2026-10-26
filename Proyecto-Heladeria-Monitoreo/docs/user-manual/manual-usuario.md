@@ -77,5 +77,5 @@ El sistema calcula la diferencia entre lo esperado y lo real. Si hay diferencia,
 
 - Todos los cambios se guardan automáticamente
 - Las ventas anuladas permanecen en el historial
-- Las devoluciones restauran el stock de productos e insumos
+- Las anulaciones restauran el stock de productos e insumos
 - Los puntos de fidelidad se acumulan automáticamente (1 punto cada 10 de total)

@@ -240,7 +240,7 @@
 | `movimiento_puntos` | Movimientos de puntos |
 | `promocion` | Promociones |
 | `promocion_producto` | Productos en promoción |
-| `devolucion` | Devoluciones |
+| `devolucion` | Histórico (funcionalidad eliminada, sin nuevas filas) |
 | `cola_integracion` | Cola de envíos a Monitoreo |
 | `alerta_pos` | Alertas recibidas de Monitoreo |
 | `entrega_alerta` | Entregas de alertas |

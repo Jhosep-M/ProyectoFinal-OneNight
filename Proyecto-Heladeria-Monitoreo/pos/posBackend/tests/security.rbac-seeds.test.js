@@ -17,8 +17,6 @@ const PERMISOS_REQUERIDOS = [
   'pedido.gestionar',
   'pago.consultar',
   'pago.gestionar',
-  'devolucion.consultar',
-  'devolucion.procesar',
   'mesa.consultar',
   'mesa.gestionar',
   'integracion.consultar',
@@ -47,7 +45,7 @@ describe('migracion 003-p4-authorize-seeds', () => {
 
   test('revoca EXECUTE de funciones criticas a PUBLIC/anon/authenticated', () => {
     const sql = fs.readFileSync(MIGRATION, 'utf8');
-    for (const fn of ['registrar_venta', 'anular_venta', 'procesar_devolucion', 'cerrar_turno']) {
+    for (const fn of ['registrar_venta', 'anular_venta', 'cerrar_turno']) {
       expect(sql).toMatch(new RegExp(`REVOKE[^;]*FUNCTION[^;]*${fn}[^;]*FROM PUBLIC`, 'is'));
     }
   });

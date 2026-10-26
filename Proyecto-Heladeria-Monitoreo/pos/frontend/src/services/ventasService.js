@@ -1,7 +1,7 @@
 import { apiFetch } from './api.js';
 
 // HU-14: filtros opcionales de historial (desde/hasta/estado/cajero/método).
-// Sin params mantiene la llamada original exacta (compat Dashboard/Caja/Devoluciones).
+// Sin params mantiene la llamada original exacta (compat Dashboard/Caja).
 export const listarVentas = (params) => {
   if (!params) return apiFetch('/sales');
   const qs = new URLSearchParams(
@@ -14,5 +14,3 @@ export const crearVenta = ({ turno_id, items, pagos, cliente_id, descuento = 0, 
 export const anularVenta = (id, motivo) =>
   apiFetch(`/sales/${id}/anular`, { method: 'POST', body: { motivo } });
 export const listarMetodosPago = () => apiFetch('/payments/metodos');
-export const crearDevolucion = ({ venta_id, producto_id, cantidad, motivo }) =>
-  apiFetch('/returns', { method: 'POST', body: { venta_id, producto_id, cantidad, motivo } });

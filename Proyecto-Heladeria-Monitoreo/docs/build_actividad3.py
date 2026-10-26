@@ -245,7 +245,6 @@ def build_document():
         ('POST','/inventory/movimientos','inventario.movimiento','Registrar movimiento'),
         ('GET','/customers','cliente.consultar','Listar clientes'),
         ('POST','/payments','pago.gestionar','Crear pago'),
-        ('POST','/returns','devolucion.procesar','Procesar devolución'),
         ('GET','/promotions','promocion.consultar','Listar promociones'),
         ('GET','/audit','auditoria.consultar','Listar acciones de auditoría'),
         ('POST','/integrations/alerts','API-key','Recibir alerta de Monitoreo')

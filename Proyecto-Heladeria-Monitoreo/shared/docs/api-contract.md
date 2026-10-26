@@ -102,12 +102,11 @@ Todos los endpoints requieren header `Authorization: Bearer <JWT>` (Supabase Aut
 | GET | `/payments/metodos` | `pago.consultar` | Listar métodos de pago |
 | POST | `/payments` | `pago.gestionar` | Crear pago |
 
-### Devoluciones
+### Devoluciones (eliminado)
 
-| Método | Ruta | Permiso | Descripción |
-|--------|------|---------|-------------|
-| GET | `/returns` | `devolucion.consultar` | Listar devoluciones |
-| POST | `/returns` | `devolucion.procesar` | Procesar devolución |
+> Funcionalidad eliminada. `GET/POST /returns` y permisos `devolucion.*`
+> ya no existen. Tabla `devolucion` y `procesar_devolucion()` se conservan
+> solo como histórico. Para revertir una venta usar anulación (`POST /sales/:id/anular`).
 
 ### Promociones
 

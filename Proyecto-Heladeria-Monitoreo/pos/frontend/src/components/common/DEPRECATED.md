@@ -10,7 +10,7 @@
   `Badge`, `Alert`, `EmptyState`, `Input`, `Select`, `Modal`, `Drawer`,
   `Skeleton`, `DataTable`, `Avatar`.
 - **`components/common/` es legacy**: no agregar componentes nuevos aquí.
-- Las páginas nuevas **`Devoluciones.jsx`** y **`Proveedores.jsx`** usan `ui/`.
+- La página **`Proveedores.jsx`** usa `ui/`.
 - **`VentasPage.jsx`** ya migró `Input` de `common/` a `ui/` (API compatible).
 
 ## Migración gradual
