@@ -141,12 +141,6 @@ export default function AdminDashboard() {
           <h5 className="mb-1" style={{ fontFamily: 'var(--bs-font-serif)' }}>Administración — visión global</h5>
           <p className="text-muted small mb-0">Ventas, caja, operación, inventario, integración y auditoría en un solo panel.</p>
         </div>
-        <div className="d-flex gap-2 flex-wrap">
-          <Link to="/reportes" className="btn btn-primary btn-sm"><i className="bi bi-bar-chart me-1"></i>Reportes</Link>
-          <Link to="/admin/turnos" className="btn btn-outline-secondary btn-sm">Turnos</Link>
-          <Link to="/auditoria" className="btn btn-outline-secondary btn-sm">Auditoría</Link>
-          <Link to="/usuarios" className="btn btn-outline-secondary btn-sm">Usuarios</Link>
-        </div>
       </div>
 
       <div className="row g-3">

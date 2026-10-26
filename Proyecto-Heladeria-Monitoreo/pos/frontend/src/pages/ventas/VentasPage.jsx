@@ -36,10 +36,8 @@ export default function VentasPage() {
   const [categorias, setCategorias] = useState([]);
   const [turnoActivo, setTurnoActivo] = useState(null);
   const [metodosPago, setMetodosPago] = useState([]);
-  // Pagos divididos: [{ metodoPagoId, monto }]. Un solo elemento = pago único
-  // (compat con el flujo anterior). monto se edita como texto y se valida
-  // contra el total al cobrar (SUM(pagos) == total - canje).
-  const [pagos, setPagos] = useState([]);
+  // Pago único: un solo método de pago, monto siempre = total - canje.
+  const [metodoPagoId, setMetodoPagoId] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [errorCobro, setErrorCobro] = useState(null);
@@ -90,7 +88,7 @@ export default function VentasPage() {
         const metodos = metodosData || [];
         setMetodosPago(metodos);
         if (metodos[0]) {
-          setPagos([{ metodoPagoId: metodoIdDe(metodos[0]), monto: '' }]);
+          setMetodoPagoId(metodoIdDe(metodos[0]));
         }
       } catch (err) {
         setError('No se pudieron cargar los productos');
@@ -157,12 +155,8 @@ export default function VentasPage() {
       setErrorCobro('No hay turno abierto. Abre un turno en Caja antes de cobrar.');
       return;
     }
-    if (metodosPago.length === 0 || pagos.length === 0) {
+    if (metodosPago.length === 0 || !metodoPagoId) {
       setErrorCobro('No hay método de pago disponible.');
-      return;
-    }
-    if (pagos.some((p) => !p.metodoPagoId)) {
-      setErrorCobro('Cada pago debe tener un método de pago.');
       return;
     }
     const saldoPuntos = Number(cliente?.puntos_fidelidad) || 0;
@@ -196,28 +190,9 @@ export default function VentasPage() {
     setCobrando(true);
     try {
       // El backend exige turno_id UUID, items {producto_id UUID, cantidad}
-      // y pagos {metodo_pago_id UUID, monto}. monto total = total - canje (1pt=$1).
-      // Pago único con monto vacío = cobra el total (compat flujo anterior).
+      // y pagos {metodo_pago_id UUID, monto}. Pago único: monto = total - canje.
       const items = ticket.map((i) => ({ producto_id: i.id_producto || i.id, cantidad: i.cantidad }));
-      let pagosPayload;
-      if (pagos.length === 1 && (pagos[0].monto === '' || pagos[0].monto == null)) {
-        pagosPayload = [{ metodo_pago_id: pagos[0].metodoPagoId, monto: montoAPagar }];
-      } else {
-        const montos = pagos.map((p) => Number(p.monto));
-        if (montos.some((m) => !Number.isFinite(m) || m <= 0)) {
-          setErrorCobro('Cada pago debe tener un monto mayor a 0.');
-          setCobrando(false);
-          return;
-        }
-        // Comparación en centavos para evitar errores de punto flotante.
-        const sumaCentavos = montos.reduce((s, m) => s + Math.round(m * 100), 0);
-        if (sumaCentavos !== Math.round(montoAPagar * 100)) {
-          setErrorCobro(`La suma de los pagos (${formatCurrency(sumaCentavos / 100)}) debe igualar el total a pagar (${formatCurrency(montoAPagar)}).`);
-          setCobrando(false);
-          return;
-        }
-        pagosPayload = pagos.map((p, i) => ({ metodo_pago_id: p.metodoPagoId, monto: montos[i] }));
-      }
+      const pagosPayload = [{ metodo_pago_id: metodoPagoId, monto: montoAPagar }];
       const payload = {
         turno_id: turnoActivo.id_turno || turnoActivo.id,
         items,
@@ -237,7 +212,7 @@ export default function VentasPage() {
         cliente: cliente?.nombre || null,
         items: ticket.map((i) => ({ nombre: i.nombre, cantidad: i.cantidad, precio: Number(i.precio) || 0 })),
         total: montoAPagar,
-        metodoPago: pagos.length === 1 ? (metodosPago.find((m) => String(metodoIdDe(m)) === String(pagos[0].metodoPagoId))?.nombre || 'efectivo') : 'dividido',
+        metodoPago: metodosPago.find((m) => String(metodoIdDe(m)) === String(metodoPagoId))?.nombre || 'efectivo',
       };
       setUltimaVenta(snapshot);
       setAvisoCocina(null);
@@ -255,7 +230,6 @@ export default function VentasPage() {
       setCliente(null);
       setUsarPuntos(false);
       setPuntosCaje(0);
-      setPagos((prev) => prev.map((p) => ({ ...p, monto: '' })));
     } catch (err) {
       console.error('Error al cobrar:', err);
       setErrorCobro(err.message);
@@ -558,54 +532,19 @@ export default function VentasPage() {
                 </div>
                 {metodosPago.length > 0 && (
                   <div className="d-flex flex-column gap-2">
-                    <span className="text-muted small">
-                      Pagos {pagos.length > 1 ? '(dividido: la suma debe igualar el total)' : '(vacío = total)'}
-                    </span>
-                    {pagos.map((p, idx) => (
-                      <div key={idx} className="d-flex gap-2">
-                        <select
-                          className="form-select"
-                          value={p.metodoPagoId}
-                          onChange={(e) => setPagos((prev) => prev.map((x, i) => (i === idx ? { ...x, metodoPagoId: e.target.value } : x)))}
-                          aria-label={`Método de pago ${idx + 1}`}
-                        >
-                          {metodosPago.map((m) => (
-                            <option key={metodoIdDe(m)} value={metodoIdDe(m)}>
-                              {m.nombre || 'Método de pago'}
-                            </option>
-                          ))}
-                        </select>
-                        <input
-                          className="form-control"
-                          style={{ maxWidth: 130 }}
-                          type="number"
-                          min="0.01"
-                          step="0.01"
-                          placeholder={formatCurrency(total - (usarPuntos ? Number(puntosCaje) || 0 : 0))}
-                          value={p.monto}
-                          onChange={(e) => setPagos((prev) => prev.map((x, i) => (i === idx ? { ...x, monto: e.target.value } : x)))}
-                          aria-label={`Monto del pago ${idx + 1}`}
-                        />
-                        {pagos.length > 1 && (
-                          <button
-                            type="button"
-                            className="btn btn-sm btn-outline-danger"
-                            onClick={() => setPagos((prev) => prev.filter((_, i) => i !== idx))}
-                            aria-label={`Quitar pago ${idx + 1}`}
-                          >
-                            <i className="bi bi-trash"></i>
-                          </button>
-                        )}
-                      </div>
-                    ))}
-                    <button
-                      type="button"
-                      className="btn btn-sm btn-outline-secondary align-self-start"
-                      onClick={() => setPagos((prev) => [...prev, { metodoPagoId: metodoIdDe(metodosPago[0]), monto: '' }])}
+                    <span className="text-muted small">Método de pago</span>
+                    <select
+                      className="form-select"
+                      value={metodoPagoId}
+                      onChange={(e) => setMetodoPagoId(e.target.value)}
+                      aria-label="Método de pago"
                     >
-                      <i className="bi bi-plus me-1"></i>
-                      Dividir pago
-                    </button>
+                      {metodosPago.map((m) => (
+                        <option key={metodoIdDe(m)} value={metodoIdDe(m)}>
+                          {m.nombre || 'Método de pago'}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                 )}
                 <Button
