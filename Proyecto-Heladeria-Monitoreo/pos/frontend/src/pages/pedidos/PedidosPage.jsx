@@ -86,6 +86,9 @@ export default function PedidosPage() {
   const [creando, setCreando] = useState(false);
   const [filtroEstado, setFiltroEstado] = useState('todos');
   const [busqueda, setBusqueda] = useState('');
+  // Espejos venta_directa ya están cobrados en Ventas: ocultos por defecto
+  // para que Pedidos sea el tablero del salón (cuenta por mesa).
+  const [mostrarEspejos, setMostrarEspejos] = useState(false);
   const [cuentaExpandida, setCuentaExpandida] = useState(false);
   const [detallesCuenta, setDetallesCuenta] = useState({});
   const [cargandoDetalle, setCargandoDetalle] = useState(false);
@@ -181,6 +184,8 @@ export default function PedidosPage() {
 
   const pedidosFiltrados = useMemo(() => {
     let list = Array.isArray(pedidos) ? [...pedidos] : [];
+    // Tablero del salón: ocultar espejos de mostrador salvo que se pidan.
+    if (!mostrarEspejos) list = list.filter((p) => !esEspejoVenta(p));
     // Si se viene de Mesas (?mesa=), mostrar primero esa cuenta.
     if (mesaDeURL) {
       const deMesa = list.filter((p) => String(p.mesa_id || '') === String(mesaDeURL));
@@ -200,7 +205,7 @@ export default function PedidosPage() {
     list.sort((a, b) => pesoEstado(a) - pesoEstado(b) || horaMs(a) - horaMs(b));
     return list;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pedidos, filtroEstado, busqueda, mesas]);
+  }, [pedidos, filtroEstado, busqueda, mesas, mostrarEspejos]);
 
   const recargar = async () => {
     setLoading(true);
@@ -539,7 +544,18 @@ export default function PedidosPage() {
               </option>
             ))}
           </Select>
-          <p className="field-hint">Sin mesa = mostrador / llevar</p>
+          <p className="field-hint">
+            {mesaId
+              ? 'Con mesa: se suma a su cuenta y la mesa se ocupa sola.'
+              : 'Sin mesa = mostrador / llevar. Lo rápido se cobra mejor en Ventas.'}
+            {!mesaId && (
+              <span style={{ marginLeft: 6 }}>
+                <Button type="button" variant="ghost" size="sm" onClick={() => navigate('/ventas')}>
+                  Ir a Ventas
+                </Button>
+              </span>
+            )}
+          </p>
 
           <div className="pedido-lineas__head" aria-hidden="true">
             <span>Producto</span>
@@ -647,6 +663,15 @@ export default function PedidosPage() {
               <option value="cerrado">Cobrados</option>
               <option value="cancelado">Cancelados</option>
             </Select>
+            <label className="field" style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <input
+                type="checkbox"
+                checked={mostrarEspejos}
+                onChange={(e) => setMostrarEspejos(e.target.checked)}
+                aria-label="Mostrar mostrador cobrado en ventas"
+              />
+              <span style={{ fontSize: '0.85rem' }}>Ver mostrador</span>
+            </label>
             <Button variant="secondary" size="sm" onClick={recargar}>Recargar</Button>
           </div>
         }
@@ -666,7 +691,7 @@ export default function PedidosPage() {
         ) : pedidosFiltrados.length === 0 ? (
           <div className="empty-state">
             <h3>Sin pedidos</h3>
-            <p>{pedidos.length === 0 ? 'Aún no hay pedidos. Crea el primero arriba.' : 'Ningún pedido coincide con el filtro.'}</p>
+            <p>{pedidos.length === 0 ? 'Aún no hay pedidos. Crea el primero arriba.' : mostrarEspejos ? 'Ningún pedido coincide con el filtro.' : 'Sin cuentas de salón. Activa “Ver mostrador” para ver lo cobrado en Ventas.'}</p>
           </div>
         ) : (
           <div className="table-wrap">
