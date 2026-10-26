@@ -24,8 +24,5 @@ export const METODOS_PAGO = [
   { id: 'transferencia', nombre: 'Transferencia', icono: 'bi-bank' },
 ];
 
-// Bolivia: precios de pizarra ya incluyen IVA 13%. El IVA se muestra
-// como informativo (base = total/1.13) para que el cobro cuadre con
-// el backend registrar_venta() que valida pagos == subtotal - descuento.
-export const IVA_BOLIVIA = 0.13;
+// Precios finales en Bs (sin desglose de impuestos en ticket).
 export const MONEDA = 'BOB';

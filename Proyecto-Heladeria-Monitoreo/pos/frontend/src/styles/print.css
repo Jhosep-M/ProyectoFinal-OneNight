@@ -1,0 +1,55 @@
+/* Tirilla 80mm + comanda cocina. Solo tokens (AGENTS §15.1), sin familias literales. */
+.print-area { display: none; }
+
+.print-ticket {
+  font-family: var(--bs-font-sans-serif);
+  color: #000;
+  font-size: 12px;
+  line-height: 1.4;
+  max-width: 300px;
+}
+
+.print-ticket__store {
+  font-family: var(--bs-font-serif);
+  font-size: 16px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.print-ticket__title {
+  font-family: var(--bs-font-sans-serif);
+  font-weight: 700;
+  text-align: center;
+  margin-top: 6px;
+  letter-spacing: 0.04em;
+}
+
+.print-ticket__title--big {
+  font-size: 18px;
+}
+
+.print-ticket__muted { text-align: center; opacity: 0.8; }
+.print-ticket__meta { display: flex; flex-direction: column; gap: 2px; margin-top: 6px; }
+.print-ticket__sep { text-align: center; margin: 6px 0; }
+.print-ticket__line { display: flex; justify-content: space-between; gap: 8px; }
+.print-ticket__line--big { font-size: 15px; padding: 2px 0; }
+.print-ticket__amount {
+  font-family: var(--bs-font-numeric);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.print-ticket__total { font-weight: 700; font-size: 13px; }
+.print-ticket__foot { text-align: center; margin-top: 8px; }
+
+@media print {
+  body * { visibility: hidden; }
+  .print-area, .print-area * { visibility: visible; }
+  .print-area {
+    display: block;
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 80mm;
+  }
+  .print-ticket { max-width: 80mm; }
+}

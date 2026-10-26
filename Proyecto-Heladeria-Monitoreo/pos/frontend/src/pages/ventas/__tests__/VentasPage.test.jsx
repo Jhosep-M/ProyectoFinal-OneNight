@@ -11,6 +11,7 @@ const mocks = vi.hoisted(() => ({
   mockListarTurnos: vi.fn(),
   mockListarMetodos: vi.fn(),
   mockCrearVenta: vi.fn(),
+  mockCrearPedido: vi.fn(),
 }));
 
 vi.mock('../../../services/productosService.js', () => ({
@@ -27,6 +28,10 @@ vi.mock('../../../services/ventasService.js', () => ({
   listarMetodosPago: mocks.mockListarMetodos,
   crearVenta: mocks.mockCrearVenta,
   anularVenta: vi.fn(),
+}));
+
+vi.mock('../../../services/pedidosService.js', () => ({
+  crearPedido: mocks.mockCrearPedido,
 }));
 
 vi.mock('../../../context/AuthContext.jsx', () => ({ useAuth: () => ({ session: { user: { email: 'c@h.com' } }, loading: false, signOut: vi.fn() }), AuthProvider: ({ children }) => children }));
@@ -176,7 +181,7 @@ describe('VentasPage', () => {
     expect(await screen.findByText(/No se pudieron cargar los productos/)).toBeInTheDocument();
   });
 
-  it('muestra foto del producto y total en Bs con IVA 13% incluido', async () => {
+  it('muestra foto del producto y total en Bs sin IVA', async () => {
     mocks.mockCrearVenta.mockResolvedValue({ venta_id: 'v2' });
     renderVentas();
     const img = await screen.findByAltText('Helado Chocolate');
@@ -184,8 +189,28 @@ describe('VentasPage', () => {
     expect(img).toHaveClass('producto-card__img');
     expect(img.closest('.producto-card__media')).not.toBeNull();
     await userEvent.click(await screen.findByText('Helado Chocolate'));
-    expect(await screen.findByText(/IVA \(13% incluido\)/)).toBeInTheDocument();
-    // Precio 50 Bs con IVA incluido: total = 50, no 50*1.16
+    expect(screen.queryByText(/IVA \(13% incluido\)/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/IVA incluido/)).not.toBeInTheDocument();
+    // Precio 50 Bs final: total = 50, sin desglose IVA
+    expect(await screen.findByText('Subtotal')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Cobrar/ }).textContent).not.toContain('58');
+  });
+
+  it('al cobrar envía comanda a cocina por defecto', async () => {
+    mocks.mockCrearVenta.mockResolvedValue({ venta_id: 'v-cocina' });
+    mocks.mockCrearPedido.mockResolvedValue({ id_pedido: 'p-cocina' });
+    renderVentas();
+    await userEvent.click(await screen.findByText('Helado Chocolate'));
+    expect(await screen.findByLabelText(/Enviar a cocina/i)).toBeChecked();
+    await userEvent.click(await screen.findByRole('button', { name: /Cobrar/ }));
+    await waitFor(() => {
+      expect(mocks.mockCrearVenta).toHaveBeenCalled();
+      expect(mocks.mockCrearPedido).toHaveBeenCalledWith(
+        expect.objectContaining({
+          items: [{ producto_id: 'prod-1', cantidad: 1 }],
+        })
+      );
+    });
+    expect(await screen.findByRole('button', { name: /Imprimir nota/i })).toBeInTheDocument();
   });
 });

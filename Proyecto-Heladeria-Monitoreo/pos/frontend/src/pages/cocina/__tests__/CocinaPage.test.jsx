@@ -7,11 +7,13 @@ import CocinaPage from '../CocinaPage.jsx';
 const mocks = vi.hoisted(() => ({
   mockListarPedidos: vi.fn(),
   mockActualizarEstado: vi.fn(),
+  mockVerPedido: vi.fn(),
 }));
 
 vi.mock('../../../services/pedidosService.js', () => ({
   listarPedidos: mocks.mockListarPedidos,
   actualizarEstadoPedido: mocks.mockActualizarEstado,
+  verPedido: mocks.mockVerPedido,
 }));
 
 vi.mock('../../../context/PermisosContext.jsx', () => ({
@@ -40,9 +42,13 @@ describe('CocinaPage (HU-04)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.mockListarPedidos.mockResolvedValue([
-      { id_pedido: 'p-1', mesa_numero: 5, estado: 'abierto', total: 30 },
-      { id_pedido: 'p-2', mesa_numero: 3, estado: 'en_preparacion', total: 20 },
+      { id_pedido: 'p-1', mesa_numero: 5, estado: 'abierto', total: 30, fecha: new Date().toISOString() },
+      { id_pedido: 'p-2', mesa_numero: 3, estado: 'en_preparacion', total: 20, fecha: new Date().toISOString() },
     ]);
+    mocks.mockVerPedido.mockResolvedValue({
+      id_pedido: 'p-1',
+      detalles: [{ producto_nombre: 'Cono Triple', cantidad: 2, precio_unitario: 25 }],
+    });
     mocks.mockActualizarEstado.mockImplementation(async (id, estado) => ({ id_pedido: id, estado }));
   });
 
@@ -71,5 +77,11 @@ describe('CocinaPage (HU-04)', () => {
     await screen.findByRole('heading', { name: /^Cocina$/ });
     expect(screen.queryByRole('button', { name: /Cobrar/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Anular/i })).not.toBeInTheDocument();
+  });
+
+  it('muestra detalle de productos y tiempo en espera', async () => {
+    renderCocina();
+    expect(await screen.findAllByText(/Cono Triple/)).not.toHaveLength(0);
+    expect(screen.getAllByText(/espera/i).length).toBeGreaterThan(0);
   });
 });

@@ -6,11 +6,13 @@ import Badge from '../../components/ui/Badge.jsx';
 import Button from '../../components/ui/Button.jsx';
 import Skeleton from '../../components/ui/Skeleton.jsx';
 import { formatCurrency, formatTime } from '../../utils/format.js';
-import { IVA_BOLIVIA } from '../../utils/constants.js';
 import { resolveProductoImagen } from '../../utils/productoImagen.js';
 import { productosService, categoriasService } from '../../services/productosService.js';
 import { usePromocionesVigentes, precioConDescuento } from '../../hooks/usePromocionesVigentes.js';
 import { crearVenta } from '../../services/ventasService.js';
+import { crearPedido } from '../../services/pedidosService.js';
+import TicketNotaVenta from '../../components/ventas/TicketNotaVenta.jsx';
+import ComandaCocina from '../../components/ventas/ComandaCocina.jsx';
 import { listarTurnos } from '../../services/cajaService.js';
 import { listarMetodosPago } from '../../services/ventasService.js';
 import ClienteSelector from '../../components/clientes/ClienteSelector.jsx';
@@ -49,6 +51,10 @@ export default function VentasPage() {
   const [cliente, setCliente] = useState(null);
   const [usarPuntos, setUsarPuntos] = useState(false);
   const [puntosCaje, setPuntosCaje] = useState(0);
+  const [enviarACocina, setEnviarACocina] = useState(true);
+  const [ultimaVenta, setUltimaVenta] = useState(null);
+  const [avisoCocina, setAvisoCocina] = useState(null);
+  const [objetivoPrint, setObjetivoPrint] = useState(null);
   const promoMap = usePromocionesVigentes();
 
   // El turno es automático: se detecta el abierto del cajero autenticado.
@@ -133,11 +139,9 @@ export default function VentasPage() {
     );
   };
 
-  // Precios con IVA 13% incluido (Bolivia). Total = subtotal para que
+  // Precios finales en Bs. Total = subtotal para que
   // cuadre con registrar_venta(): pagos == subtotal - descuento.
   const subtotal = ticket.reduce((sum, i) => sum + (Number(i.precio) || 0) * i.cantidad, 0);
-  const baseGravable = subtotal / (1 + IVA_BOLIVIA);
-  const iva = subtotal - baseGravable;
   const total = subtotal;
 
   const handleCobrar = async () => {
@@ -216,7 +220,30 @@ export default function VentasPage() {
       };
       payload.cliente_id = cliente?.id_cliente || undefined;
       payload.puntos_canje = usarPuntos ? Number(puntosCaje) || 0 : 0;
-      await crearVenta(payload);
+      const ventaCreada = await crearVenta(payload);
+      const ventaId = ventaCreada?.venta_id || ventaCreada?.id_venta || ventaCreada?.id || null;
+      // Snapshot para nota de venta / comanda (no depende del ticket que se limpia).
+      const snapshot = {
+        id: ventaId,
+        fecha: new Date().toISOString(),
+        cajero: turnoActivo?.cajero_email || null,
+        turno: turnoActivo.id_turno || turnoActivo.id,
+        cliente: cliente?.nombre || null,
+        items: ticket.map((i) => ({ nombre: i.nombre, cantidad: i.cantidad, precio: Number(i.precio) || 0 })),
+        total: montoAPagar,
+        metodoPago: pagos.length === 1 ? (metodosPago.find((m) => String(metodoIdDe(m)) === String(pagos[0].metodoPagoId))?.nombre || 'efectivo') : 'dividido',
+      };
+      setUltimaVenta(snapshot);
+      setAvisoCocina(null);
+      // Enviar a cocina: best-effort, no bloquea la venta (el pedido no descuenta stock,
+      // solo da visibilidad en CocinaPage). Si falla, la venta ya quedó registrada.
+      if (enviarACocina) {
+        try {
+          await crearPedido({ mesa_id: null, items });
+        } catch (e) {
+          setAvisoCocina('Venta cobrada, pero no llegó a cocina: ' + (e.message || 'reintenta desde Pedidos'));
+        }
+      }
       setTicket([]);
       setCliente(null);
       setUsarPuntos(false);
@@ -230,6 +257,17 @@ export default function VentasPage() {
     } finally {
       setCobrando(false);
     }
+  };
+
+  const imprimir = (objetivo) => {
+    setObjetivoPrint(objetivo);
+    setTimeout(() => {
+      try {
+        window.print();
+      } catch {
+        /* noop en tests */
+      }
+    }, 50);
   };
 
   if (loading) {
@@ -488,12 +526,8 @@ export default function VentasPage() {
               <div style={{ borderTop: '1px dotted #D4C4B0' }} className="pt-3 mb-3"></div>
 
               <div className="d-flex justify-content-between mb-1">
-                <span className="text-muted">Subtotal (IVA incluido)</span>
-                <span>{formatCurrency(subtotal)}</span>
-              </div>
-              <div className="d-flex justify-content-between mb-1">
-                <span className="text-muted">IVA (13% incluido)</span>
-                <span>{formatCurrency(iva)}</span>
+                <span className="text-muted">Subtotal</span>
+                <span style={{ fontFamily: 'var(--bs-font-numeric)', fontVariantNumeric: 'tabular-nums' }}>{formatCurrency(subtotal)}</span>
               </div>
               <div className="d-flex justify-content-between mb-3">
                 <span className="fw-bold">Total</span>
@@ -503,6 +537,18 @@ export default function VentasPage() {
               </div>
 
               <div className="d-grid gap-2">
+                <div className="form-check">
+                  <input
+                    className="form-check-input"
+                    type="checkbox"
+                    id="enviar-cocina"
+                    checked={enviarACocina}
+                    onChange={(e) => setEnviarACocina(e.target.checked)}
+                  />
+                  <label className="form-check-label" htmlFor="enviar-cocina">
+                    Enviar a cocina
+                  </label>
+                </div>
                 {metodosPago.length > 0 && (
                   <div className="d-flex flex-column gap-2">
                     <span className="text-muted small">
@@ -570,7 +616,34 @@ export default function VentasPage() {
               </div>
             </>
           )}
+          {avisoCocina && (
+            <div className="alert alert-warning mt-3" role="alert">
+              <i className="bi bi-exclamation-triangle-fill me-1"></i>
+              {avisoCocina}
+            </div>
+          )}
+          {ultimaVenta && ticket.length === 0 && (
+            <div className="mt-3 p-3 border rounded" aria-live="polite">
+              <div className="fw-semibold small mb-2">Última venta cobrada {formatCurrency(ultimaVenta.total)}</div>
+              <div className="d-flex gap-2 flex-wrap">
+                <button type="button" className="btn btn-sm btn-outline-primary" onClick={() => imprimir('nota')}>
+                  <i className="bi bi-printer me-1"></i>
+                  Imprimir nota
+                </button>
+                <button type="button" className="btn btn-sm btn-outline-secondary" onClick={() => imprimir('cocina')}>
+                  <i className="bi bi-fire me-1"></i>
+                  Imprimir comanda
+                </button>
+              </div>
+            </div>
+          )}
         </Card>
+      </div>
+      <div className="print-area" aria-hidden="true">
+        {objetivoPrint === 'nota' && ultimaVenta && <TicketNotaVenta venta={ultimaVenta} />}
+        {objetivoPrint === 'cocina' && ultimaVenta && (
+          <ComandaCocina pedido={{ items: ultimaVenta.items, fecha: ultimaVenta.fecha }} />
+        )}
       </div>
     </div>
   );
