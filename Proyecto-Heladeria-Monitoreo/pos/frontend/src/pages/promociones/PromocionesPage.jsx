@@ -103,10 +103,11 @@ export default function PromocionesPage() {
   const cancelar = () => { setEditando(null); setForm(empty); };
 
   const eliminar = async (p) => {
-    if (!window.confirm(`¿Eliminar "${p.nombre}"? Se marcará como inactiva.`)) return;
+    if (!window.confirm(`¿Eliminar "${p.nombre}"? Se quitará de la lista.`)) return;
     setAlert(null);
     try {
       await eliminarPromocion(p.id_promocion);
+      setPromos((prev) => prev.filter((x) => x.id_promocion !== p.id_promocion));
       setAlert({ tone: 'success', message: 'Promoción eliminada' });
       recargar();
     } catch (e) { setAlert({ tone: 'error', message: e.message }); }
