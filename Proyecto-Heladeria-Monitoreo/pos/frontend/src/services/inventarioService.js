@@ -16,4 +16,5 @@ export const proveedoresService = {
   create: (data) => api.post('/api/v1/suppliers', data),
   update: (id, data) => api.patch(`/api/v1/suppliers/${id}`, data),
   inactivate: (id) => api.remove(`/api/v1/suppliers/${id}`),
+  eliminarDefinitivo: (id) => api.remove(`/api/v1/suppliers/${id}?definitivo=true`),
 };

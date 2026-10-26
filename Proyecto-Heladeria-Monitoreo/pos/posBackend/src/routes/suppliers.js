@@ -86,6 +86,33 @@ router.delete('/:id', authorize('inventario.movimiento'), async (req, res, next)
     } catch (e) {
       return res.status(400).json({ error: 'Validation failed', details: e.errors ?? e.issues });
     }
+    const definitivo = req.query.definitivo === 'true';
+    if (definitivo) {
+      const [found] = await sequelize.query(`SELECT * FROM proveedor WHERE id_proveedor=:id`, { replacements: { id: req.params.id } });
+      if (!found[0]) return res.status(404).json({ error: 'Proveedor no encontrado' });
+      if (found[0].estado !== 'inactivo') {
+        return res.status(409).json({ error: 'Debe inactivar al proveedor antes de eliminarlo', code: 'PROVEEDOR_ACTIVO' });
+      }
+      const [countRows] = await sequelize.query(
+        `SELECT COUNT(*)::int AS total FROM movimiento_inventario WHERE proveedor_id=:id`,
+        { replacements: { id: req.params.id } }
+      );
+      const total = parseInt(countRows[0]?.total ?? countRows[0]?.count ?? 0, 10) || 0;
+      if (total > 0) {
+        return res.status(409).json({ error: 'No se puede eliminar: tiene movimientos de inventario asociados', code: 'PROVEEDOR_CON_HISTORIAL' });
+      }
+      try {
+        const [deleted] = await sequelize.query(`DELETE FROM proveedor WHERE id_proveedor=:id RETURNING *`, { replacements: { id: req.params.id } });
+        if (!deleted[0]) return res.status(404).json({ error: 'Proveedor no encontrado' });
+        await auditLog({ usuario_id: req.user.id, accion: 'proveedor.eliminar', entidad: 'proveedor', entidad_id: req.params.id, resultado: 'exito', detalle: { nombre: found[0].nombre }, ip: req.ip, userAgent: req.headers['user-agent'] });
+        return res.json(deleted[0]);
+      } catch (e) {
+        if (e?.code === '23503' || e?.original?.code === '23503' || e?.parent?.code === '23503') {
+          return res.status(409).json({ error: 'No se puede eliminar: tiene movimientos de inventario asociados', code: 'PROVEEDOR_CON_HISTORIAL' });
+        }
+        throw e;
+      }
+    }
     const [rows] = await sequelize.query(`UPDATE proveedor SET estado='inactivo' WHERE id_proveedor=:id RETURNING *`, { replacements: { id: req.params.id } });
     if (!rows[0]) return res.status(404).json({ error: 'Proveedor no encontrado' });
     await auditLog({ usuario_id: req.user.id, accion: 'proveedor.inactivar', entidad: 'proveedor', entidad_id: req.params.id, resultado: 'exito', detalle: {}, ip: req.ip, userAgent: req.headers['user-agent'] });
