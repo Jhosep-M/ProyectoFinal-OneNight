@@ -78,10 +78,13 @@ describe('HU-04 cocina: PATCH /orders/:id/estado', () => {
     expect(auditLog).toHaveBeenCalledWith(expect.objectContaining({ accion: 'pedido.estado' }));
   });
 
-  test('en_preparacion -> listo -> 200', async () => {
+  test('en_preparacion -> listo -> 200 y marca fecha_listo (mig 026)', async () => {
     mockTransicion('en_preparacion', 'listo');
     const res = await request(app).patch(`/api/v1/orders/${PEDIDO}/estado`).send({ estado: 'listo' });
     expect(res.status).toBe(200);
+    const updateCall = sequelize.query.mock.calls.find(([s]) => s.includes('UPDATE pedido SET estado'));
+    expect(updateCall).toBeDefined();
+    expect(updateCall[0]).toMatch(/fecha_listo/);
   });
 
   test('listo -> abierto es invalido -> 409 humano sin UPDATE', async () => {

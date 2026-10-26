@@ -11,5 +11,8 @@ module.exports = (sequelize) => sequelize.define('Pedido', {
   // para visibilidad en Cocina (ya cobrado, no se puede volver a cobrar).
   origen: { type: DataTypes.STRING, defaultValue: 'mesa', field: 'origen' },
   fecha: { type: DataTypes.DATE, defaultValue: DataTypes.NOW, field: 'fecha' },
+  // Migracion 026: congela el contador de Cocina. Se pone con NOW() al
+  // transicionar a 'listo' (routes/orders.js PATCH /:id/estado).
+  fecha_listo: { type: DataTypes.DATE, allowNull: true, field: 'fecha_listo' },
   fecha_cierre: { type: DataTypes.DATE, field: 'fecha_cierre' },
 }, { tableName: 'pedido', timestamps: false });

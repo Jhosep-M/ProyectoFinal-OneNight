@@ -15,9 +15,9 @@ describe('Modal', () => {
     expect(screen.getByText('Contenido')).toBeInTheDocument();
   });
 
-  it('role dialog y aria-modal', () => {
+  it('role alertdialog y aria-modal', () => {
     render(<Modal open title="T"><p>x</p></Modal>);
-    expect(screen.getByRole('dialog')).toHaveAttribute('aria-modal', 'true');
+    expect(screen.getByRole('alertdialog')).toHaveAttribute('aria-modal', 'true');
   });
 
   it('onClose con botón X', async () => {
@@ -30,7 +30,7 @@ describe('Modal', () => {
   it('onClose con backdrop', async () => {
     const onClose = vi.fn();
     render(<Modal open onClose={onClose} title="T"><p>x</p></Modal>);
-    await userEvent.click(document.querySelector('.modal-backdrop'));
+    await userEvent.click(document.querySelector('.sys-modal-backdrop'));
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 

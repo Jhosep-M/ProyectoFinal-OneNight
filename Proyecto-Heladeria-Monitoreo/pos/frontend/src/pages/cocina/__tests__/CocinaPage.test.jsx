@@ -72,6 +72,18 @@ describe('CocinaPage (HU-04)', () => {
     expect(await screen.findByText(/Mesa 7/)).toBeInTheDocument();
   });
 
+  it('congela el tiempo en listo con fecha_listo (no sigue creciendo)', async () => {
+    const base = new Date('2026-10-26T10:00:00Z').toISOString();
+    const listoEn = new Date('2026-10-26T10:12:00Z').toISOString();
+    mocks.mockListarPedidos.mockResolvedValue([
+      { id_pedido: 'p-listo', mesa_numero: null, estado: 'listo', total: 12, fecha: base, fecha_listo: listoEn },
+    ]);
+    mocks.mockVerPedido.mockResolvedValue({ id_pedido: 'p-listo', detalles: [] });
+    renderCocina();
+    // Tiempo congelado: tardó 12 min, no "X min en espera" creciente.
+    expect(await screen.findByText(/tardó 12 min/i)).toBeInTheDocument();
+  });
+
   it('no llama a ventas ni muestra cobrar', async () => {
     renderCocina();
     await screen.findByRole('heading', { name: /^Cocina$/ });

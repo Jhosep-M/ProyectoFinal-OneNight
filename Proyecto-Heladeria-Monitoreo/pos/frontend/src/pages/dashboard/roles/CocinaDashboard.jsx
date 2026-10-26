@@ -9,10 +9,26 @@ import { formatTime } from '../../../utils/format.js';
 
 const ACTIVOS = ['abierto', 'pendiente', 'en_preparacion', 'listo'];
 
+function fechaListoMs(p) {
+  const d = new Date(p.fecha_listo || null);
+  return Number.isNaN(d.getTime()) ? 0 : d.getTime();
+}
+
 function minutosEnEspera(p) {
   const f = new Date(p.creado_en || p.fecha || p.created_at);
   if (Number.isNaN(f.getTime())) return null;
+  // Congelado en listo (migracion 026): usa fecha_listo - creacion.
+  if (p.estado === 'listo') {
+    const fin = fechaListoMs(p);
+    if (fin) return Math.max(0, Math.round((fin - f.getTime()) / 60000));
+  }
   return Math.round((Date.now() - f.getTime()) / 60000);
+}
+
+function textoEspera(p) {
+  const min = minutosEnEspera(p);
+  if (min == null) return '—';
+  return p.estado === 'listo' && fechaListoMs(p) ? `tardó ${min} min` : `${min} min`;
 }
 
 export default function CocinaDashboard() {
@@ -45,6 +61,13 @@ export default function CocinaDashboard() {
 
   const avanzar = async (pedido, siguiente) => {
     setAvanzando(pedido.id_pedido);
+    // Optimista: congela el contador al instante (AGENTS §15.2).
+    if (siguiente === 'listo') {
+      const ahora = new Date().toISOString();
+      setPedidos((prev) => prev.map((x) => (x.id_pedido === pedido.id_pedido ? { ...x, estado: 'listo', fecha_listo: x.fecha_listo || ahora } : x)));
+    } else {
+      setPedidos((prev) => prev.map((x) => (x.id_pedido === pedido.id_pedido ? { ...x, estado: siguiente } : x)));
+    }
     try {
       await actualizarEstadoPedido(pedido.id_pedido, siguiente);
       await recargar();
@@ -64,7 +87,7 @@ export default function CocinaDashboard() {
     en_preparacion: activos.filter((p) => p.estado === 'en_preparacion').length,
     listo: activos.filter((p) => p.estado === 'listo').length,
   };
-  const retrasados = activos.filter((p) => (minutosEnEspera(p) ?? 0) > 20).length;
+  const retrasados = activos.filter((p) => p.estado !== 'listo' && (minutosEnEspera(p) ?? 0) > 20).length;
 
   return (
     <div className="d-flex flex-column gap-3">
@@ -115,7 +138,7 @@ export default function CocinaDashboard() {
                     <tr key={p.id_pedido}>
                       <td className="fw-semibold">{p.mesa_numero != null ? `Mesa ${p.mesa_numero}` : 'Mostrador'}</td>
                       <td><Badge variant={p.estado === 'listo' ? 'success' : min > 20 ? 'danger' : 'warning'}>{p.estado}</Badge></td>
-                      <td style={{ fontVariantNumeric: 'tabular-nums' }}>{min == null ? '—' : `${min} min`}</td>
+                      <td style={{ fontVariantNumeric: 'tabular-nums' }}>{textoEspera(p)}</td>
                       <td className="text-muted">{formatTime(p.creado_en || p.fecha || p.created_at)}</td>
                       <td className="text-end">
                         {['abierto', 'pendiente'].includes(p.estado) && (

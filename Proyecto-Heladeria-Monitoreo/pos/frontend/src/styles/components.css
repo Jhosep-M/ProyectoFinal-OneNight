@@ -294,37 +294,61 @@
   .alert-close:hover { opacity: 1; }
 }
 
-/* Modal */
-.modal-backdrop {
+/* Modal del sistema (sys-modal): cuadrado chico y centrado.
+   Se usa prefijo sys- para no chocar con Bootstrap (.modal es fixed full-screen).
+   Los aliases legacy .modal-* se conservan con reseteo anti-Bootstrap. */
+.modal-backdrop,
+.sys-modal-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.4);
+  background: rgba(44, 24, 16, 0.45);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: var(--z-modal-backdrop);
   padding: 20px;
 }
-.modal {
+.modal,
+.sys-modal {
+  position: relative;
+  top: auto;
+  left: auto;
+  transform: none;
   background: var(--surface);
+  border: none;
   border-radius: var(--radius);
+  outline: none;
   width: 100%;
-  max-width: 480px;
-  max-height: 90vh;
+  max-width: 400px;
+  max-height: min(90vh, 480px);
+  height: auto;
+  margin: auto;
   display: flex;
   flex-direction: column;
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.25);
   z-index: var(--z-modal);
+  font-family: var(--bs-font-sans-serif);
 }
-.modal-header {
+.sys-modal--md,
+.modal--md { max-width: 480px; }
+.sys-modal--lg,
+.modal--lg { max-width: 640px; }
+@media (max-width: 480px) {
+  .modal,
+  .sys-modal { max-width: calc(100vw - 40px); }
+}
+.modal-header,
+.sys-modal-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 16px 20px;
   border-bottom: 1px solid var(--border);
 }
-.modal-header h3 { margin: 0; }
-.modal-close {
+.modal-header h3,
+.sys-modal-header h3 { margin: 0; font-family: var(--bs-font-serif); }
+.modal-close,
+.sys-modal-close {
   background: none;
   border: none;
   font-size: 1.5rem;
@@ -334,10 +358,13 @@
   padding: 0;
 }
 @media (hover: hover) and (pointer: fine) {
-  .modal-close:hover { color: var(--ink); }
+  .modal-close:hover,
+  .sys-modal-close:hover { color: var(--ink); }
 }
-.modal-body { padding: 20px; overflow-y: auto; }
-.modal-footer {
+.modal-body,
+.sys-modal-body { padding: 20px; overflow-y: auto; }
+.modal-footer,
+.sys-modal-footer {
   display: flex;
   justify-content: flex-end;
   gap: 8px;
@@ -548,8 +575,7 @@
 .numeric { text-align: right; font-variant-numeric: tabular-nums; }
 th.numeric { text-align: right; }
 
-/* Modal grande para detalle con tablas */
-.modal--lg { max-width: 640px; }
+/* (tamaños .modal--md/.modal--lg definidos junto a .sys-modal arriba) */
 
 /* Solo lectura para lectores de pantalla */
 .sr-only {

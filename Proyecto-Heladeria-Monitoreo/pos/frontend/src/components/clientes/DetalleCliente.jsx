@@ -17,13 +17,13 @@ export default function DetalleCliente({ detalle, ventas = [], onClose }) {
   const puntos = Math.trunc(Number(detalle?.puntos_fidelidad ?? 0));
 
   return (
-    <div className="modal-backdrop" onClick={onClose}>
-      <div className="modal modal--lg" role="dialog" aria-modal="true" aria-label={`Detalle: ${detalle?.nombre}`} onClick={(e) => e.stopPropagation()}>
-        <div className="modal-header">
+    <div className="sys-modal-backdrop" onClick={onClose}>
+      <div className="sys-modal sys-modal--lg" role="alertdialog" aria-modal="true" aria-label={`Detalle: ${detalle?.nombre}`} onClick={(e) => e.stopPropagation()}>
+        <div className="sys-modal-header">
           <h3>Detalle: {detalle?.nombre}</h3>
-          <button type="button" className="modal-close" onClick={onClose} aria-label="Cerrar">×</button>
+          <button type="button" className="sys-modal-close" onClick={onClose} aria-label="Cerrar">×</button>
         </div>
-        <div className="modal-body">
+        <div className="sys-modal-body">
           <div className="kpi-grid">
             <div className="kpi">
               <div className="kpi-label">Puntos</div>
@@ -87,7 +87,7 @@ export default function DetalleCliente({ detalle, ventas = [], onClose }) {
             )
           )}
         </div>
-        <div className="modal-footer">
+        <div className="sys-modal-footer">
           <Button size="sm" variant="secondary" onClick={onClose}>Cerrar</Button>
         </div>
       </div>

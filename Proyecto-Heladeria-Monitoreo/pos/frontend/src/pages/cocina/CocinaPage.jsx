@@ -22,10 +22,28 @@ const horaMs = (p) => {
   return Number.isNaN(d.getTime()) ? 0 : d.getTime();
 };
 
+// Migracion 026: fecha_listo congela el contador. Sin marca (datos viejos),
+// se usa NOW() como antes hasta que el pedido se cobre y salga de la lista.
+const fechaListoMs = (p) => {
+  const raw = p.fecha_listo;
+  if (!raw) return 0;
+  const d = new Date(raw);
+  return Number.isNaN(d.getTime()) ? 0 : d.getTime();
+};
+
+const esListo = (p) => p?.estado === 'listo';
+
 const minutosEspera = (p) => {
   const ms = horaMs(p);
   if (!ms) return 0;
-  return Math.max(0, Math.round((Date.now() - ms) / 60000));
+  const fin = esListo(p) ? fechaListoMs(p) : 0;
+  const end = fin || Date.now();
+  return Math.max(0, Math.round((end - ms) / 60000));
+};
+
+const textoEspera = (p) => {
+  const espera = minutosEspera(p);
+  return esListo(p) && fechaListoMs(p) ? `tardó ${espera} min` : `${espera} min en espera`;
 };
 
 export default function CocinaPage() {
@@ -40,8 +58,9 @@ export default function CocinaPage() {
     try {
       const data = await listarPedidos();
       const list = Array.isArray(data) ? data : [];
-      // Más viejos primero (prioridad cocina), activos primero.
-      list.sort((a, b) => horaMs(a) - horaMs(b));
+      // Pendientes primero (prioridad cocina), listos al final; dentro de
+      // cada grupo, más viejos primero.
+      list.sort((a, b) => (esListo(a) ? 1 : 0) - (esListo(b) ? 1 : 0) || horaMs(a) - horaMs(b));
       setPedidos(list);
       // Detalle de productos por pedido (best-effort, no bloquea la lista).
       const activos = list.filter((p) => ACTIVOS.includes(p.estado)).slice(0, 20);
@@ -75,10 +94,20 @@ export default function CocinaPage() {
   useAutoRefresh(recargar, { intervalMs: 15000, onFocus: true });
 
   const activos = (Array.isArray(pedidos) ? pedidos : []).filter((p) => ACTIVOS.includes(p.estado));
+  const pendientes = activos.filter((p) => !esListo(p));
+  const listos = activos.filter(esListo);
 
   const avanzar = async (pedido, siguiente) => {
     setAlert(null);
     setAvanzando(pedido.id_pedido);
+    // Actualización optimista (AGENTS §15.2): congela el contador de inmediato
+    // marcando fecha_listo local; luego se revalida con el backend.
+    if (siguiente === 'listo') {
+      const ahora = new Date().toISOString();
+      setPedidos((prev) => prev.map((x) => (x.id_pedido === pedido.id_pedido ? { ...x, estado: 'listo', fecha_listo: x.fecha_listo || ahora } : x)));
+    } else {
+      setPedidos((prev) => prev.map((x) => (x.id_pedido === pedido.id_pedido ? { ...x, estado: siguiente } : x)));
+    }
     try {
       await actualizarEstadoPedido(pedido.id_pedido, siguiente);
       await recargar();
@@ -103,10 +132,10 @@ export default function CocinaPage() {
   return (
     <div>
       <h1>Cocina</h1>
-      <p className="text-muted">Solo pendientes: abierto → en preparación → listo. Sin ventas ni caja.</p>
+      <p className="text-muted">Solo pendientes: abierto → en preparación → listo. Sin ventas ni caja. Los listos quedan fijos hasta que se cobren en Pedidos/Caja.</p>
       {alert && <Alert tone={alert.tone} message={alert.message} onClose={() => setAlert(null)} />}
 
-      <Card title={`En cocina (${activos.length})`} actions={<Button variant="secondary" size="sm" onClick={recargar}>Recargar</Button>}>
+      <Card title={`En cocina (${activos.length}) · ${pendientes.length} pendientes · ${listos.length} listos`} actions={<Button variant="secondary" size="sm" onClick={recargar}>Recargar</Button>}>
         {loading ? (
           <p>Cargando…</p>
         ) : activos.length === 0 ? (
@@ -121,6 +150,7 @@ export default function CocinaPage() {
               {activos.map((p) => {
                 const det = detalles[p.id_pedido] || p.detalles || [];
                 const espera = minutosEspera(p);
+                const listo = esListo(p);
                 const urgente = espera >= 10 && (p.estado === 'abierto' || p.estado === 'pendiente');
                 return (
                 <tr key={p.id_pedido}>
@@ -134,11 +164,11 @@ export default function CocinaPage() {
                   </td>
                   <td>
                     <span style={urgente ? { color: 'var(--error)', fontWeight: 700 } : undefined}>
-                      {espera} min en espera
+                      {textoEspera(p)}
                     </span>
                   </td>
                   <td style={{ fontFamily: 'var(--bs-font-numeric)', fontVariantNumeric: 'tabular-nums' }}>{fmtMoney(p.total)}</td>
-                  <td><Badge tone={urgente ? 'error' : 'warning'}>{p.estado}</Badge></td>
+                  <td><Badge tone={listo ? 'success' : urgente ? 'error' : 'warning'}>{p.estado}</Badge></td>
                   <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
                     <span style={{ display: 'inline-flex', gap: 6 }}>
                     {(p.estado === 'abierto' || p.estado === 'pendiente') && (
