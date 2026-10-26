@@ -96,4 +96,24 @@ describe('POST /api/v1/orders/:id/cobrar', () => {
     expect(res.status).toBe(400);
     expect(sequelize.query).not.toHaveBeenCalled();
   });
+
+  test('registrar_venta P0001 stock insuficiente -> 400 humano y sin cerrar pedido', async () => {
+    sequelize.query.mockImplementation(async (sql) => {
+      if (sql.includes('FROM pedido')) return [[{ id_pedido: PEDIDO, estado: 'abierto' }]];
+      if (sql.includes('FROM detalle_pedido')) {
+        return [[{ producto_id: PROD, cantidad: 2, precio_unitario: 10 }]];
+      }
+      if (sql.includes('registrar_venta')) {
+        throw Object.assign(new Error('STOCK_INSUFICIENTE dddddddd-dddd-4ddd-8ddd-dddddddddddd'), { code: 'P0001' });
+      }
+      return [[]];
+    });
+    const res = await request(app).post(`/api/v1/orders/${PEDIDO}/cobrar`).send({
+      turno_id: TURNO,
+      pagos: [{ metodo_pago_id: METODO, monto: 20 }],
+    });
+    expect(res.status).toBe(400);
+    expect(res.body.error).toBe('Stock insuficiente para completar la operación');
+    expect(sequelize.query.mock.calls.some(([s]) => s.includes("estado='cerrado'"))).toBe(false);
+  });
 });
