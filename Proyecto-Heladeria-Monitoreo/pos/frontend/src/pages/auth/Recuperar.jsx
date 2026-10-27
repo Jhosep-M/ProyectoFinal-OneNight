@@ -8,7 +8,7 @@ import { useAuth } from '../../context/AuthContext.jsx';
 
 // Cambio de contraseña con código de verificación (self-service).
 // Mensajes genéricos anti-enumeración: no revelar si el email existe.
-const MENSAJE_CODIGO = 'Si existe una cuenta con ese correo, te enviamos un código de 6 dígitos.';
+const MENSAJE_CODIGO = 'Si existe una cuenta con ese correo, te enviamos un código de verificación.';
 
 export default function RecuperarPage() {
   const [paso, setPaso] = useState(1);
@@ -40,6 +40,11 @@ export default function RecuperarPage() {
   const validarCodigo = async (e) => {
     e.preventDefault();
     setError('');
+    // Supabase emite códigos de 6 a 8 dígitos según configuración; no anclar longitud.
+    if (!/^\d{6,8}$/.test(codigo)) {
+      setError('Ingresa el código completo que llegó a tu correo (6 a 8 dígitos).');
+      return;
+    }
     setLoading(true);
     try {
       await verificarCodigo(email, codigo);
@@ -120,12 +125,12 @@ export default function RecuperarPage() {
             <form onSubmit={validarCodigo}>
               <Input
                 label="Código de verificación"
-                placeholder="6 dígitos"
+                placeholder="Código del correo"
                 value={codigo}
-                onChange={(e) => setCodigo(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                onChange={(e) => setCodigo(e.target.value.replace(/\D/g, '').slice(0, 8))}
                 required
                 minLength={6}
-                maxLength={6}
+                maxLength={8}
               />
               <Button type="submit" variant="primary" size="lg" className="w-100" disabled={loading}>
                 {loading ? 'Verificando...' : 'Verificar código'}
