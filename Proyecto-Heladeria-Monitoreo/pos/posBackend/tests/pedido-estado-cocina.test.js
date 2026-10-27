@@ -118,4 +118,20 @@ describe('HU-04 cocina: PATCH /orders/:id/estado', () => {
     const res = await request(app).get('/api/v1/sales');
     expect(res.status).toBe(403);
   });
+
+  test('GET /orders auto-repara listos sin fecha_listo (mig 027)', async () => {
+    sequelize.query.mockImplementation(async (sql) => {
+      if (sql.includes("SET fecha_listo=NOW()") && sql.includes("estado='listo'")) {
+        return [[]];
+      }
+      if (sql.includes('FROM pedido')) {
+        return [[{ id_pedido: PEDIDO, estado: 'listo', fecha_listo: new Date().toISOString() }]];
+      }
+      return [[]];
+    });
+    const res = await request(app).get('/api/v1/orders');
+    expect(res.status).toBe(200);
+    const updateCall = sequelize.query.mock.calls.find(([s]) => s.includes("SET fecha_listo=NOW()"));
+    expect(updateCall).toBeDefined();
+  });
 });

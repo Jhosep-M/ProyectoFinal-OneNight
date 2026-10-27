@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import Card from '../../../components/ui/Card.jsx';
 import Badge from '../../../components/ui/Badge.jsx';
@@ -9,26 +9,51 @@ import { formatTime } from '../../../utils/format.js';
 
 const ACTIVOS = ['abierto', 'pendiente', 'en_preparacion', 'listo'];
 
-function fechaListoMs(p) {
-  const d = new Date(p.fecha_listo || null);
+function horaMs(p) {
+  const raw = p.creado_en || p.fecha || p.created_at;
+  if (!raw) return 0;
+  const d = new Date(raw);
   return Number.isNaN(d.getTime()) ? 0 : d.getTime();
 }
 
-function minutosEnEspera(p) {
-  const f = new Date(p.creado_en || p.fecha || p.created_at);
-  if (Number.isNaN(f.getTime())) return null;
-  // Congelado en listo (migracion 026): usa fecha_listo - creacion.
-  if (p.estado === 'listo') {
-    const fin = fechaListoMs(p);
-    if (fin) return Math.max(0, Math.round((fin - f.getTime()) / 60000));
-  }
-  return Math.round((Date.now() - f.getTime()) / 60000);
+function fechaListoMs(p) {
+  const raw = p.fecha_listo;
+  if (!raw) return 0;
+  const d = new Date(raw);
+  return Number.isNaN(d.getTime()) ? 0 : d.getTime();
 }
 
-function textoEspera(p) {
-  const min = minutosEnEspera(p);
-  if (min == null) return '—';
-  return p.estado === 'listo' && fechaListoMs(p) ? `tardó ${min} min` : `${min} min`;
+const esListo = (p) => p?.estado === 'listo';
+
+// Congelado local (defensa mig 027): si el backend devuelve listo sin
+// fecha_listo (dato huérfano), se congela a la primera hora vista para que
+// el polling de 10s no lo haga crecer. No usa Date.now() en cada render.
+function useCongelados() {
+  const ref = useRef(new Map());
+  const congelar = (p) => {
+    if (!esListo(p)) return 0;
+    const srv = fechaListoMs(p);
+    if (srv) return srv;
+    const id = p.id_pedido;
+    if (!ref.current.has(id)) ref.current.set(id, Date.now());
+    return ref.current.get(id);
+  };
+  return congelar;
+}
+
+function minutosEnEsperaConFin(p, finMs) {
+  const ms = horaMs(p);
+  if (!ms) return 0;
+  const fin = esListo(p) ? (finMs || fechaListoMs(p) || 0) : 0;
+  const end = fin || Date.now();
+  return Math.max(0, Math.round((end - ms) / 60000));
+}
+
+function textoEsperaConFin(p, finMs) {
+  if (!horaMs(p)) return '—';
+  const espera = minutosEnEsperaConFin(p, finMs);
+  // Listo SIEMPRE dice "tardó", incluso huérfano (fin local). Nunca "en espera".
+  return esListo(p) ? `tardó ${espera} min` : `${espera} min`;
 }
 
 export default function CocinaDashboard() {
@@ -36,10 +61,19 @@ export default function CocinaDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [avanzando, setAvanzando] = useState(null);
+  const congelar = useCongelados();
 
   const recargar = useCallback(async () => {
     const data = await listarPedidos();
-    setPedidos(Array.isArray(data) ? data : []);
+    const list = Array.isArray(data) ? data : [];
+    setPedidos((prev) => {
+      const prevById = new Map(prev.map((x) => [x.id_pedido, x]));
+      return list.map((p) => {
+        const old = prevById.get(p.id_pedido);
+        if (old && p.estado === 'listo' && !p.fecha_listo && old.fecha_listo) return { ...p, fecha_listo: old.fecha_listo };
+        return p;
+      });
+    });
   }, []);
 
   useEffect(() => {
@@ -87,7 +121,7 @@ export default function CocinaDashboard() {
     en_preparacion: activos.filter((p) => p.estado === 'en_preparacion').length,
     listo: activos.filter((p) => p.estado === 'listo').length,
   };
-  const retrasados = activos.filter((p) => p.estado !== 'listo' && (minutosEnEspera(p) ?? 0) > 20).length;
+  const retrasados = activos.filter((p) => p.estado !== 'listo' && (minutosEnEsperaConFin(p, 0) ?? 0) > 20).length;
 
   return (
     <div className="d-flex flex-column gap-3">
@@ -133,12 +167,13 @@ export default function CocinaDashboard() {
               <thead><tr><th>Mesa</th><th>Estado</th><th>Espera</th><th>Hora</th><th className="text-end">Acción</th></tr></thead>
               <tbody>
                 {activos.slice(0, 12).map((p) => {
-                  const min = minutosEnEspera(p);
+                  const finCongelado = congelar(p);
+                  const min = minutosEnEsperaConFin(p, finCongelado);
                   return (
                     <tr key={p.id_pedido}>
                       <td className="fw-semibold">{p.mesa_numero != null ? `Mesa ${p.mesa_numero}` : 'Mostrador'}</td>
                       <td><Badge variant={p.estado === 'listo' ? 'success' : min > 20 ? 'danger' : 'warning'}>{p.estado}</Badge></td>
-                      <td style={{ fontVariantNumeric: 'tabular-nums' }}>{textoEspera(p)}</td>
+                      <td style={{ fontVariantNumeric: 'tabular-nums' }}>{textoEsperaConFin(p, finCongelado)}</td>
                       <td className="text-muted">{formatTime(p.creado_en || p.fecha || p.created_at)}</td>
                       <td className="text-end">
                         {['abierto', 'pendiente'].includes(p.estado) && (
