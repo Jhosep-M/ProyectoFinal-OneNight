@@ -22,6 +22,9 @@ export function useAutoRefresh(recargar, { intervalMs = 15000, onFocus = true, e
 
     const correr = async () => {
       if (!vivo || enVueloRef.current) return;
+      // Pestaña oculta: no gastar requests (causa de 429 multi-pestaña).
+      // Al volver a visible, el evento focus/visibility lo revalida.
+      if (typeof document !== 'undefined' && document.hidden) return;
       enVueloRef.current = true;
       try {
         await recargarRef.current();
@@ -39,7 +42,12 @@ export function useAutoRefresh(recargar, { intervalMs = 15000, onFocus = true, e
 
     let onVis = null;
     if (onFocus) {
-      onVis = () => correr();
+      onVis = () => {
+        // Solo revalida al VOLVER a visible (evita doble disparo focus+visible
+        // y evita polls de pestañas en segundo plano).
+        if (typeof document !== 'undefined' && document.hidden) return;
+        correr();
+      };
       window.addEventListener('focus', onVis);
       document.addEventListener('visibilitychange', onVis);
     }

@@ -57,6 +57,30 @@ router.post('/', authorize('mesa.gestionar'), async (req, res, next) => {
     if (!Number.isInteger(numero) || numero <= 0) {
       return res.status(400).json({ error: 'numero debe ser entero > 0' });
     }
+    // Opción A: el frontend calcula max+1 solo con visibles (el GET
+    // filtra inactivas), así que el número pedido puede estar ocupado por
+    // una inactiva. En ese caso se reactiva en vez de responder 409.
+    // Si lo ocupa una mesa activa, 409 sin intentar el INSERT.
+    // El catch 23505 se conserva como red de seguridad ante carreras.
+    const [existente] = await sequelize.query(
+      `SELECT * FROM mesa WHERE numero=:numero`,
+      { replacements: { numero } }
+    );
+    if (existente[0]) {
+      if (existente[0].estado === 'inactiva') {
+        const [rows] = await sequelize.query(
+          `UPDATE mesa SET estado='libre' WHERE id_mesa=:id RETURNING *`,
+          { replacements: { id: existente[0].id_mesa } }
+        );
+        await auditLog({
+          usuario_id: req.user.id, accion: 'mesa.reactivar', entidad: 'mesa',
+          entidad_id: rows[0].id_mesa, resultado: 'exito', detalle: { numero },
+          ip: req.ip, userAgent: req.headers['user-agent'],
+        });
+        return res.json(rows[0]);
+      }
+      return res.status(409).json({ error: 'Número de mesa duplicado' });
+    }
     const [rows] = await sequelize.query(
       `INSERT INTO mesa (numero, estado) VALUES (:numero, 'libre') RETURNING *`,
       { replacements: { numero } }

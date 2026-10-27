@@ -170,13 +170,31 @@ export default function MesasPage() {
     setCreando(true);
     try {
       // El backend exige numero entero único: usar max+1, no "Mesa 01".
+      // Si la lista está desactualizada (otra pestaña/cajero creó una mesa
+      // o el número lo ocupa una inactiva que el backend aún no reactivó),
+      // el POST responde 409: reintentar con los siguientes números.
       const maxNumero = mesas.reduce((max, m) => Math.max(max, Number(m.numero) || 0), 0);
-      const nueva = await crearMesa(maxNumero + 1);
-      if (nueva) {
-        setMesas((prev) => [...prev, normMesa(nueva)]);
+      let nueva = null;
+      let ultimoError = null;
+      for (let intento = 0; intento < 3; intento += 1) {
+        try {
+          nueva = await crearMesa(maxNumero + 1 + intento);
+          ultimoError = null;
+          break;
+        } catch (err) {
+          ultimoError = err;
+          if (err?.status !== 409) break;
+        }
       }
+      if (!nueva) throw ultimoError;
+      setMesas((prev) => [...prev, normMesa(nueva)]);
+      setAccionError(null);
     } catch (err) {
-      setAccionError(err?.message || 'No se pudo crear la mesa (¿número duplicado?)');
+      if (err?.status === 409) {
+        setAccionError('Ese número de mesa ya está en uso (quizá por una mesa eliminada). Recarga la página e inténtalo de nuevo.');
+      } else {
+        setAccionError(err?.message || 'No se pudo crear la mesa');
+      }
     } finally {
       setCreando(false);
     }

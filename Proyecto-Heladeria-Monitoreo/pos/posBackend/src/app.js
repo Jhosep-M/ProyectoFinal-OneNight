@@ -3,7 +3,7 @@ const helmet = require('helmet');
 const cors = require('cors');
 const pinoHttp = require('pino-http');
 const { env } = require('./config/env');
-const { apiLimiter, authLimiter } = require('./middlewares/rateLimit');
+const { readLimiter, writeLimiter, authLimiter } = require('./middlewares/rateLimit');
 const { requestId } = require('./middlewares/requestId');
 const { errorHandler, notFound } = require('./middlewares/errorHandler');
 const { healthRouter } = require('./routes/health');
@@ -44,7 +44,10 @@ function createApp() {
   app.use(express.urlencoded({ extended: true }));
   app.use(requestId);
   app.use(pinoHttp());
-  app.use('/api', apiLimiter);
+  // /health queda fuera del rate limit (K8s/Render lo golpean seguido).
+  // GET idempotentes usan readLimiter (generoso, polling multi-pestaña);
+  // mutaciones usan writeLimiter (estricto). Cada uno hace skip del otro.
+  app.use('/api', readLimiter, writeLimiter);
 
   app.use('/health', healthRouter);
   app.use('/api/v1/sales', salesRouter);

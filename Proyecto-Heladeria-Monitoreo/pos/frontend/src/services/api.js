@@ -22,7 +22,9 @@ function joinUrl(path) {
   return `${API_URL}${clean.startsWith('/') ? clean : `/${clean}`}`;
 }
 
-export async function apiFetch(path, { method = 'GET', body } = {}) {
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+export async function apiFetch(path, { method = 'GET', body, retry = true } = {}) {
   const { data } = await supabase.auth.getSession();
   const token = data.session?.access_token;
   const res = await fetch(joinUrl(path), {
@@ -34,13 +36,38 @@ export async function apiFetch(path, { method = 'GET', body } = {}) {
     ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
   });
   const text = await res.text();
-  const payload = text ? JSON.parse(text) : null;
+  let payload = null;
+  try {
+    payload = text ? JSON.parse(text) : null;
+  } catch {
+    payload = null;
+  }
+  if (res.status === 429 && retry) {
+    // 429 con varias pestañas: reintento suave una vez si el Retry-After es corto.
+    // Si es largo (>30s), no bloqueamos la UI esperando: lanzamos error amable
+    // y el polling silencioso lo reintentará en el siguiente ciclo.
+    const headerRetry = Number(res.headers?.get?.('Retry-After'));
+    const bodyRetry = Number(payload?.retryAfterSec);
+    const retryAfterSec = Number.isFinite(headerRetry) && headerRetry > 0
+      ? headerRetry
+      : Number.isFinite(bodyRetry) && bodyRetry > 0 ? bodyRetry : 5;
+    if (retryAfterSec <= 30) {
+      await sleep(Math.min(Math.max(retryAfterSec, 1), 30) * 1000);
+      return apiFetch(path, { method, body, retry: false });
+    }
+  }
   if (!res.ok) {
-    const err = new Error(payload?.error || `HTTP ${res.status}`);
+    const esRateLimit = res.status === 429;
+    const err = new Error(
+      esRateLimit
+        ? 'Demasiadas peticiones al servidor. Se reintentará solo en unos segundos (cierra pestañas duplicadas si persiste).'
+        : payload?.error || `HTTP ${res.status}`
+    );
     // Conserva status y payload para que la UI reaccione (p.ej. 422 MOTIVO_REQUERIDO).
     err.status = res.status;
-    err.code = payload?.code;
+    err.code = payload?.code || (esRateLimit ? 'RATE_LIMITED' : undefined);
     err.payload = payload;
+    err.retryAfterSec = Number(payload?.retryAfterSec) || null;
     throw err;
   }
   return payload;

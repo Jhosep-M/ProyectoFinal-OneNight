@@ -27,7 +27,7 @@ const VALID = {
 };
 
 describe('rate limit en /api/v1/integrations/alerts', () => {
-  test('request 21 en ventana -> 429', async () => {
+  test('request 21 en ventana -> 429 con code RATE_LIMITED', async () => {
     sequelize.query.mockResolvedValue([[]]);
     let last;
     for (let i = 0; i < 21; i++) {
@@ -37,6 +37,27 @@ describe('rate limit en /api/v1/integrations/alerts', () => {
         .send(VALID);
     }
     expect(last.status).toBe(429);
-    expect(last.body).toEqual({ error: 'Too many auth attempts' });
+    expect(last.body.error).toBe('Too many auth attempts');
+    expect(last.body.code).toBe('RATE_LIMITED');
+    expect(last.headers['retry-after']).toBeDefined();
+  }, 30000);
+});
+
+describe('rate limit diferenciado GET vs POST', () => {
+  test('GETs no consumen el bucket de escritura: 30 GET /api/v1/categories no dan 429', async () => {
+    sequelize.query.mockResolvedValue([[]]);
+    let last;
+    for (let i = 0; i < 30; i++) {
+      last = await request(app).get('/api/v1/categories');
+    }
+    // Puede ser 200/401/403 según auth, pero nunca 429 con el readLimiter generoso.
+    expect(last.status).not.toBe(429);
+  }, 30000);
+
+  test('/health queda fuera del rate limit', async () => {
+    sequelize.query.mockResolvedValue([[1]]);
+    const r = await request(app).get('/health');
+    expect([200, 503]).toContain(r.status);
+    expect(r.status).not.toBe(429);
   }, 30000);
 });
