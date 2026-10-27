@@ -4,22 +4,40 @@ import { useAuth } from './AuthContext.jsx';
 
 const PermisosCtx = createContext(null);
 
+// Cache 5min por token: evita GET /me/permissions en cada remontaje.
+// Era una fuente constante de 429 junto a /me/rol.
+const PERMISOS_TTL_MS = 5 * 60 * 1000;
+let permisosCache = { token: null, data: [], ts: 0 };
+
 export function PermisosProvider({ children }) {
   const { session, loading: authLoading } = useAuth();
   const [permisos, setPermisos] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  const recargar = useCallback(async () => {
+  const recargar = useCallback(async ({ force = false } = {}) => {
     // Sin sesión aún (login en curso o logged out): no pedir permisos sin JWT.
     if (!session?.access_token) {
       setPermisos([]);
       setLoading(false);
       return;
     }
+    const token = session.access_token;
+    if (
+      !force &&
+      permisosCache.token === token &&
+      Date.now() - permisosCache.ts < PERMISOS_TTL_MS &&
+      permisosCache.data.length > 0
+    ) {
+      setPermisos(permisosCache.data);
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     try {
       const r = await apiFetch('/me/permissions');
-      setPermisos(r.permisos || []);
+      const lista = r.permisos || [];
+      permisosCache = { token, data: lista, ts: Date.now() };
+      setPermisos(lista);
     } catch {
       setPermisos([]);
     } finally {

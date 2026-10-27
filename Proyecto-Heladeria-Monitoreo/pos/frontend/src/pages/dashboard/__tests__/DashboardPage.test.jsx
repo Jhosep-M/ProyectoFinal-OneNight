@@ -63,9 +63,18 @@ describe('DashboardPage', () => {
   });
 
   it('muestra error cuando carga falla', async () => {
+    // Error global solo si AMBAS fuentes críticas fallan (tolerante a 429 parcial).
     mocks.mockListarVentas.mockRejectedValueOnce(new Error('Error de red'));
+    mocks.mockListarMesas.mockRejectedValueOnce(new Error('Error de red'));
     renderDashboard();
     expect(await screen.findByText(/No se pudieron cargar los datos/)).toBeInTheDocument();
+  });
+
+  it('muestra datos parciales si solo una fuente falla (tolerante a 429)', async () => {
+    mocks.mockListarVentas.mockRejectedValueOnce(new Error('429'));
+    // mesas resuelve desde beforeEach -> no debe mostrar error global
+    renderDashboard();
+    expect(await screen.findByText('Ventas del día')).toBeInTheDocument();
   });
 
   it('recarga al recuperar foco (refresco tras cobrar)', async () => {

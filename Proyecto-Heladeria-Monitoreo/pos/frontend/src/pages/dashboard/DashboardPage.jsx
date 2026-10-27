@@ -5,6 +5,7 @@ import Badge from '../../components/ui/Badge.jsx';
 import Skeleton from '../../components/ui/Skeleton.jsx';
 import EmptyState from '../../components/ui/EmptyState.jsx';
 import { formatCurrency, formatTime } from '../../utils/format.js';
+import { useAutoRefresh } from '../../hooks/useAutoRefresh.js';
 import { listarVentas } from '../../services/ventasService.js';
 import { listarMesas } from '../../services/mesasService.js';
 import { listarAlertasMonitoreo } from '../../services/alertasService.js';
@@ -53,15 +54,23 @@ export default function DashboardPage() {
 
   // Recarga silenciosa reutilizable: la usa el intervalo y el focus para
   // reflejar ventas/mesas nuevas al cobrar una cuenta sin recargar la pagina.
+  // Tolerante a 429: cada fuente falla a [] y el error global se limpia
+  // en el siguiente ciclo exitoso (antes quedaba pegado).
   const recargar = useCallback(async () => {
     const [ventasData, mesasData, alertasData] = await Promise.all([
-      listarVentas(),
-      listarMesas(),
+      listarVentas().catch(() => null),
+      listarMesas().catch(() => null),
       listarAlertasMonitoreo({ limit: 10 }).catch(() => ({ data: [] })),
     ]);
+    // Si ambas fuentes críticas fallaron (p.ej. 429), propagar para que el
+    // ciclo inicial muestre el error; los ciclos de polling lo reintentan.
+    if (ventasData === null && mesasData === null) {
+      throw new Error('dashboard recargar fallido');
+    }
     setVentas((ventasData || []).map(normVenta));
     setMesas(mesasData || []);
     setAlertas(alertasData?.data || []);
+    setError(null);
   }, []);
 
   useEffect(() => {
@@ -78,16 +87,14 @@ export default function DashboardPage() {
       }
     };
     fetchData();
-    // Auto-refresh: intervalo (igual que Caja) + al recuperar foco (igual que Ventas).
-    const id = setInterval(() => { recargar().catch(() => {}); }, 15000);
-    const onFocus = () => { recargar().catch(() => {}); };
-    window.addEventListener('focus', onFocus);
     return () => {
       activo = false;
-      clearInterval(id);
-      window.removeEventListener('focus', onFocus);
     };
   }, [recargar]);
+  // Polling operativo silencioso 30s (vista de ventas) + revalidación en
+  // focus/visibility con guarda de pestaña oculta (AGENTS 15.2). Antes era un
+  // setInterval crudo de 15s sin guarda, causa directa de 429 multi-pestaña.
+  useAutoRefresh(recargar, { intervalMs: 30000, onFocus: true });
 
   const totalVentas = ventas
     .filter((v) => v.estado !== 'anulado')

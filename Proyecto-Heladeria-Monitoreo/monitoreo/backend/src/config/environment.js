@@ -10,7 +10,7 @@ const env = {
   corsOrigin: (process.env.CORS_ORIGIN || 'http://localhost:5174').split(',').map((s) => s.trim()),
   rateLimitWindowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS || '900000', 10),
   rateLimitMax: parseInt(process.env.RATE_LIMIT_MAX || '100', 10),
-  rateLimitReadMax: parseInt(process.env.RATE_LIMIT_READ_MAX || '600', 10),
+  rateLimitReadMax: parseInt(process.env.RATE_LIMIT_READ_MAX || '1500', 10),
   posAlertsUrl: process.env.POS_ALERTS_URL || '',
   posAlertsApiKey: process.env.POS_ALERTS_API_KEY || '',
   workerIntervalMs: parseInt(process.env.WORKER_INTERVAL_MS || '30000', 10),

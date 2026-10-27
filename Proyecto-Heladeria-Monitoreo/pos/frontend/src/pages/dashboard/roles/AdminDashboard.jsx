@@ -81,8 +81,9 @@ export default function AdminDashboard() {
     })();
     return () => { activo = false; };
   }, [recargar]);
-  // Polling operativo silencioso 15s + revalidación en focus (AGENTS 15.2).
-  useAutoRefresh(recargar, { intervalMs: 15000, onFocus: true });
+  // Polling operativo silencioso 30s + revalidación en focus (AGENTS 15.2).
+  // Era 15s con 8 req/ciclo (~480 req/15min por pestaña), causa de 429.
+  useAutoRefresh(recargar, { intervalMs: 30000, onFocus: true });
 
   const stats = useMemo(() => {
     const hoy = ventas.filter((v) => esHoy(v.fecha || v.created_at));

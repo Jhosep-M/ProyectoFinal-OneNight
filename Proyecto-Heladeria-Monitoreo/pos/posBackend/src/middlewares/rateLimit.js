@@ -22,7 +22,20 @@ function keyFromReq(req) {
 
 function tooManyHandler(kind) {
   return (req, res, _next, options) => {
-    const retryAfterSec = Math.ceil((options.windowMs || env.rateLimitWindowMs) / 1000);
+    // Retry-After real: tiempo restante de la ventana, no la ventana completa.
+    // express-rate-limit expone req.rateLimit.resetTime (Date). Antes se devolvía
+    // windowMs/1000 (=900s) siempre, lo que impedía el reintento suave del frontend
+    // (api.js solo reintenta si retryAfterSec <= 30).
+    let retryAfterSec = Math.ceil((options.windowMs || env.rateLimitWindowMs) / 1000);
+    try {
+      const reset = req.rateLimit && req.rateLimit.resetTime;
+      const ms = reset instanceof Date ? reset.getTime() - Date.now() : NaN;
+      if (Number.isFinite(ms) && ms > 0) {
+        retryAfterSec = Math.min(retryAfterSec, Math.max(1, Math.ceil(ms / 1000)));
+      }
+    } catch {
+      /* fallback a ventana completa */
+    }
     res.set('Retry-After', String(retryAfterSec));
     res.status(options.statusCode || 429).json({
       error: kind === 'auth' ? 'Too many auth attempts' : 'Too many requests',
