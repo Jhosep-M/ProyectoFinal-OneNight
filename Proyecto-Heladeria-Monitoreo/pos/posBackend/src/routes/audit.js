@@ -18,21 +18,21 @@ router.get('/', authorize('auditoria.consultar'), async (req, res, next) => {
 
     const where = [];
     const repl = { limit, offset };
-    if (accion) { where.push('accion=:accion'); repl.accion = accion; }
-    if (entidad) { where.push('entidad=:entidad'); repl.entidad = entidad; }
-    if (usuario_id) { where.push('usuario_id=:uid'); repl.uid = usuario_id; }
-    if (desde) { where.push('fecha >= :desde::timestamptz'); repl.desde = desde; }
-    if (hasta) { where.push('fecha <= :hasta::timestamptz'); repl.hasta = hasta; }
+    if (accion) { where.push('a.accion=:accion'); repl.accion = accion; }
+    if (entidad) { where.push('a.entidad=:entidad'); repl.entidad = entidad; }
+    if (usuario_id) { where.push('a.usuario_id=:uid'); repl.uid = usuario_id; }
+    if (desde) { where.push('a.fecha >= :desde::timestamptz'); repl.desde = desde; }
+    if (hasta) { where.push('a.fecha <= :hasta::timestamptz'); repl.hasta = hasta; }
     const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
-    const [rows] = await sequelize.query(`SELECT * FROM auditoria_accion ${whereSql} ORDER BY fecha DESC LIMIT :limit OFFSET :offset`, { replacements: repl });
-    const [countRows] = await sequelize.query(`SELECT COUNT(*)::int as total FROM auditoria_accion ${whereSql}`, { replacements: repl });
+    const [rows] = await sequelize.query(`SELECT a.*, u.nombre AS usuario_nombre, u.email AS usuario_email FROM auditoria_accion a LEFT JOIN usuario u ON u.id_usuario = a.usuario_id ${whereSql} ORDER BY a.fecha DESC LIMIT :limit OFFSET :offset`, { replacements: repl });
+    const [countRows] = await sequelize.query(`SELECT COUNT(*)::int as total FROM auditoria_accion a ${whereSql}`, { replacements: repl });
     res.json({ data: rows, total: countRows[0].total, limit, offset });
   } catch (e) { next(e); }
 });
 
 router.get('/:id', authorize('auditoria.consultar'), async (req, res, next) => {
   try {
-    const [rows] = await sequelize.query(`SELECT * FROM auditoria_accion WHERE id_auditoria=:id`, { replacements: { id: req.params.id } });
+    const [rows] = await sequelize.query(`SELECT a.*, u.nombre AS usuario_nombre, u.email AS usuario_email FROM auditoria_accion a LEFT JOIN usuario u ON u.id_usuario = a.usuario_id WHERE a.id_auditoria=:id`, { replacements: { id: req.params.id } });
     if (!rows[0]) return res.status(404).json({ error: 'Auditoría no encontrada' });
     res.json(rows[0]);
   } catch (e) { next(e); }

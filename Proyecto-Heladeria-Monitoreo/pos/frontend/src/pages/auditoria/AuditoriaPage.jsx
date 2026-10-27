@@ -8,6 +8,9 @@ import EmptyState from '../../components/common/EmptyState.jsx';
 
 const PAGE_SIZE = 20;
 
+const nombreUsuario = (a) =>
+  a.usuario_nombre || a.usuario?.nombre || a.usuario_email || a.usuario?.email || 'Sistema';
+
 export default function AuditoriaPage() {
   const [data, setData] = useState([]);
   const [total, setTotal] = useState(0);
@@ -76,7 +79,7 @@ export default function AuditoriaPage() {
                 {data.map((a) => (
                   <tr key={a.id_auditoria}>
                     <td>{new Date(a.fecha).toLocaleString()}</td>
-                    <td>{a.usuario_id}</td>
+                    <td title={a.usuario_email || a.usuario_id || ''}>{nombreUsuario(a)}</td>
                     <td>{a.accion}</td>
                     <td>{a.entidad}</td>
                     <td>{a.resultado}</td>
