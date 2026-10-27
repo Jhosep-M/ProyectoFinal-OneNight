@@ -186,8 +186,10 @@ export default function ClientesPage() {
               <Input label="Correo electrónico" placeholder="cliente@correo.com" type="email" value={form.correo} onChange={(e) => setForm({ ...form, correo: e.target.value })} required />
             </div>
             <div className="field-row field-row--3">
-              <Input label="Carnet de identidad (obligatorio)" placeholder="Ej. 1234567-1A LP" value={form.carnet_identidad} onChange={(e) => setForm({ ...form, carnet_identidad: e.target.value.toUpperCase().replace(/[^0-9A-Z \-]/g, '').slice(0, 20) })} required maxLength={20} title="4-10 dígitos + complemento opcional (-1A) + extensión (LP/CB/SC/OR/PT/TJ/CH/BE/PD). Ej. 1234567, 1234567 LP, 1234567-1A LP" />
-              <span className="field-hint">Raíz 4-10 dígitos + complemento (-1A) + extensión (LP/CB/SC/OR/PT/TJ/CH/BE/PD).</span>
+              <div>
+                <Input label="Carnet de identidad (obligatorio)" placeholder="Ej. 1234567-1A LP" value={form.carnet_identidad} onChange={(e) => setForm({ ...form, carnet_identidad: e.target.value.toUpperCase().replace(/[^0-9A-Z \-]/g, '').slice(0, 20) })} required maxLength={20} title="4-10 dígitos + complemento opcional (-1A) + extensión (LP/CB/SC/OR/PT/TJ/CH/BE/PD). Ej. 1234567, 1234567 LP, 1234567-1A LP" />
+                <span className="field-hint">Raíz 4-10 dígitos + complemento (-1A) + extensión (LP/CB/SC/OR/PT/TJ/CH/BE/PD).</span>
+              </div>
             </div>
             <div className="form-footer">
               <Select label="Estado" value={form.estado} onChange={(e) => setForm({ ...form, estado: e.target.value })}>
