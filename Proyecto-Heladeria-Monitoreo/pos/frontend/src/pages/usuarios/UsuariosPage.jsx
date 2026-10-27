@@ -78,13 +78,13 @@ export default function UsuariosPage() {
   const cancelar = () => { setEditando(null); setForm(empty); };
 
   const eliminar = async (u) => {
-    if (!window.confirm(`¿Eliminar a ${u.nombre} (${u.email})? Esta acción no se puede deshacer.`)) return;
+    if (!window.confirm(`¿Eliminar a ${u.nombre} (${u.email})? Desaparecerá de la lista. Si tiene historial, se desactiva en vez de borrarse.`)) return;
     setAlert(null);
     const previo = usuarios;
     setUsuarios((arr) => arr.filter((x) => x.id_usuario !== u.id_usuario));
     try {
-      await eliminarUsuario(u.id_usuario);
-      setAlert({ tone: 'success', message: 'Usuario eliminado' });
+      const resp = await eliminarUsuario(u.id_usuario);
+      setAlert({ tone: 'success', message: resp?.desactivado ? 'Usuario desactivado y ocultado (tenía historial operativo)' : 'Usuario eliminado de forma permanente' });
       await recargar(true);
     } catch (e) {
       setUsuarios(previo);

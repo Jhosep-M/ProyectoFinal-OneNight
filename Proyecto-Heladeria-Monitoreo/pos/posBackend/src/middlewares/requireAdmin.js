@@ -14,7 +14,7 @@ async function requireAdmin(req, res, next) {
       `SELECT lower(r.nombre) AS rol
        FROM usuario u
        JOIN rol r ON r.id_rol = u.rol_id
-       WHERE u.id_usuario = :uid`,
+       WHERE u.id_usuario = :uid AND u.estado = 'activo'`,
       { replacements: { uid: user.id } }
     );
     if (!rows[0] || rows[0].rol !== 'admin') {
