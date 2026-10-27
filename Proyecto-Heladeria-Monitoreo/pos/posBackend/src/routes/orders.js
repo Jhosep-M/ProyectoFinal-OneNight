@@ -13,9 +13,18 @@ router.get('/', authorize('pedido.consultar'), async (_req, res, next) => {
   try {
     // Mig 027 self-heal: repara listos huérfanos antes de leer para que
     // Cocina nunca reciba listo con fecha_listo null (contador infinito).
-    await sequelize.query(
-      `UPDATE pedido SET fecha_listo=NOW() WHERE estado='listo' AND fecha_listo IS NULL`
-    );
+    // Defensivo: si la columna no existe en el entorno (drift de migración
+    // 026/027, error PG 42703), no romper el GET — seguir al SELECT.
+    try {
+      await sequelize.query(
+        `UPDATE pedido SET fecha_listo=NOW() WHERE estado='listo' AND fecha_listo IS NULL`
+      );
+    } catch (e) {
+      const code = e?.original?.code || e?.parent?.code || e?.code;
+      const msg = `${e?.message || ''} ${e?.original?.message || ''}`;
+      if (code !== '42703' && !/fecha_listo/.test(msg)) throw e;
+      console.warn('[orders] self-heal omitido: columna pedido.fecha_listo no existe');
+    }
     // mesa no tiene columna nombre (solo numero/estado) — usar numero.
     // pedido tampoco tiene columna total: se calcula desde detalle_pedido.
     // origen='venta_directa' = espejo de venta ya cobrada (solo cocina, no cobrable).
@@ -199,13 +208,26 @@ router.patch('/:id/estado', authorize('pedido.estado'), async (req, res, next) =
           { status: 409 }
         );
       }
-      const [rows] = await sequelize.query(
-        // Migracion 026: fecha_listo congela el contador de Cocina.
-        // Solo se marca al llegar a 'listo'; el frontend usa
-        // fecha_listo - fecha en vez de NOW() - fecha.
-        `UPDATE pedido SET estado=:estado, fecha_listo=CASE WHEN :estado='listo' THEN COALESCE(fecha_listo, NOW()) ELSE fecha_listo END WHERE id_pedido=:id RETURNING *`,
-        { replacements: { estado: siguiente, id: pedidoId }, transaction: t }
-      );
+      let rows;
+      try {
+        [rows] = await sequelize.query(
+          // Migracion 026: fecha_listo congela el contador de Cocina.
+          // Solo se marca al llegar a 'listo'; el frontend usa
+          // fecha_listo - fecha en vez de NOW() - fecha.
+          `UPDATE pedido SET estado=:estado, fecha_listo=CASE WHEN :estado='listo' THEN COALESCE(fecha_listo, NOW()) ELSE fecha_listo END WHERE id_pedido=:id RETURNING *`,
+          { replacements: { estado: siguiente, id: pedidoId }, transaction: t }
+        );
+      } catch (e) {
+        // Fallback si la columna no existe en el entorno (drift 026/027).
+        const code = e?.original?.code || e?.parent?.code || e?.code;
+        const msg = `${e?.message || ''} ${e?.original?.message || ''}`;
+        if (code !== '42703' && !/fecha_listo/.test(msg)) throw e;
+        console.warn('[orders] fallback sin fecha_listo: columna no existe');
+        [rows] = await sequelize.query(
+          `UPDATE pedido SET estado=:estado WHERE id_pedido=:id RETURNING *`,
+          { replacements: { estado: siguiente, id: pedidoId }, transaction: t }
+        );
+      }
       return rows[0];
     });
     await auditLog({ usuario_id: req.user.id, accion: 'pedido.estado', entidad: 'pedido', entidad_id: pedidoId, resultado: 'exito', detalle: { estado: parsed.estado }, ip: req.ip, userAgent: req.headers['user-agent'] });
