@@ -33,15 +33,26 @@ const VALID_ID = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 
 describe('validators/customer', () => {
   test('(a) create ignora puntos_fidelidad (strip unknown)', () => {
-    const parsed = createCustomerSchema.parse({ nombre: 'Ana', telefono: '71098016', correo: 'ana@x.com', puntos_fidelidad: 999 });
+    const parsed = createCustomerSchema.parse({ nombre: 'Ana', telefono: '71098016', correo: 'ana@x.com', carnet_identidad: '1234567 LP', puntos_fidelidad: 999 });
     expect(parsed.nombre).toBe('Ana');
     expect(parsed.puntos_fidelidad).toBeUndefined();
+    expect(parsed.carnet_identidad).toBe('1234567 LP');
   });
 
   test('(a2) create exige correo y telefono 8 digitos', () => {
-    expect(() => createCustomerSchema.parse({ nombre: 'Ana', telefono: '71098016' })).toThrow();
-    expect(() => createCustomerSchema.parse({ nombre: 'Ana', telefono: '123', correo: 'ana@x.com' })).toThrow();
-    expect(() => createCustomerSchema.parse({ nombre: 'Ana', telefono: '71098016', correo: 'no-es-email' })).toThrow();
+    expect(() => createCustomerSchema.parse({ nombre: 'Ana', telefono: '71098016', carnet_identidad: '1234567 LP' })).toThrow();
+    expect(() => createCustomerSchema.parse({ nombre: 'Ana', telefono: '123', correo: 'ana@x.com', carnet_identidad: '1234567 LP' })).toThrow();
+    expect(() => createCustomerSchema.parse({ nombre: 'Ana', telefono: '71098016', correo: 'no-es-email', carnet_identidad: '1234567 LP' })).toThrow();
+  });
+
+  test('(a3) create exige carnet boliviano y normaliza', () => {
+    expect(() => createCustomerSchema.parse({ nombre: 'Ana', telefono: '71098016', correo: 'ana@x.com' })).toThrow();
+    expect(() => createCustomerSchema.parse({ nombre: 'Ana', telefono: '71098016', correo: 'ana@x.com', carnet_identidad: 'ABC' })).toThrow();
+    expect(() => createCustomerSchema.parse({ nombre: 'Ana', telefono: '71098016', correo: 'ana@x.com', carnet_identidad: '123 LPZ' })).toThrow();
+    expect(() => createCustomerSchema.parse({ nombre: 'Ana', telefono: '71098016', correo: 'ana@x.com', carnet_identidad: '12' })).toThrow();
+    expect(createCustomerSchema.parse({ nombre: 'Ana', telefono: '71098016', correo: 'ana@x.com', carnet_identidad: '1234567 lp' }).carnet_identidad).toBe('1234567 LP');
+    expect(createCustomerSchema.parse({ nombre: 'Ana', telefono: '71098016', correo: 'ana@x.com', carnet_identidad: '1234567 - 1a lp' }).carnet_identidad).toBe('1234567-1A LP');
+    expect(createCustomerSchema.parse({ nombre: 'Ana', telefono: '71098016', correo: 'ana@x.com', carnet_identidad: '87654321-1B SC' }).carnet_identidad).toBe('87654321-1B SC');
   });
 
   test('(b) update con puntos_fidelidad lanza ZodError', () => {
@@ -68,7 +79,7 @@ describe('routes/customers', () => {
       .mockResolvedValueOnce([[{ id_cliente: VALID_ID, puntos_fidelidad: 0 }]]);
     const res = await request(app)
       .post('/api/v1/customers')
-      .send({ nombre: 'Ana', telefono: '71098016', correo: 'ana@x.com', puntos_fidelidad: 999 });
+      .send({ nombre: 'Ana', telefono: '71098016', correo: 'ana@x.com', carnet_identidad: '1234567 LP', puntos_fidelidad: 999 });
     expect(res.status).toBe(201);
     const [, opts] = sequelize.query.mock.calls[1];
     expect(opts.replacements.puntos).toBe(0);
@@ -78,7 +89,32 @@ describe('routes/customers', () => {
   test('POST sin correo -> 400', async () => {
     const res = await request(app)
       .post('/api/v1/customers')
-      .send({ nombre: 'Ana', telefono: '71098016' });
+      .send({ nombre: 'Ana', telefono: '71098016', carnet_identidad: '1234567 LP' });
+    expect(res.status).toBe(400);
+    expect(sequelize.query).not.toHaveBeenCalled();
+  });
+
+  test('POST sin carnet -> 400', async () => {
+    const res = await request(app)
+      .post('/api/v1/customers')
+      .send({ nombre: 'Ana', telefono: '71098016', correo: 'ana@x.com' });
+    expect(res.status).toBe(400);
+    expect(sequelize.query).not.toHaveBeenCalled();
+  });
+
+  test('POST carnet invalido -> 400 sin INSERT', async () => {
+    const res = await request(app)
+      .post('/api/v1/customers')
+      .send({ nombre: 'Ana', telefono: '71098016', correo: 'ana@x.com', carnet_identidad: 'ABC123' });
+    expect(res.status).toBe(400);
+    expect(res.body.error).toBe('Validation failed');
+    expect(sequelize.query).not.toHaveBeenCalled();
+  });
+
+  test('POST carnet extension invalida -> 400 sin INSERT', async () => {
+    const res = await request(app)
+      .post('/api/v1/customers')
+      .send({ nombre: 'Ana', telefono: '71098016', correo: 'ana@x.com', carnet_identidad: '1234567 XX' });
     expect(res.status).toBe(400);
     expect(sequelize.query).not.toHaveBeenCalled();
   });
@@ -107,8 +143,8 @@ describe('routes/customers', () => {
   });
 
   test('POST duplicado por pre-chequeo (correo) -> 409 sin INSERT', async () => {
-    sequelize.query.mockResolvedValueOnce([[{ id_cliente: VALID_ID, correo: 'ana@x.com', telefono: '11111111' }]]);
-    const res = await request(app).post('/api/v1/customers').send({ nombre: 'Ana 2', telefono: '71098016', correo: 'ANA@x.com' });
+    sequelize.query.mockResolvedValueOnce([[{ id_cliente: VALID_ID, correo: 'ana@x.com', telefono: '11111111', carnet_identidad: '9999999 LP' }]]);
+    const res = await request(app).post('/api/v1/customers').send({ nombre: 'Ana 2', telefono: '71098016', correo: 'ANA@x.com', carnet_identidad: '1234567 LP' });
     expect(res.status).toBe(409);
     expect(res.body.error).toBe('Correo duplicado');
     expect(res.body.fields.correo).toMatch(/registrado/);
@@ -116,11 +152,20 @@ describe('routes/customers', () => {
   });
 
   test('POST duplicado por pre-chequeo (telefono) -> 409 sin INSERT', async () => {
-    sequelize.query.mockResolvedValueOnce([[{ id_cliente: VALID_ID, correo: 'otro@x.com', telefono: '71098016' }]]);
-    const res = await request(app).post('/api/v1/customers').send({ nombre: 'Pedro', telefono: '71098016', correo: 'pedro@x.com' });
+    sequelize.query.mockResolvedValueOnce([[{ id_cliente: VALID_ID, correo: 'otro@x.com', telefono: '71098016', carnet_identidad: '9999999 LP' }]]);
+    const res = await request(app).post('/api/v1/customers').send({ nombre: 'Pedro', telefono: '71098016', correo: 'pedro@x.com', carnet_identidad: '1234567 LP' });
     expect(res.status).toBe(409);
     expect(res.body.error).toBe('Teléfono duplicado');
     expect(res.body.fields.telefono).toMatch(/registrado/);
+    expect(sequelize.query).toHaveBeenCalledTimes(1);
+  });
+
+  test('POST duplicado por pre-chequeo (carnet) -> 409 sin INSERT', async () => {
+    sequelize.query.mockResolvedValueOnce([[{ id_cliente: VALID_ID, correo: 'otro@x.com', telefono: '72000001', carnet_identidad: '1234567 LP' }]]);
+    const res = await request(app).post('/api/v1/customers').send({ nombre: 'Pedro', telefono: '71098016', correo: 'pedro@x.com', carnet_identidad: '1234567 lp' });
+    expect(res.status).toBe(409);
+    expect(res.body.error).toBe('Carnet duplicado');
+    expect(res.body.fields.carnet_identidad).toMatch(/registrado/);
     expect(sequelize.query).toHaveBeenCalledTimes(1);
   });
 
@@ -128,7 +173,7 @@ describe('routes/customers', () => {
     sequelize.query
       .mockResolvedValueOnce([[]])
       .mockResolvedValueOnce([[{ id_cliente: VALID_ID, nombre: 'Ana' }]]);
-    const res = await request(app).post('/api/v1/customers').send({ nombre: 'Ana', telefono: '72000001', correo: 'ana2@x.com' });
+    const res = await request(app).post('/api/v1/customers').send({ nombre: 'Ana', telefono: '72000001', correo: 'ana2@x.com', carnet_identidad: '7654321 CB' });
     expect(res.status).toBe(201);
   });
 
@@ -137,7 +182,7 @@ describe('routes/customers', () => {
     err.code = '23505';
     err.constraint = 'ux_cliente_telefono';
     sequelize.query.mockResolvedValueOnce([[]]).mockRejectedValueOnce(err);
-    const res = await request(app).post('/api/v1/customers').send({ nombre: 'Ana', telefono: '71098016', correo: 'ana@x.com' });
+    const res = await request(app).post('/api/v1/customers').send({ nombre: 'Ana', telefono: '71098016', correo: 'ana@x.com', carnet_identidad: '1234567 LP' });
     expect(res.status).toBe(409);
     expect(res.body.error).toBe('Teléfono duplicado');
   });
@@ -147,9 +192,19 @@ describe('routes/customers', () => {
     err.code = '23505';
     err.constraint = 'ux_cliente_correo_lower';
     sequelize.query.mockResolvedValueOnce([[]]).mockRejectedValueOnce(err);
-    const res = await request(app).post('/api/v1/customers').send({ nombre: 'Ana', telefono: '71098016', correo: 'ana@x.com' });
+    const res = await request(app).post('/api/v1/customers').send({ nombre: 'Ana', telefono: '71098016', correo: 'ana@x.com', carnet_identidad: '1234567 LP' });
     expect(res.status).toBe(409);
     expect(res.body.error).toBe('Correo duplicado');
+  });
+
+  test('POST duplicado (23505 carnet) -> 409', async () => {
+    const err = new Error('duplicate key value');
+    err.code = '23505';
+    err.constraint = 'ux_cliente_carnet';
+    sequelize.query.mockResolvedValueOnce([[]]).mockRejectedValueOnce(err);
+    const res = await request(app).post('/api/v1/customers').send({ nombre: 'Ana', telefono: '71098016', correo: 'ana@x.com', carnet_identidad: '1234567 LP' });
+    expect(res.status).toBe(409);
+    expect(res.body.error).toBe('Carnet duplicado');
   });
 
   test('PATCH duplicado (23505) -> 409', async () => {

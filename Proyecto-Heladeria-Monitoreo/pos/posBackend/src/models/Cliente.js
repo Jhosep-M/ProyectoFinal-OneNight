@@ -6,5 +6,6 @@ module.exports = (sequelize) => sequelize.define('Cliente', {
   telefono: { type: DataTypes.STRING, field: 'telefono' },
   correo: { type: DataTypes.STRING, field: 'correo' },
   puntos_fidelidad: { type: DataTypes.INTEGER, defaultValue: 0, field: 'puntos_fidelidad' },
+  carnet_identidad: { type: DataTypes.STRING, field: 'carnet_identidad' },
   estado: { type: DataTypes.STRING, defaultValue: 'activo', field: 'estado' },
 }, { tableName: 'cliente', timestamps: true, createdAt: 'creado_en', updatedAt: false });

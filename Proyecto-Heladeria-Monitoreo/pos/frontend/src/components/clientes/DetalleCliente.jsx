@@ -34,7 +34,7 @@ export default function DetalleCliente({ detalle, ventas = [], onClose }) {
               <div className="kpi-value">30 Bs = 1</div>
             </div>
           </div>
-          <p className="field-hint">{detalle?.telefono ?? ''} · {detalle?.correo ?? ''}</p>
+          <p className="field-hint">{detalle?.telefono ?? ''} · {detalle?.correo ?? ''} · CI {detalle?.carnet_identidad ?? '—'}</p>
           <div className="segmented" role="tablist" aria-label="Secciones del cliente">
             <button type="button" role="tab" aria-pressed={tab === 'movimientos'} onClick={() => setTab('movimientos')}>
               Movimientos ({movimientos.length})
