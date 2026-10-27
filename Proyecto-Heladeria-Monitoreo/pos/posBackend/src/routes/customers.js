@@ -13,7 +13,7 @@ router.get('/', authorize('cliente.consultar'), async (req, res, next) => {
     const parsed = listQuerySchema.parse(req.query);
     const { q, estado, limit, offset } = parsed;
     const [rows] = await sequelize.query(
-      `SELECT * FROM cliente WHERE (:q IS NULL OR nombre ILIKE :qlike OR correo ILIKE :qlike OR telefono ILIKE :qlike) AND (:estado IS NULL OR estado=:estado) ORDER BY creado_en DESC LIMIT :lim OFFSET :off`,
+      `SELECT * FROM cliente WHERE (:q IS NULL OR nombre ILIKE :qlike OR correo ILIKE :qlike OR telefono ILIKE :qlike OR carnet_identidad ILIKE :qlike) AND (:estado IS NULL OR estado=:estado) ORDER BY creado_en DESC LIMIT :lim OFFSET :off`,
       { replacements: { q: q || null, qlike: q ? `%${q}%` : null, estado: estado || null, lim: limit, off: offset } }
     );
     res.json(rows);
@@ -64,6 +64,8 @@ function pgConstraint(e) {
 function dup409(e, fallbackFields) {
   const c = String(pgConstraint(e)).toLowerCase();
   const esTelefono = c.includes('telefono');
+  const esCarnet = c.includes('carnet');
+  if (esCarnet) return { error: 'Carnet duplicado', fields: { carnet_identidad: 'Carnet ya registrado' } };
   if (esTelefono) return { error: 'Teléfono duplicado', fields: { telefono: 'Teléfono ya registrado' } };
   return { error: 'Correo duplicado', fields: fallbackFields || { correo: 'Correo ya registrado' } };
 }
@@ -74,23 +76,25 @@ router.post('/', authorizeAny(['cliente.crear', 'cliente.gestionar']), async (re
     const nombre = parsed.nombre.trim();
     const tel = parsed.telefono.trim();
     const correo = parsed.correo.trim().toLowerCase();
-    // Pre-chequeo amable: correo y telefono unicos (nombre puede repetirse)
+    const carnet = parsed.carnet_identidad;
+    // Pre-chequeo amable: correo, telefono y carnet unicos (nombre puede repetirse)
     const [dup] = await sequelize.query(
-      `SELECT id_cliente, correo, telefono FROM cliente WHERE lower(correo)=lower(:correo) OR telefono=:tel LIMIT 1`,
-      { replacements: { correo, tel } }
+      `SELECT id_cliente, correo, telefono, carnet_identidad FROM cliente WHERE lower(correo)=lower(:correo) OR telefono=:tel OR carnet_identidad=:carnet LIMIT 1`,
+      { replacements: { correo, tel, carnet } }
     );
     if (dup[0]) {
       const fields = {};
       if (dup[0].correo && String(dup[0].correo).toLowerCase() === correo.toLowerCase()) fields.correo = 'Correo ya registrado';
       if (dup[0].telefono && String(dup[0].telefono) === tel) fields.telefono = 'Teléfono ya registrado';
-      const primero = fields.correo ? 'Correo duplicado' : 'Teléfono duplicado';
+      if (dup[0].carnet_identidad && String(dup[0].carnet_identidad).toUpperCase() === String(carnet).toUpperCase()) fields.carnet_identidad = 'Carnet ya registrado';
+      const primero = fields.carnet_identidad ? 'Carnet duplicado' : fields.correo ? 'Correo duplicado' : 'Teléfono duplicado';
       return res.status(409).json({ error: primero, fields });
     }
     const [rows] = await sequelize.query(
-      `INSERT INTO cliente (nombre, telefono, correo, puntos_fidelidad, estado) VALUES (:nombre, :tel, :correo, :puntos, :estado) RETURNING *`,
-      { replacements: { nombre, tel, correo, puntos: 0, estado: parsed.estado } }
+      `INSERT INTO cliente (nombre, telefono, correo, carnet_identidad, puntos_fidelidad, estado) VALUES (:nombre, :tel, :correo, :carnet, :puntos, :estado) RETURNING *`,
+      { replacements: { nombre, tel, correo, carnet, puntos: 0, estado: parsed.estado } }
     );
-    await auditLog({ usuario_id: req.user.id, accion: 'cliente.crear', entidad: 'cliente', entidad_id: rows[0].id_cliente, resultado: 'exito', detalle: { nombre, telefono: tel, correo, estado: parsed.estado }, ip: req.ip, userAgent: req.headers['user-agent'] });
+    await auditLog({ usuario_id: req.user.id, accion: 'cliente.crear', entidad: 'cliente', entidad_id: rows[0].id_cliente, resultado: 'exito', detalle: { nombre, telefono: tel, correo, carnet_identidad: carnet, estado: parsed.estado }, ip: req.ip, userAgent: req.headers['user-agent'] });
     res.status(201).json(rows[0]);
   } catch (e) {
     if (e.name === 'ZodError') return res.status(400).json({ error: 'Validation failed', details: e.errors ?? e.issues });
@@ -113,20 +117,23 @@ router.patch('/:id', authorize('cliente.gestionar'), async (req, res, next) => {
     const nombre = parsed.nombre !== undefined ? parsed.nombre.trim() : undefined;
     const tel = parsed.telefono !== undefined ? parsed.telefono.trim() : undefined;
     const correo = parsed.correo !== undefined ? parsed.correo.trim().toLowerCase() : undefined;
+    const carnet = parsed.carnet_identidad !== undefined ? parsed.carnet_identidad : undefined;
     // Pre-chequeo de duplicados excluyendo al propio cliente
-    if (correo !== undefined || tel !== undefined) {
+    if (correo !== undefined || tel !== undefined || carnet !== undefined) {
       const conds = [];
       if (correo !== undefined) conds.push('lower(correo)=lower(:correo)');
       if (tel !== undefined) conds.push('telefono=:tel');
+      if (carnet !== undefined) conds.push('carnet_identidad=:carnet');
       const [dup] = await sequelize.query(
-        `SELECT id_cliente, correo, telefono FROM cliente WHERE (${conds.join(' OR ')}) AND id_cliente<>:id LIMIT 1`,
-        { replacements: { correo: correo ?? '', tel: tel ?? '', id: req.params.id } }
+        `SELECT id_cliente, correo, telefono, carnet_identidad FROM cliente WHERE (${conds.join(' OR ')}) AND id_cliente<>:id LIMIT 1`,
+        { replacements: { correo: correo ?? '', tel: tel ?? '', carnet: carnet ?? '', id: req.params.id } }
       );
       if (dup[0]) {
         const fields = {};
         if (correo !== undefined && dup[0].correo && String(dup[0].correo).toLowerCase() === correo.toLowerCase()) fields.correo = 'Correo ya registrado';
         if (tel !== undefined && dup[0].telefono && String(dup[0].telefono) === tel) fields.telefono = 'Teléfono ya registrado';
-        const primero = fields.correo ? 'Correo duplicado' : 'Teléfono duplicado';
+        if (carnet !== undefined && dup[0].carnet_identidad && String(dup[0].carnet_identidad).toUpperCase() === String(carnet).toUpperCase()) fields.carnet_identidad = 'Carnet ya registrado';
+        const primero = fields.carnet_identidad ? 'Carnet duplicado' : fields.correo ? 'Correo duplicado' : 'Teléfono duplicado';
         return res.status(409).json({ error: primero, fields });
       }
     }
@@ -135,10 +142,11 @@ router.patch('/:id', authorize('cliente.gestionar'), async (req, res, next) => {
     if (nombre !== undefined) { sets.push('nombre=:nombre'); repl.nombre = nombre; }
     if (tel !== undefined) { sets.push('telefono=:tel'); repl.tel = tel; }
     if (correo !== undefined) { sets.push('correo=:correo'); repl.correo = correo; }
+    if (carnet !== undefined) { sets.push('carnet_identidad=:carnet'); repl.carnet = carnet; }
     if (parsed.estado !== undefined) { sets.push('estado=:estado'); repl.estado = parsed.estado; }
     const [rows] = await sequelize.query(`UPDATE cliente SET ${sets.join(', ')} WHERE id_cliente=:id RETURNING *`, { replacements: repl });
     if (!rows[0]) return res.status(404).json({ error: 'Cliente no encontrado' });
-    await auditLog({ usuario_id: req.user.id, accion: 'cliente.actualizar', entidad: 'cliente', entidad_id: req.params.id, resultado: 'exito', detalle: { nombre, telefono: tel, correo, estado: parsed.estado }, ip: req.ip, userAgent: req.headers['user-agent'] });
+    await auditLog({ usuario_id: req.user.id, accion: 'cliente.actualizar', entidad: 'cliente', entidad_id: req.params.id, resultado: 'exito', detalle: { nombre, telefono: tel, correo, carnet_identidad: carnet, estado: parsed.estado }, ip: req.ip, userAgent: req.headers['user-agent'] });
     res.json(rows[0]);
   } catch (e) {
     if (e.name === 'ZodError') return res.status(400).json({ error: 'Validation failed', details: e.errors ?? e.issues });

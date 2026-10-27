@@ -14,8 +14,10 @@ import DetalleCliente from '../../components/clientes/DetalleCliente.jsx';
 import AjustePuntosModal from '../../components/clientes/AjustePuntosModal.jsx';
 import ConfirmEliminarModal from '../../components/clientes/ConfirmEliminarModal.jsx';
 
-const empty = { nombre: '', telefono: '', correo: '', puntos_fidelidad: 0, estado: 'activo' };
+const empty = { nombre: '', telefono: '', correo: '', carnet_identidad: '', puntos_fidelidad: 0, estado: 'activo' };
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const CARNET_RE = /^[0-9]{4,10}([- ][0-9]{1,2}[A-Z])?( (LP|CB|SC|OR|PT|TJ|CH|BE|PD))?$/;
+const normalizarCarnet = (v) => String(v ?? '').trim().toUpperCase().replace(/\s+/g, ' ').replace(/\s*-\s*/g, '-');
 
 export default function ClientesPage() {
   const [clientes, setClientes] = useState([]);
@@ -60,6 +62,7 @@ export default function ClientesPage() {
     const nombre = (form.nombre ?? '').trim();
     const tel = (form.telefono ?? '').trim();
     const correo = (form.correo ?? '').trim().toLowerCase();
+    const carnet = normalizarCarnet(form.carnet_identidad);
     if (!nombre) {
       setAlert({ tone: 'error', message: 'Nombre obligatorio' });
       return;
@@ -72,21 +75,29 @@ export default function ClientesPage() {
       setAlert({ tone: 'error', message: 'Correo electrónico obligatorio y válido' });
       return;
     }
-    // Pre-chequeo local: correo y teléfono únicos (nombre puede repetirse).
+    if (!CARNET_RE.test(carnet)) {
+      setAlert({ tone: 'error', message: 'Carnet inválido. Ej. 1234567, 1234567 LP, 1234567-1A LP' });
+      return;
+    }
+    // Pre-chequeo local: correo, teléfono y carnet únicos (nombre puede repetirse).
     // El backend es la autoridad final (409), esto solo evita el viaje.
     const otro = clientes.find((c) => {
       if (editando && c.id_cliente === editando) return false;
       const cCorreo = String(c.correo ?? '').trim().toLowerCase();
       const cTel = String(c.telefono ?? '').trim();
-      return (cCorreo && cCorreo === correo) || (cTel && cTel === tel);
+      const cCarnet = normalizarCarnet(c.carnet_identidad);
+      return (cCorreo && cCorreo === correo) || (cTel && cTel === tel) || (cCarnet && cCarnet === carnet);
     });
     if (otro) {
-      const esCorreo = String(otro.correo ?? '').trim().toLowerCase() === correo;
-      setAlert({ tone: 'error', message: esCorreo ? `Correo ya registrado (${otro.nombre})` : `Teléfono ya registrado (${otro.nombre})` });
+      const cCorreo = String(otro.correo ?? '').trim().toLowerCase();
+      const cTel = String(otro.telefono ?? '').trim();
+      const cCarnet = normalizarCarnet(otro.carnet_identidad);
+      const msg = cCarnet === carnet ? `Carnet ya registrado (${otro.nombre})` : cCorreo === correo ? `Correo ya registrado (${otro.nombre})` : `Teléfono ya registrado (${otro.nombre})`;
+      setAlert({ tone: 'error', message: msg });
       return;
     }
     try {
-      const payload = { nombre, telefono: tel, correo, estado: form.estado };
+      const payload = { nombre, telefono: tel, correo, carnet_identidad: carnet, estado: form.estado };
       if (editando) {
         await actualizarCliente(editando, payload);
         setAlert({ tone: 'success', message: 'Cliente actualizado' });
@@ -107,7 +118,7 @@ export default function ClientesPage() {
 
   const editar = (c) => {
     setEditando(c.id_cliente);
-    setForm({ nombre: c.nombre, telefono: c.telefono || '', correo: c.correo || '', puntos_fidelidad: c.puntos_fidelidad || 0, estado: c.estado });
+    setForm({ nombre: c.nombre, telefono: c.telefono || '', correo: c.correo || '', carnet_identidad: c.carnet_identidad || '', puntos_fidelidad: c.puntos_fidelidad || 0, estado: c.estado });
   };
 
   const ver = async (id) => {
@@ -157,7 +168,7 @@ export default function ClientesPage() {
       <div className="page-header">
         <div>
           <h1>Clientes y puntos</h1>
-          <p className="field-hint">Cada Bs 30 de compra = 1 punto. Teléfono (8 dígitos) y correo obligatorios.</p>
+          <p className="field-hint">Cada Bs 30 de compra = 1 punto. Teléfono (8 dígitos), correo y carnet obligatorios.</p>
         </div>
         <Button type="button" variant="secondary" onClick={recargar}>Recargar</Button>
       </div>
@@ -173,6 +184,10 @@ export default function ClientesPage() {
               <Input label="Nombre" placeholder="Nombre" value={form.nombre} onChange={(e) => setForm({ ...form, nombre: e.target.value })} required />
               <Input label="Teléfono (8 dígitos)" placeholder="Ej. 71098016" value={form.telefono} onChange={(e) => setForm({ ...form, telefono: e.target.value.replace(/\D/g, '').slice(0, 8) })} required pattern="[0-9]{8}" maxLength={8} inputMode="numeric" title="8 dígitos numéricos" />
               <Input label="Correo electrónico" placeholder="cliente@correo.com" type="email" value={form.correo} onChange={(e) => setForm({ ...form, correo: e.target.value })} required />
+            </div>
+            <div className="field-row field-row--3">
+              <Input label="Carnet de identidad (obligatorio)" placeholder="Ej. 1234567-1A LP" value={form.carnet_identidad} onChange={(e) => setForm({ ...form, carnet_identidad: e.target.value.toUpperCase().replace(/[^0-9A-Z \-]/g, '').slice(0, 20) })} required maxLength={20} title="4-10 dígitos + complemento opcional (-1A) + extensión (LP/CB/SC/OR/PT/TJ/CH/BE/PD). Ej. 1234567, 1234567 LP, 1234567-1A LP" />
+              <span className="field-hint">Raíz 4-10 dígitos + complemento (-1A) + extensión (LP/CB/SC/OR/PT/TJ/CH/BE/PD).</span>
             </div>
             <div className="form-footer">
               <Select label="Estado" value={form.estado} onChange={(e) => setForm({ ...form, estado: e.target.value })}>
@@ -194,7 +209,7 @@ export default function ClientesPage() {
       >
         <div className="table-toolbar">
           <div className="table-toolbar__filters filters-grid">
-            <Input label="Buscar" placeholder="Nombre, teléfono o correo…" value={q} onChange={(e) => setQ(e.target.value)} className="table-toolbar__search" />
+            <Input label="Buscar" placeholder="Nombre, teléfono, correo o carnet…" value={q} onChange={(e) => setQ(e.target.value)} className="table-toolbar__search" />
             <Select label="Estado" value={filtroEstado} onChange={(e) => setFiltroEstado(e.target.value)}>
               <option value="">Todos</option>
               <option value="activo">activo</option>
@@ -209,17 +224,18 @@ export default function ClientesPage() {
             <Skeleton height={36} />
           </div>
         ) : clientes.length === 0 ? (
-          <EmptyState title="Sin clientes" description="Crea el primero con teléfono de 8 dígitos y correo válido." />
+          <EmptyState title="Sin clientes" description="Crea el primero con teléfono de 8 dígitos, correo y carnet válidos." />
         ) : (
           <div className="table-wrap">
             <table className="data-table">
-              <thead><tr><th>Nombre</th><th>Teléfono</th><th>Correo</th><th className="numeric numeric--center">Puntos</th><th>Estado</th><th><span className="sr-only">Acciones</span></th></tr></thead>
+              <thead><tr><th>Nombre</th><th>Teléfono</th><th>Correo</th><th>Carnet</th><th className="numeric numeric--center">Puntos</th><th>Estado</th><th><span className="sr-only">Acciones</span></th></tr></thead>
               <tbody>
                 {clientes.map((c) => (
                   <tr key={c.id_cliente}>
                     <td><strong>{c.nombre}</strong></td>
                     <td className="numeric">{c.telefono || '—'}</td>
                     <td>{c.correo || '—'}</td>
+                    <td className="numeric">{c.carnet_identidad || '—'}</td>
                     <td className="numeric numeric--center">{fmtPuntos(c.puntos_fidelidad)}</td>
                     <td><Badge tone={c.estado === 'activo' ? 'success' : 'neutral'}>{c.estado}</Badge></td>
                     <td>
