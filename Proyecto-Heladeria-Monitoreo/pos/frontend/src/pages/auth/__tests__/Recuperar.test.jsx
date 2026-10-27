@@ -56,15 +56,15 @@ describe('Recuperar con código (HU-24)', () => {
     expect(screen.queryByText(/not found/i)).not.toBeInTheDocument();
   });
 
-  it('paso 2 y 3: verifica código y guarda nueva contraseña', async () => {
+  it('paso 2 y 3: verifica código de 8 dígitos y guarda nueva contraseña', async () => {
     renderPage();
     await userEvent.type(screen.getByPlaceholderText('tu@email.com'), 'caja@heladeria.com');
     fireEvent.submit(screen.getByRole('button', { name: 'Enviar código' }).closest('form'));
-    await screen.findByPlaceholderText('6 dígitos');
-    await userEvent.type(screen.getByPlaceholderText('6 dígitos'), '123456');
+    await screen.findByPlaceholderText('Código del correo');
+    await userEvent.type(screen.getByPlaceholderText('Código del correo'), '12345678');
     fireEvent.submit(screen.getByRole('button', { name: 'Verificar código' }).closest('form'));
     await waitFor(() => {
-      expect(mocks.mockVerificar).toHaveBeenCalledWith('caja@heladeria.com', '123456');
+      expect(mocks.mockVerificar).toHaveBeenCalledWith('caja@heladeria.com', '12345678');
     });
     await screen.findByPlaceholderText('mínimo 8 caracteres');
     await userEvent.type(screen.getByPlaceholderText('mínimo 8 caracteres'), 'NuevaClave123');
@@ -73,5 +73,28 @@ describe('Recuperar con código (HU-24)', () => {
     await waitFor(() => {
       expect(mocks.mockActualizar).toHaveBeenCalledWith('NuevaClave123');
     });
+  });
+
+  it('paso 2: también acepta código de 6 dígitos', async () => {
+    renderPage();
+    await userEvent.type(screen.getByPlaceholderText('tu@email.com'), 'caja@heladeria.com');
+    fireEvent.submit(screen.getByRole('button', { name: 'Enviar código' }).closest('form'));
+    await screen.findByPlaceholderText('Código del correo');
+    await userEvent.type(screen.getByPlaceholderText('Código del correo'), '123456');
+    fireEvent.submit(screen.getByRole('button', { name: 'Verificar código' }).closest('form'));
+    await waitFor(() => {
+      expect(mocks.mockVerificar).toHaveBeenCalledWith('caja@heladeria.com', '123456');
+    });
+  });
+
+  it('paso 2: rechaza código incompleto sin llamar a verificar', async () => {
+    renderPage();
+    await userEvent.type(screen.getByPlaceholderText('tu@email.com'), 'caja@heladeria.com');
+    fireEvent.submit(screen.getByRole('button', { name: 'Enviar código' }).closest('form'));
+    await screen.findByPlaceholderText('Código del correo');
+    await userEvent.type(screen.getByPlaceholderText('Código del correo'), '123');
+    fireEvent.submit(screen.getByRole('button', { name: 'Verificar código' }).closest('form'));
+    await screen.findByText(/código completo/i);
+    expect(mocks.mockVerificar).not.toHaveBeenCalled();
   });
 });
