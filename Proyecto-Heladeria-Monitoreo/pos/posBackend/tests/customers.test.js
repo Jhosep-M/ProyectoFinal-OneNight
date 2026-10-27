@@ -63,13 +63,16 @@ describe('routes/customers', () => {
   beforeEach(() => jest.clearAllMocks());
 
   test('POST fuerza puntos_fidelidad=0 aunque body traiga valor', async () => {
-    sequelize.query.mockResolvedValueOnce([[{ id_cliente: VALID_ID, puntos_fidelidad: 0 }]]);
+    sequelize.query
+      .mockResolvedValueOnce([[]])
+      .mockResolvedValueOnce([[{ id_cliente: VALID_ID, puntos_fidelidad: 0 }]]);
     const res = await request(app)
       .post('/api/v1/customers')
       .send({ nombre: 'Ana', telefono: '71098016', correo: 'ana@x.com', puntos_fidelidad: 999 });
     expect(res.status).toBe(201);
-    const [, opts] = sequelize.query.mock.calls[0];
+    const [, opts] = sequelize.query.mock.calls[1];
     expect(opts.replacements.puntos).toBe(0);
+    expect(opts.replacements.correo).toBe('ana@x.com');
   });
 
   test('POST sin correo -> 400', async () => {
@@ -103,10 +106,47 @@ describe('routes/customers', () => {
     expect(sequelize.query).not.toHaveBeenCalled();
   });
 
-  test('POST duplicado (23505) -> 409', async () => {
+  test('POST duplicado por pre-chequeo (correo) -> 409 sin INSERT', async () => {
+    sequelize.query.mockResolvedValueOnce([[{ id_cliente: VALID_ID, correo: 'ana@x.com', telefono: '11111111' }]]);
+    const res = await request(app).post('/api/v1/customers').send({ nombre: 'Ana 2', telefono: '71098016', correo: 'ANA@x.com' });
+    expect(res.status).toBe(409);
+    expect(res.body.error).toBe('Correo duplicado');
+    expect(res.body.fields.correo).toMatch(/registrado/);
+    expect(sequelize.query).toHaveBeenCalledTimes(1);
+  });
+
+  test('POST duplicado por pre-chequeo (telefono) -> 409 sin INSERT', async () => {
+    sequelize.query.mockResolvedValueOnce([[{ id_cliente: VALID_ID, correo: 'otro@x.com', telefono: '71098016' }]]);
+    const res = await request(app).post('/api/v1/customers').send({ nombre: 'Pedro', telefono: '71098016', correo: 'pedro@x.com' });
+    expect(res.status).toBe(409);
+    expect(res.body.error).toBe('Teléfono duplicado');
+    expect(res.body.fields.telefono).toMatch(/registrado/);
+    expect(sequelize.query).toHaveBeenCalledTimes(1);
+  });
+
+  test('POST nombre repetido con tel/correo distintos -> 201', async () => {
+    sequelize.query
+      .mockResolvedValueOnce([[]])
+      .mockResolvedValueOnce([[{ id_cliente: VALID_ID, nombre: 'Ana' }]]);
+    const res = await request(app).post('/api/v1/customers').send({ nombre: 'Ana', telefono: '72000001', correo: 'ana2@x.com' });
+    expect(res.status).toBe(201);
+  });
+
+  test('POST duplicado carrera (23505 telefono) -> 409 Telefono', async () => {
     const err = new Error('duplicate key value');
     err.code = '23505';
-    sequelize.query.mockRejectedValueOnce(err);
+    err.constraint = 'ux_cliente_telefono';
+    sequelize.query.mockResolvedValueOnce([[]]).mockRejectedValueOnce(err);
+    const res = await request(app).post('/api/v1/customers').send({ nombre: 'Ana', telefono: '71098016', correo: 'ana@x.com' });
+    expect(res.status).toBe(409);
+    expect(res.body.error).toBe('Teléfono duplicado');
+  });
+
+  test('POST duplicado (23505 correo) -> 409', async () => {
+    const err = new Error('duplicate key value');
+    err.code = '23505';
+    err.constraint = 'ux_cliente_correo_lower';
+    sequelize.query.mockResolvedValueOnce([[]]).mockRejectedValueOnce(err);
     const res = await request(app).post('/api/v1/customers').send({ nombre: 'Ana', telefono: '71098016', correo: 'ana@x.com' });
     expect(res.status).toBe(409);
     expect(res.body.error).toBe('Correo duplicado');
@@ -121,6 +161,16 @@ describe('routes/customers', () => {
       .send({ nombre: 'Otro' });
     expect(res.status).toBe(409);
     expect(res.body.error).toBe('Correo duplicado');
+  });
+
+  test('PATCH correo a existente (pre-chequeo) -> 409 sin UPDATE', async () => {
+    sequelize.query.mockResolvedValueOnce([[{ id_cliente: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb', correo: 'usado@x.com', telefono: '73000000' }]]);
+    const res = await request(app)
+      .patch(`/api/v1/customers/${VALID_ID}`)
+      .send({ correo: 'USADO@x.com' });
+    expect(res.status).toBe(409);
+    expect(res.body.error).toBe('Correo duplicado');
+    expect(sequelize.query).toHaveBeenCalledTimes(1);
   });
 
   test('listQuerySchema coerce string "20"->20 con defaults', () => {

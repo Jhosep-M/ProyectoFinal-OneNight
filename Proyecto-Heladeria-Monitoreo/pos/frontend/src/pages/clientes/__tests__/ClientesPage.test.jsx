@@ -119,4 +119,40 @@ describe('ClientesPage', () => {
     });
     expect(mocks.mockEliminar).not.toHaveBeenCalled();
   });
+
+  it('bloquea crear con correo duplicado sin llamar al servicio', async () => {
+    renderClientes();
+    await screen.findByText('María');
+    await userEvent.type(screen.getByPlaceholderText('Nombre'), 'Otro');
+    await userEvent.type(screen.getByPlaceholderText('Ej. 71098016'), '72000001');
+    await userEvent.type(screen.getByPlaceholderText('cliente@correo.com'), 'MARIA@x.com');
+    await userEvent.click(screen.getByRole('button', { name: 'Crear' }));
+    await waitFor(() => {
+      expect(mocks.mockCrear).not.toHaveBeenCalled();
+    });
+    expect(await screen.findByText(/Correo ya registrado/)).toBeInTheDocument();
+  });
+
+  it('bloquea crear con telefono duplicado sin llamar al servicio', async () => {
+    mocks.mockListar.mockResolvedValue([
+      { id_cliente: 'cl1', nombre: 'María', telefono: '71098016', correo: 'maria@x.com', puntos_fidelidad: 120, estado: 'activo' },
+    ]);
+    renderClientes();
+    await screen.findByText('María');
+    await userEvent.type(screen.getByPlaceholderText('Nombre'), 'Otro');
+    await userEvent.type(screen.getByPlaceholderText('Ej. 71098016'), '71098016');
+    await userEvent.type(screen.getByPlaceholderText('cliente@correo.com'), 'otro@x.com');
+    await userEvent.click(screen.getByRole('button', { name: 'Crear' }));
+    await waitFor(() => {
+      expect(mocks.mockCrear).not.toHaveBeenCalled();
+    });
+    expect(await screen.findByText(/Teléfono ya registrado/)).toBeInTheDocument();
+  });
+
+  it('columna Puntos centrada con tabular-nums', async () => {
+    renderClientes();
+    await screen.findByText('María');
+    const th = screen.getByText('Puntos');
+    expect(th.className).toMatch(/numeric--center/);
+  });
 });
