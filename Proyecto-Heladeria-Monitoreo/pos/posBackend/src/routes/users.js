@@ -64,12 +64,15 @@ router.get('/roles', authorize('usuario.gestionar'), async (_req, res, next) => 
   } catch (e) { next(e); }
 });
 
-// GET /api/v1/users -> listar (sin columna estado en la respuesta pública)
-router.get('/', authorize('usuario.gestionar'), async (_req, res, next) => {
+// GET /api/v1/users -> listar solo activos por defecto (los desactivados
+// se ocultan del frontend). ?incluirInactivos=1 los incluye (solo admin).
+router.get('/', authorize('usuario.gestionar'), async (req, res, next) => {
   try {
+    const incluir = String(req.query.incluirInactivos || req.query.incluir_inactivos || '0') === '1';
     const [rows] = await sequelize.query(
       `SELECT u.id_usuario, u.nombre, u.email, u.rol_id, r.nombre AS rol, u.creado_en, u.actualizado_en
        FROM usuario u LEFT JOIN rol r ON r.id_rol = u.rol_id
+       ${incluir ? '' : `WHERE u.estado = 'activo'`}
        ORDER BY u.creado_en DESC LIMIT 100`
     );
     res.json(rows);
@@ -97,7 +100,7 @@ router.post('/', requireAdmin, async (req, res, next) => {
     const parsed = createUserSchema.parse(req.body);
     const rolId = await resolveRolId(parsed);
     if (!supabaseService) {
-      return res.status(500).json({ error: 'Auth no configurado' });
+      return res.status(500).json({ error: 'Auth no configurado: falta SUPABASE_SERVICE_ROLE_KEY en el backend' });
     }
     // 1. Crear identidad en Supabase Auth (la contraseña vive SOLO ahí, AGENTS §4.2).
     const { data, error } = await supabaseService.auth.admin.createUser({
@@ -109,7 +112,7 @@ router.post('/', requireAdmin, async (req, res, next) => {
     if (error || !data?.user?.id) {
       const msg = String(error?.message || '');
       if (/already|exists|duplicate/i.test(msg)) {
-        return res.status(409).json({ error: 'Email ya existe' });
+        return res.status(409).json({ error: 'Email ya existe en Auth. Si no lo ves en la lista, elimínalo en Supabase → Authentication o usa otro email.' });
       }
       return res.status(400).json({ error: 'No se pudo crear el usuario en Auth' });
     }
@@ -127,7 +130,7 @@ router.post('/', requireAdmin, async (req, res, next) => {
       // Rollback: no dejar huérfano en Auth si falla el INSERT.
       try { await supabaseService.auth.admin.deleteUser(authId); } catch (_) { /* noop */ }
       if (dbErr?.original?.code === '23505' || /duplicate|unique/i.test(String(dbErr?.message))) {
-        return res.status(409).json({ error: 'Email ya existe' });
+        return res.status(409).json({ error: 'Email ya existe en la base de datos' });
       }
       throw dbErr;
     }
@@ -159,7 +162,7 @@ router.patch('/:id', requireAdmin, async (req, res, next) => {
     }
     // Contraseña: solo en Auth, nunca en public.usuario.
     if (parsed.password !== undefined) {
-      if (!supabaseService) return res.status(500).json({ error: 'Auth no configurado' });
+      if (!supabaseService) return res.status(500).json({ error: 'Auth no configurado: falta SUPABASE_SERVICE_ROLE_KEY en el backend' });
       const { error } = await supabaseService.auth.admin.updateUserById(req.params.id, { password: parsed.password });
       if (error) {
         const msg = String(error.message || '');
@@ -202,7 +205,10 @@ router.patch('/:id', requireAdmin, async (req, res, next) => {
   }
 });
 
-// DELETE /api/v1/users/:id — SOLO ADMIN.
+// DELETE /api/v1/users/:id — SOLO ADMIN. Sin historial: borrado permanente
+// (usuario + Auth). Con historial: desactivación (estado='inactivo' +
+// bloqueo en Auth) para conservar trazabilidad; el GET por defecto ya no
+// lo lista, así que "desaparece del frontend".
 router.delete('/:id', requireAdmin, async (req, res, next) => {
   try {
     const targetId = req.params.id;
@@ -219,32 +225,57 @@ router.delete('/:id', requireAdmin, async (req, res, next) => {
     if (target[0].rol === 'admin') {
       const [count] = await sequelize.query(
         `SELECT COUNT(*)::int AS n FROM usuario u JOIN rol r ON r.id_rol=u.rol_id
-         WHERE lower(r.nombre)='admin' AND u.id_usuario <> :id`,
+         WHERE lower(r.nombre)='admin' AND u.estado='activo' AND u.id_usuario <> :id`,
         { replacements: { id: targetId } }
       );
       if (!count[0] || count[0].n < 1) {
         return res.status(409).json({ error: 'No se puede eliminar al último administrador' });
       }
     }
-    // Bloquear si tiene historial operativo (turnos, pedidos, movimientos, devoluciones).
+    // ¿Tiene historial operativo? (turnos, pedidos, movimientos, devoluciones, alertas, auditoría).
     const [uso] = await sequelize.query(
       `SELECT
         (SELECT COUNT(*) FROM turno_caja WHERE usuario_id=:id) AS turnos,
         (SELECT COUNT(*) FROM pedido WHERE mesero_id=:id) AS pedidos,
         (SELECT COUNT(*) FROM movimiento_inventario WHERE usuario_id=:id) AS movimientos,
         (SELECT COUNT(*) FROM devolucion WHERE autorizado_por_id=:id) AS devoluciones,
-        (SELECT COUNT(*) FROM alerta_pos WHERE atendido_por=:id) AS alertas`,
+        (SELECT COUNT(*) FROM alerta_pos WHERE atendido_por=:id) AS alertas,
+        (SELECT COUNT(*) FROM auditoria_accion WHERE usuario_id=:id) AS auditoria`,
       { replacements: { id: targetId } }
     );
     const u = uso[0] || {};
-    const total = Number(u.turnos || 0) + Number(u.pedidos || 0) + Number(u.movimientos || 0) + Number(u.devoluciones || 0) + Number(u.alertas || 0);
+    const total = ['turnos', 'pedidos', 'movimientos', 'devoluciones', 'alertas', 'auditoria']
+      .reduce((acc, k) => acc + Number(u[k] || 0), 0);
+
+    async function bloquearAuth() {
+      if (!supabaseService) return;
+      try { await supabaseService.auth.admin.deleteUser(targetId); }
+      catch (_) { /* noop: si falla el borrado, al menos el espejo queda inactivo */ }
+    }
+
     if (total > 0) {
-      return res.status(409).json({ error: 'No se puede eliminar: el usuario tiene historial operativo (turnos, pedidos o movimientos)' });
+      // Desactivar: conserva historial y auditoría, bloquea login, oculta del listado.
+      await sequelize.query(
+        `UPDATE usuario SET estado='inactivo', actualizado_en=NOW() WHERE id_usuario=:id`,
+        { replacements: { id: targetId } }
+      );
+      await bloquearAuth();
+      await auditLog({ usuario_id: req.user.id, accion: 'usuario.desactivar', entidad: 'usuario', entidad_id: targetId, resultado: 'exitoso', detalle: { motivo: 'eliminar con historial', ...u }, ip: req.ip, userAgent: req.headers['user-agent'] });
+      return res.json({ ok: true, desactivado: true, message: 'Usuario desactivado y ocultado (tenía historial operativo)' });
     }
-    await sequelize.query(`DELETE FROM usuario WHERE id_usuario=:id`, { replacements: { id: targetId } });
-    if (supabaseService) {
-      try { await supabaseService.auth.admin.deleteUser(targetId); } catch (_) { /* noop: ya se borró el espejo */ }
+    try {
+      await sequelize.query(`DELETE FROM usuario WHERE id_usuario=:id`, { replacements: { id: targetId } });
+    } catch (fkErr) {
+      // Si alguna FK no contemplada lo impide, degradar a desactivación en vez de 500.
+      await sequelize.query(
+        `UPDATE usuario SET estado='inactivo', actualizado_en=NOW() WHERE id_usuario=:id`,
+        { replacements: { id: targetId } }
+      );
+      await bloquearAuth();
+      await auditLog({ usuario_id: req.user.id, accion: 'usuario.desactivar', entidad: 'usuario', entidad_id: targetId, resultado: 'exitoso', detalle: { motivo: 'fallback FK', error: String(fkErr?.message || fkErr) }, ip: req.ip, userAgent: req.headers['user-agent'] });
+      return res.json({ ok: true, desactivado: true, message: 'Usuario desactivado y ocultado (tenía historial operativo)' });
     }
+    await bloquearAuth();
     await auditLog({ usuario_id: req.user.id, accion: 'usuario.eliminar', entidad: 'usuario', entidad_id: targetId, resultado: 'exitoso', detalle: {}, ip: req.ip, userAgent: req.headers['user-agent'] });
     res.json({ ok: true });
   } catch (e) { next(e); }

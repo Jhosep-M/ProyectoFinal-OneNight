@@ -18,8 +18,10 @@
 #      servicios y vuelve a desplegar.
 #
 # NO se configuran aquí (no se usan en runtime, verificado en el código):
-#   - SUPABASE_SERVICE_ROLE_KEY: posBackend la crea en config/supabase.js pero
-#     nadie la importa; monitoreo/backend no la usa. Omitir = menos secretos.
+#   - Ninguna. SUPABASE_SERVICE_ROLE_KEY SÍ se usa en runtime:
+#     posBackend/src/routes/users.js la exige para crear/actualizar
+#     usuarios (POST/PATCH /api/v1/users). Sin ella responde
+#     500 'Auth no configurado'.
 #
 # `sync: false` (secretos a completar en el dashboard, nunca en Git):
 #   - DATABASE_URL x2: POOLER de cada Supabase, Session mode 5432 (no el host
@@ -97,6 +99,8 @@ services:
         value: https://lltmyookhktzycxlprlx.supabase.co
       - key: SUPABASE_ANON_KEY
         value: sb_publishable__6VB22K5mFdY2whg6aqtww_fQGKA1BL
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false          # REQUERIDA: crear/actualizar usuarios (POST/PATCH /api/v1/users); sin ella -> 500 'Auth no configurado'
       - key: CORS_ORIGIN
         sync: false          # dominio(s) de Vercel del frontend POS
       - key: RATE_LIMIT_WINDOW_MS
