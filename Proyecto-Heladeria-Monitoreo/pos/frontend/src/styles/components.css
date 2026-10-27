@@ -574,6 +574,9 @@
 /* Cifras alineadas a la derecha, tabulares (usa --bs-font-numeric heredado) */
 .numeric { text-align: right; font-variant-numeric: tabular-nums; }
 th.numeric { text-align: right; }
+/* Puntos centrados con números tabulares (AGENTS §15.1: token, sin hardcodear familia) */
+.numeric--center { text-align: center; font-family: var(--bs-font-numeric); font-variant-numeric: tabular-nums; }
+th.numeric--center { text-align: center; }
 
 /* (tamaños .modal--md/.modal--lg definidos junto a .sys-modal arriba) */
 

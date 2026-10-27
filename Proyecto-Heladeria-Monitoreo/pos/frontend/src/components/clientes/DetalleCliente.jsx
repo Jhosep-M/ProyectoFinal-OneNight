@@ -50,13 +50,13 @@ export default function DetalleCliente({ detalle, ventas = [], onClose }) {
             ) : (
               <div className="table-wrap">
                 <table className="data-table">
-                  <thead><tr><th>Fecha</th><th>Tipo</th><th className="numeric">Puntos</th><th>Motivo</th></tr></thead>
+                  <thead><tr><th>Fecha</th><th>Tipo</th><th className="numeric numeric--center">Puntos</th><th>Motivo</th></tr></thead>
                   <tbody>
                     {movimientos.map((m) => (
                       <tr key={m.id_movimiento}>
                         <td>{m.fecha ? new Date(m.fecha).toLocaleString() : '—'}</td>
                         <td><Badge tone={m.tipo === 'canje' ? 'warning' : m.puntos < 0 ? 'error' : 'info'}>{m.tipo}</Badge></td>
-                        <td className="numeric">{Math.trunc(Number(m.puntos ?? 0))}</td>
+                        <td className="numeric numeric--center">{Math.trunc(Number(m.puntos ?? 0))}</td>
                         <td>{m.motivo || '—'}</td>
                       </tr>
                     ))}

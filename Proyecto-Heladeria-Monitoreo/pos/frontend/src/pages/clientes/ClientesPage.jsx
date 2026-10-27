@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { listarClientes, verCliente, verVentasCliente, crearCliente, actualizarCliente, eliminarCliente } from '../../services/customersService.js';
+import { useAutoRefresh } from '../../hooks/useAutoRefresh.js';
 import Button from '../../components/common/Button.jsx';
 import Card from '../../components/common/Card.jsx';
 import Badge from '../../components/common/Badge.jsx';
@@ -29,8 +30,8 @@ export default function ClientesPage() {
   const [q, setQ] = useState('');
   const [filtroEstado, setFiltroEstado] = useState('');
 
-  const recargar = async () => {
-    setLoading(true);
+  const recargar = useCallback(async (silencioso = false) => {
+    if (!silencioso) setLoading(true);
     try {
       const params = { limit: 20, offset: 0 };
       if (q) params.q = q;
@@ -38,23 +39,31 @@ export default function ClientesPage() {
       const data = await listarClientes(params);
       setClientes(Array.isArray(data) ? data : (data?.data ?? data?.items ?? []));
     } catch (e) {
-      setAlert({ tone: 'error', message: e.message });
+      // Polling silencioso no borra el alert de éxito de la acción recién hecha
+      if (!silencioso) setAlert({ tone: 'error', message: e.message });
     } finally {
-      setLoading(false);
+      if (!silencioso) setLoading(false);
     }
-  };
+  }, [q, filtroEstado]);
 
   useEffect(() => {
-    const t = setTimeout(() => { recargar(); }, 300);
+    const t = setTimeout(() => { recargar(false); }, 300);
     return () => clearTimeout(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [q, filtroEstado]);
+  }, [recargar]);
+
+  // AGENTS §15.2: polling operativo 30s + revalidación en focus, silencioso
+  useAutoRefresh(() => recargar(true), { intervalMs: 30000, onFocus: true });
 
   const guardar = async (e) => {
     e.preventDefault();
     setAlert(null);
+    const nombre = (form.nombre ?? '').trim();
     const tel = (form.telefono ?? '').trim();
-    const correo = (form.correo ?? '').trim();
+    const correo = (form.correo ?? '').trim().toLowerCase();
+    if (!nombre) {
+      setAlert({ tone: 'error', message: 'Nombre obligatorio' });
+      return;
+    }
     if (!/^[0-9]{8}$/.test(tel)) {
       setAlert({ tone: 'error', message: 'Teléfono debe tener exactamente 8 dígitos' });
       return;
@@ -63,13 +72,21 @@ export default function ClientesPage() {
       setAlert({ tone: 'error', message: 'Correo electrónico obligatorio y válido' });
       return;
     }
+    // Pre-chequeo local: correo y teléfono únicos (nombre puede repetirse).
+    // El backend es la autoridad final (409), esto solo evita el viaje.
+    const otro = clientes.find((c) => {
+      if (editando && c.id_cliente === editando) return false;
+      const cCorreo = String(c.correo ?? '').trim().toLowerCase();
+      const cTel = String(c.telefono ?? '').trim();
+      return (cCorreo && cCorreo === correo) || (cTel && cTel === tel);
+    });
+    if (otro) {
+      const esCorreo = String(otro.correo ?? '').trim().toLowerCase() === correo;
+      setAlert({ tone: 'error', message: esCorreo ? `Correo ya registrado (${otro.nombre})` : `Teléfono ya registrado (${otro.nombre})` });
+      return;
+    }
     try {
-      const payload = {
-        nombre: form.nombre.trim(),
-        telefono: tel,
-        correo,
-        estado: form.estado,
-      };
+      const payload = { nombre, telefono: tel, correo, estado: form.estado };
       if (editando) {
         await actualizarCliente(editando, payload);
         setAlert({ tone: 'success', message: 'Cliente actualizado' });
@@ -79,8 +96,13 @@ export default function ClientesPage() {
       }
       setForm(empty);
       setEditando(null);
-      recargar();
-    } catch (e2) { setAlert({ tone: 'error', message: e2.message }); }
+      await recargar(false);
+    } catch (e2) {
+      // No limpiar el form en 409 para que corrija el dato erróneo
+      const fields = e2?.payload?.fields;
+      const detalleCampos = fields ? Object.values(fields).join('. ') : null;
+      setAlert({ tone: 'error', message: detalleCampos || e2.message });
+    }
   };
 
   const editar = (c) => {
@@ -124,9 +146,9 @@ export default function ClientesPage() {
       setAlert({ tone: 'success', message: 'Cliente eliminado' });
     } catch (e) {
       const msg = e?.message || 'No se pudo eliminar';
-      setAlert({ tone: 'error', message: e?.status === 409 ? msg : msg });
+      setAlert({ tone: 'error', message: msg });
     } finally {
-      await recargar();
+      await recargar(false);
     }
   };
 
@@ -191,14 +213,14 @@ export default function ClientesPage() {
         ) : (
           <div className="table-wrap">
             <table className="data-table">
-              <thead><tr><th>Nombre</th><th>Teléfono</th><th>Correo</th><th className="numeric">Puntos</th><th>Estado</th><th><span className="sr-only">Acciones</span></th></tr></thead>
+              <thead><tr><th>Nombre</th><th>Teléfono</th><th>Correo</th><th className="numeric numeric--center">Puntos</th><th>Estado</th><th><span className="sr-only">Acciones</span></th></tr></thead>
               <tbody>
                 {clientes.map((c) => (
                   <tr key={c.id_cliente}>
                     <td><strong>{c.nombre}</strong></td>
                     <td className="numeric">{c.telefono || '—'}</td>
                     <td>{c.correo || '—'}</td>
-                    <td className="numeric">{fmtPuntos(c.puntos_fidelidad)}</td>
+                    <td className="numeric numeric--center">{fmtPuntos(c.puntos_fidelidad)}</td>
                     <td><Badge tone={c.estado === 'activo' ? 'success' : 'neutral'}>{c.estado}</Badge></td>
                     <td>
                       <div className="row-actions">

@@ -55,18 +55,46 @@ router.get('/:id', authorize('cliente.consultar'), async (req, res, next) => {
   } catch (e) { next(e); }
 });
 
+function pgCode(e) {
+  return e?.code || e?.original?.code || e?.parent?.code;
+}
+function pgConstraint(e) {
+  return e?.constraint || e?.original?.constraint || e?.parent?.constraint || '';
+}
+function dup409(e, fallbackFields) {
+  const c = String(pgConstraint(e)).toLowerCase();
+  const esTelefono = c.includes('telefono');
+  if (esTelefono) return { error: 'Teléfono duplicado', fields: { telefono: 'Teléfono ya registrado' } };
+  return { error: 'Correo duplicado', fields: fallbackFields || { correo: 'Correo ya registrado' } };
+}
+
 router.post('/', authorizeAny(['cliente.crear', 'cliente.gestionar']), async (req, res, next) => {
   try {
     const parsed = createCustomerSchema.parse(req.body);
+    const nombre = parsed.nombre.trim();
+    const tel = parsed.telefono.trim();
+    const correo = parsed.correo.trim().toLowerCase();
+    // Pre-chequeo amable: correo y telefono unicos (nombre puede repetirse)
+    const [dup] = await sequelize.query(
+      `SELECT id_cliente, correo, telefono FROM cliente WHERE lower(correo)=lower(:correo) OR telefono=:tel LIMIT 1`,
+      { replacements: { correo, tel } }
+    );
+    if (dup[0]) {
+      const fields = {};
+      if (dup[0].correo && String(dup[0].correo).toLowerCase() === correo.toLowerCase()) fields.correo = 'Correo ya registrado';
+      if (dup[0].telefono && String(dup[0].telefono) === tel) fields.telefono = 'Teléfono ya registrado';
+      const primero = fields.correo ? 'Correo duplicado' : 'Teléfono duplicado';
+      return res.status(409).json({ error: primero, fields });
+    }
     const [rows] = await sequelize.query(
       `INSERT INTO cliente (nombre, telefono, correo, puntos_fidelidad, estado) VALUES (:nombre, :tel, :correo, :puntos, :estado) RETURNING *`,
-      { replacements: { nombre: parsed.nombre, tel: parsed.telefono, correo: parsed.correo, puntos: 0, estado: parsed.estado } }
+      { replacements: { nombre, tel, correo, puntos: 0, estado: parsed.estado } }
     );
-    await auditLog({ usuario_id: req.user.id, accion: 'cliente.crear', entidad: 'cliente', entidad_id: rows[0].id_cliente, resultado: 'exito', detalle: parsed, ip: req.ip, userAgent: req.headers['user-agent'] });
+    await auditLog({ usuario_id: req.user.id, accion: 'cliente.crear', entidad: 'cliente', entidad_id: rows[0].id_cliente, resultado: 'exito', detalle: { nombre, telefono: tel, correo, estado: parsed.estado }, ip: req.ip, userAgent: req.headers['user-agent'] });
     res.status(201).json(rows[0]);
   } catch (e) {
     if (e.name === 'ZodError') return res.status(400).json({ error: 'Validation failed', details: e.errors ?? e.issues });
-    if (e.code === '23505' || e.original?.code === '23505' || e.parent?.code === '23505') return res.status(409).json({ error: 'Correo duplicado' });
+    if (pgCode(e) === '23505') { const d = dup409(e); return res.status(409).json(d); }
     next(e);
   }
 });
@@ -82,19 +110,39 @@ router.patch('/:id', authorize('cliente.gestionar'), async (req, res, next) => {
       return res.status(400).json({ error: 'Validation failed', details: [{ path: ['puntos_fidelidad'], message: 'puntos_fidelidad no editable' }] });
     }
     const parsed = updateCustomerSchema.parse(req.body);
+    const nombre = parsed.nombre !== undefined ? parsed.nombre.trim() : undefined;
+    const tel = parsed.telefono !== undefined ? parsed.telefono.trim() : undefined;
+    const correo = parsed.correo !== undefined ? parsed.correo.trim().toLowerCase() : undefined;
+    // Pre-chequeo de duplicados excluyendo al propio cliente
+    if (correo !== undefined || tel !== undefined) {
+      const conds = [];
+      if (correo !== undefined) conds.push('lower(correo)=lower(:correo)');
+      if (tel !== undefined) conds.push('telefono=:tel');
+      const [dup] = await sequelize.query(
+        `SELECT id_cliente, correo, telefono FROM cliente WHERE (${conds.join(' OR ')}) AND id_cliente<>:id LIMIT 1`,
+        { replacements: { correo: correo ?? '', tel: tel ?? '', id: req.params.id } }
+      );
+      if (dup[0]) {
+        const fields = {};
+        if (correo !== undefined && dup[0].correo && String(dup[0].correo).toLowerCase() === correo.toLowerCase()) fields.correo = 'Correo ya registrado';
+        if (tel !== undefined && dup[0].telefono && String(dup[0].telefono) === tel) fields.telefono = 'Teléfono ya registrado';
+        const primero = fields.correo ? 'Correo duplicado' : 'Teléfono duplicado';
+        return res.status(409).json({ error: primero, fields });
+      }
+    }
     const sets = [];
     const repl = { id: req.params.id };
-    if (parsed.nombre !== undefined) { sets.push('nombre=:nombre'); repl.nombre = parsed.nombre; }
-    if (parsed.telefono !== undefined) { sets.push('telefono=:tel'); repl.tel = parsed.telefono; }
-    if (parsed.correo !== undefined) { sets.push('correo=:correo'); repl.correo = parsed.correo; }
+    if (nombre !== undefined) { sets.push('nombre=:nombre'); repl.nombre = nombre; }
+    if (tel !== undefined) { sets.push('telefono=:tel'); repl.tel = tel; }
+    if (correo !== undefined) { sets.push('correo=:correo'); repl.correo = correo; }
     if (parsed.estado !== undefined) { sets.push('estado=:estado'); repl.estado = parsed.estado; }
     const [rows] = await sequelize.query(`UPDATE cliente SET ${sets.join(', ')} WHERE id_cliente=:id RETURNING *`, { replacements: repl });
     if (!rows[0]) return res.status(404).json({ error: 'Cliente no encontrado' });
-    await auditLog({ usuario_id: req.user.id, accion: 'cliente.actualizar', entidad: 'cliente', entidad_id: req.params.id, resultado: 'exito', detalle: parsed, ip: req.ip, userAgent: req.headers['user-agent'] });
+    await auditLog({ usuario_id: req.user.id, accion: 'cliente.actualizar', entidad: 'cliente', entidad_id: req.params.id, resultado: 'exito', detalle: { nombre, telefono: tel, correo, estado: parsed.estado }, ip: req.ip, userAgent: req.headers['user-agent'] });
     res.json(rows[0]);
   } catch (e) {
     if (e.name === 'ZodError') return res.status(400).json({ error: 'Validation failed', details: e.errors ?? e.issues });
-    if (e.code === '23505' || e.original?.code === '23505' || e.parent?.code === '23505') return res.status(409).json({ error: 'Correo duplicado' });
+    if (pgCode(e) === '23505') { const d = dup409(e); return res.status(409).json(d); }
     next(e);
   }
 });
