@@ -6,17 +6,30 @@ import { apiFetch } from '../services/api.js';
  * Backend deriva el rol del JWT (AGENTS §4.1), nunca del frontend.
  * Normaliza a minúsculas: 'admin' | 'supervisor' | 'cajero' | 'mesero' | 'inventario' | 'cocinero' | null
  */
+// Cache 5min: el rol casi no cambia y cada montaje pedía GET /me/rol.
+// Reduce presión sobre el readLimiter (causa de 429).
+const ROL_TTL_MS = 5 * 60 * 1000;
+let rolCache = { data: null, ts: 0 };
+export function __resetRolCache() { rolCache = { data: null, ts: 0 }; }
 export function useRol() {
-  const [rol, setRol] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [rol, setRol] = useState(() =>
+    Date.now() - rolCache.ts < ROL_TTL_MS ? rolCache.data : null,
+  );
+  const [loading, setLoading] = useState(() => !(Date.now() - rolCache.ts < ROL_TTL_MS && rolCache.data));
 
   useEffect(() => {
     let activo = true;
+    if (Date.now() - rolCache.ts < ROL_TTL_MS && rolCache.data) {
+      setRol(rolCache.data);
+      setLoading(false);
+      return () => { activo = false; };
+    }
     (async () => {
       try {
         const r = await apiFetch('/me/rol');
-        const nombre = String(r?.rol || '').trim().toLowerCase();
-        if (activo) setRol(nombre || null);
+        const nombre = String(r?.rol || '').trim().toLowerCase() || null;
+        if (nombre) rolCache = { data: nombre, ts: Date.now() };
+        if (activo) setRol(nombre);
       } catch {
         if (activo) setRol(null);
       } finally {

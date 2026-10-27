@@ -29,8 +29,9 @@ const env = {
   rateLimitWindowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS || '900000', 10),
   rateLimitMax: parseInt(process.env.RATE_LIMIT_MAX || '100', 10),
   // Límite generoso para GET idempotentes (polling operativo multi-pestaña).
-  // Default 600/15min ≈ 3 pestañas x 12 req/min sin llegar a 429.
-  rateLimitReadMax: parseInt(process.env.RATE_LIMIT_READ_MAX || '600', 10),
+  // Default 1500/15min: AdminDashboard hace ~8 req/15s (~480/15min por pestaña);
+  // con 2 pestañas + /me/* + focus se superaban los 600 históricos.
+  rateLimitReadMax: parseInt(process.env.RATE_LIMIT_READ_MAX || '1500', 10),
   monitoreoUrl: process.env.MONITOREO_URL || '',
   monitoreoApiKey: process.env.MONITOREO_API_KEY || '',
   monitoreoTimeoutMs: Number(process.env.MONITOREO_TIMEOUT_MS) > 0 ? Number(process.env.MONITOREO_TIMEOUT_MS) : 5000,
