@@ -1,5 +1,59 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+
+/**
+ * Deriva un nombre mostrable sin duplicar el email.
+ * Si no hay nombre en user_metadata, humaniza el prefijo del email:
+ * "molloemerson10@gmail.com" -> "Molloemerson10".
+ */
+export function nombreMostrable(metadataName, email) {
+  const n = String(metadataName || '').trim();
+  if (n) return n;
+  const prefix = String(email || '').split('@')[0] || '';
+  const words = prefix.replace(/[._-]+/g, ' ').trim();
+  if (!words) return 'Usuario';
+  return words
+    .split(/\s+/)
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(' ');
+}
+
+/** Agrupa "modulo.accion.resto" por módulo para el modal de perfil. */
+export function agruparPermisos(permisos = []) {
+  const map = new Map();
+  for (const p of permisos || []) {
+    const s = String(p);
+    const idx = s.indexOf('.');
+    const modulo = idx > 0 ? s.slice(0, idx) : 'general';
+    const accion = idx > 0 ? s.slice(idx + 1) : s;
+    if (!map.has(modulo)) map.set(modulo, []);
+    map.get(modulo).push(accion);
+  }
+  return [...map.entries()]
+    .map(([modulo, acciones]) => ({ modulo, acciones: [...new Set(acciones)].sort() }))
+    .sort((a, b) => a.modulo.localeCompare(b.modulo));
+}
+
+const ICONOS_MODULO = {
+  venta: 'bi-cart',
+  turno: 'bi-cash-register',
+  producto: 'bi-box',
+  inventario: 'bi-boxes',
+  pedido: 'bi-clipboard',
+  mesa: 'bi-grid-3x3',
+  pago: 'bi-credit-card',
+  usuario: 'bi-person-gear',
+  rol: 'bi-shield',
+  promocion: 'bi-tag',
+  configuracion: 'bi-gear',
+  auditoria: 'bi-shield-check',
+  devolucion: 'bi-arrow-counterclockwise',
+  integracion: 'bi-plug',
+  cliente: 'bi-people',
+};
+export function iconoModulo(modulo) {
+  return ICONOS_MODULO[String(modulo || '').toLowerCase()] || 'bi-key';
+}
 import { useAuth } from '../../context/AuthContext.jsx';
 import { usePermisos } from '../../context/PermisosContext.jsx';
 import { useRol } from '../../hooks/useRol.js';
@@ -35,9 +89,31 @@ export default function UserMenu() {
 
   const wrapRef = useRef(null);
 
-  const userName =
-    session?.user?.user_metadata?.name || session?.user?.email || 'Usuario';
   const email = session?.user?.email || '—';
+  const nombre = nombreMostrable(session?.user?.user_metadata?.name, session?.user?.email);
+  // Alias para trigger/aria: nombre mostrable (ya no duplica el email).
+  const userName = nombre;
+  const miembroDesde = (() => {
+    const raw = session?.user?.created_at;
+    if (!raw) return null;
+    const d = new Date(raw);
+    if (Number.isNaN(d.getTime())) return null;
+    return d.toLocaleDateString('es-BO', { day: 'numeric', month: 'short', year: 'numeric' });
+  })();
+
+  const grupos = useMemo(() => agruparPermisos(permisos), [permisos]);
+  const [expandidos, setExpandidos] = useState(() => new Set());
+  const [verTodos, setVerTodos] = useState(false);
+  const esExpandido = (modulo) =>
+    verTodos || expandidos.has(modulo) || (expandidos.size === 0 && grupos[0]?.modulo === modulo);
+  const toggleModulo = (modulo) => {
+    setExpandidos((prev) => {
+      const next = new Set(prev);
+      if (next.has(modulo)) next.delete(modulo);
+      else next.add(modulo);
+      return next;
+    });
+  };
 
   // Cerrar con Escape y con click fuera. Sin solapar llamadas.
   useEffect(() => {
@@ -58,6 +134,8 @@ export default function UserMenu() {
 
   const abrirPerfil = () => {
     setAbierto(false);
+    setExpandidos(new Set());
+    setVerTodos(false);
     setVerPerfil(true);
   };
 
@@ -161,36 +239,75 @@ export default function UserMenu() {
       )}
 
       <Modal show={verPerfil} onClose={() => setVerPerfil(false)} title="Mi perfil">
-        <dl className="user-menu-dl">
-          <div>
-            <dt>Nombre</dt>
-            <dd>{userName}</dd>
-          </div>
-          <div>
-            <dt>Email</dt>
-            <dd>{email}</dd>
-          </div>
-          <div>
-            <dt>Rol</dt>
-            <dd>{rol || '—'}</dd>
-          </div>
-          <div>
-            <dt>Permisos</dt>
-            <dd>
-              {permisos?.length ? (
-                <ul className="user-menu-permisos">
-                  {permisos.map((p) => (
-                    <li key={p}>
-                      <code>{p}</code>
-                    </li>
-                  ))}
-                </ul>
+        <div className="user-menu-card">
+          <Avatar name={nombre} size="lg" />
+          <div className="user-menu-card-info">
+            <div className="user-menu-card-name">{nombre}</div>
+            <div className="user-menu-card-email">{email}</div>
+            <div className="user-menu-card-meta">
+              {rol ? (
+                <span className={`user-menu-badge user-menu-badge--${String(rol).toLowerCase()}`}>
+                  {rol}
+                </span>
               ) : (
-                '—'
+                <span className="user-menu-badge">sin rol</span>
               )}
-            </dd>
+              <span className="user-menu-count">{permisos?.length || 0} permisos</span>
+              {miembroDesde && <span className="user-menu-desde">Desde {miembroDesde}</span>}
+            </div>
           </div>
-        </dl>
+        </div>
+
+        <div className="user-menu-perm-head">
+          <span>Permisos por módulo</span>
+          {grupos.length > 1 && (
+            <button
+              type="button"
+              className="user-menu-ver-todos"
+              onClick={() => setVerTodos((v) => !v)}
+              aria-expanded={verTodos}
+            >
+              {verTodos ? 'Ocultar' : 'Ver todos'}
+            </button>
+          )}
+        </div>
+        {grupos.length ? (
+          <div className="user-menu-grupos">
+            {grupos.map((g) => {
+              const expandido = esExpandido(g.modulo);
+              return (
+                <div key={g.modulo} className="user-menu-grupo">
+                  <button
+                    type="button"
+                    className="user-menu-grupo-btn"
+                    aria-expanded={expandido}
+                    aria-controls={`perm-${g.modulo}`}
+                    onClick={() => toggleModulo(g.modulo)}
+                  >
+                    <i className={`bi ${iconoModulo(g.modulo)}`} aria-hidden="true"></i>
+                    <span className="user-menu-grupo-nombre">{g.modulo}</span>
+                    <span className="user-menu-grupo-count">{g.acciones.length}</span>
+                    <i
+                      className={`bi ${expandido ? 'bi-chevron-up' : 'bi-chevron-down'}`}
+                      aria-hidden="true"
+                    ></i>
+                  </button>
+                  {expandido && (
+                    <ul id={`perm-${g.modulo}`} className="user-menu-acciones">
+                      {g.acciones.map((a) => (
+                        <li key={a}>
+                          <span>{a.replace(/\./g, ' · ')}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <p className="user-menu-hint">Sin permisos asignados.</p>
+        )}
         <div className="user-menu-hint">
           Tus datos de acceso se derivan de tu sesión. Para cambios de rol o permisos contacta a un administrador.
         </div>

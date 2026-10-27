@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
-import UserMenu from '../UserMenu.jsx';
+import UserMenu, { nombreMostrable, agruparPermisos } from '../UserMenu.jsx';
 
 vi.mock('../../../context/AuthContext.jsx', () => ({
   useAuth: () => ({
@@ -66,5 +66,37 @@ describe('UserMenu (avatar M universal)', () => {
     expect(screen.getByRole('menu')).toBeInTheDocument();
     await userEvent.keyboard('{Escape}');
     expect(screen.queryByRole('menu')).not.toBeInTheDocument();
+  });
+
+  it('no duplica el email como nombre y agrupa permisos por módulo', async () => {
+    renderMenu();
+    await userEvent.click(screen.getByRole('button', { name: /menú de usuario/i }));
+    await userEvent.click(screen.getByRole('menuitem', { name: /mi perfil/i }));
+    // Tarjeta: nombre humanizado + email una sola vez como email.
+    expect(screen.getByText('Maria')).toBeInTheDocument();
+    expect(screen.getByText('maria@heladeria.com')).toBeInTheDocument();
+    // Permisos agrupados: módulo visible, acción sin prefijo.
+    expect(screen.getByText('Permisos por módulo')).toBeInTheDocument();
+    expect(screen.getByText('venta')).toBeInTheDocument();
+    expect(screen.getByText('consultar')).toBeInTheDocument();
+    expect(screen.queryByText('venta.consultar')).not.toBeInTheDocument();
+  });
+});
+
+describe('nombreMostrable', () => {
+  it('usa el nombre cuando existe', () => {
+    expect(nombreMostrable(' Emerson ', 'molloemerson10@gmail.com')).toBe('Emerson');
+  });
+  it('humaniza el prefijo del email cuando no hay nombre', () => {
+    expect(nombreMostrable('', 'molloemerson10@gmail.com')).toBe('Molloemerson10');
+    expect(nombreMostrable(null, 'maria.perez@heladeria.com')).toBe('Maria Perez');
+  });
+});
+
+describe('agruparPermisos', () => {
+  it('agrupa por módulo y ordena', () => {
+    const grupos = agruparPermisos(['venta.crear', 'venta.consultar', 'turno.consultar', 'venta.consultar']);
+    expect(grupos.map((g) => g.modulo)).toEqual(['turno', 'venta']);
+    expect(grupos.find((g) => g.modulo === 'venta').acciones).toEqual(['consultar', 'crear']);
   });
 });
