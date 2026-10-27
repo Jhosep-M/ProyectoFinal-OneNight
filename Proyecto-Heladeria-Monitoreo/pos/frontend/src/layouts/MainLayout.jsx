@@ -1,10 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import Sidebar from './Sidebar.jsx';
 import Header from './Header.jsx';
+import { formatearHoyBolivia } from '../utils/format.js';
 
 const TITULOS = {
-  '/dashboard': { title: 'Panel Principal', breadcrumb: 'Hoy, 28 sept 2026' },
+  '/dashboard': { title: 'Panel Principal', breadcrumb: null },
   '/ventas': { title: 'Punto de Venta', breadcrumb: 'Nueva venta' },
   '/ventas/historial': { title: 'Historial de Ventas', breadcrumb: 'Ventas' },
   '/caja': { title: 'Caja / Turno Actual', breadcrumb: 'Turno Mañana' },
@@ -26,8 +27,11 @@ export default function MainLayout() {
   const location = useLocation();
   const [override, setOverride] = useState(null);
   const [menuAbierto, setMenuAbierto] = useState(false);
+  const hoyBo = useMemo(() => formatearHoyBolivia(), []);
   const base = TITULOS[location.pathname] || { title: 'Helados Pariente', breadcrumb: '' };
-  const { title, breadcrumb } = { ...base, ...(override || {}) };
+  const resuelto = { ...base };
+  if (location.pathname === '/dashboard' && !resuelto.breadcrumb) resuelto.breadcrumb = hoyBo;
+  const { title, breadcrumb } = { ...resuelto, ...(override || {}) };
 
   // En móvil el menú es un drawer: se cierra al navegar.
   useEffect(() => { setMenuAbierto(false); }, [location.pathname]);
