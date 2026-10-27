@@ -11,6 +11,11 @@ router.use(authenticateJWT);
 
 router.get('/', authorize('pedido.consultar'), async (_req, res, next) => {
   try {
+    // Mig 027 self-heal: repara listos huérfanos antes de leer para que
+    // Cocina nunca reciba listo con fecha_listo null (contador infinito).
+    await sequelize.query(
+      `UPDATE pedido SET fecha_listo=NOW() WHERE estado='listo' AND fecha_listo IS NULL`
+    );
     // mesa no tiene columna nombre (solo numero/estado) — usar numero.
     // pedido tampoco tiene columna total: se calcula desde detalle_pedido.
     // origen='venta_directa' = espejo de venta ya cobrada (solo cocina, no cobrable).

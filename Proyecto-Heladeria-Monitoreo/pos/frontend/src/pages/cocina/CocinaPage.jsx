@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { listarPedidos, actualizarEstadoPedido, verPedido } from '../../services/pedidosService.js';
 import { useAutoRefresh } from '../../hooks/useAutoRefresh.js';
 import Card from '../../components/common/Card.jsx';
@@ -33,17 +33,34 @@ const fechaListoMs = (p) => {
 
 const esListo = (p) => p?.estado === 'listo';
 
-const minutosEspera = (p) => {
+// Congelado local (defensa mig 027): si el backend devuelve listo sin
+// fecha_listo (dato huérfano), se congela a la primera hora vista para que
+// el polling de 15s no lo haga crecer. No usa Date.now() en cada render.
+function useCongelados() {
+  const ref = useRef(new Map());
+  const congelar = (p) => {
+    if (!esListo(p)) return 0;
+    const srv = fechaListoMs(p);
+    if (srv) return srv;
+    const id = p.id_pedido;
+    if (!ref.current.has(id)) ref.current.set(id, Date.now());
+    return ref.current.get(id);
+  };
+  return congelar;
+}
+
+const minutosEsperaConFin = (p, finMs) => {
   const ms = horaMs(p);
   if (!ms) return 0;
-  const fin = esListo(p) ? fechaListoMs(p) : 0;
+  const fin = esListo(p) ? (finMs || fechaListoMs(p) || 0) : 0;
   const end = fin || Date.now();
   return Math.max(0, Math.round((end - ms) / 60000));
 };
 
-const textoEspera = (p) => {
-  const espera = minutosEspera(p);
-  return esListo(p) && fechaListoMs(p) ? `tardó ${espera} min` : `${espera} min en espera`;
+const textoEsperaConFin = (p, finMs) => {
+  const espera = minutosEsperaConFin(p, finMs);
+  // Listo SIEMPRE dice "tardó", incluso huérfano (fin local). Nunca "en espera".
+  return esListo(p) ? `tardó ${espera} min` : `${espera} min en espera`;
 };
 
 export default function CocinaPage() {
@@ -53,6 +70,7 @@ export default function CocinaPage() {
   const [alert, setAlert] = useState(null);
   const [avanzando, setAvanzando] = useState(null);
   const [printPedido, setPrintPedido] = useState(null);
+  const congelar = useCongelados();
 
   const recargar = async () => {
     try {
@@ -61,7 +79,14 @@ export default function CocinaPage() {
       // Pendientes primero (prioridad cocina), listos al final; dentro de
       // cada grupo, más viejos primero.
       list.sort((a, b) => (esListo(a) ? 1 : 0) - (esListo(b) ? 1 : 0) || horaMs(a) - horaMs(b));
-      setPedidos(list);
+      setPedidos((prev) => {
+        const prevById = new Map(prev.map((x) => [x.id_pedido, x]));
+        return list.map((p) => {
+          const old = prevById.get(p.id_pedido);
+          if (old && esListo(p) && !p.fecha_listo && old.fecha_listo) return { ...p, fecha_listo: old.fecha_listo };
+          return p;
+        });
+      });
       // Detalle de productos por pedido (best-effort, no bloquea la lista).
       const activos = list.filter((p) => ACTIVOS.includes(p.estado)).slice(0, 20);
       const res = await Promise.all(
@@ -149,7 +174,8 @@ export default function CocinaPage() {
             <tbody>
               {activos.map((p) => {
                 const det = detalles[p.id_pedido] || p.detalles || [];
-                const espera = minutosEspera(p);
+                const finCongelado = congelar(p);
+                const espera = minutosEsperaConFin(p, finCongelado);
                 const listo = esListo(p);
                 const urgente = espera >= 10 && (p.estado === 'abierto' || p.estado === 'pendiente');
                 return (
@@ -164,7 +190,7 @@ export default function CocinaPage() {
                   </td>
                   <td>
                     <span style={urgente ? { color: 'var(--error)', fontWeight: 700 } : undefined}>
-                      {textoEspera(p)}
+                      {textoEsperaConFin(p, finCongelado)}
                     </span>
                   </td>
                   <td style={{ fontFamily: 'var(--bs-font-numeric)', fontVariantNumeric: 'tabular-nums' }}>{fmtMoney(p.total)}</td>

@@ -84,6 +84,17 @@ describe('CocinaPage (HU-04)', () => {
     expect(await screen.findByText(/tardó 12 min/i)).toBeInTheDocument();
   });
 
+  it('listo sin fecha_listo (huérfano) se congela y dice tardó, no sigue en espera', async () => {
+    const base = new Date('2026-10-26T10:00:00Z').toISOString();
+    mocks.mockListarPedidos.mockResolvedValue([
+      { id_pedido: 'p-huerfano', mesa_numero: null, estado: 'listo', total: 48, fecha: base, fecha_listo: null },
+    ]);
+    mocks.mockVerPedido.mockResolvedValue({ id_pedido: 'p-huerfano', detalles: [] });
+    renderCocina();
+    expect(await screen.findByText(/tardó \d+ min/i)).toBeInTheDocument();
+    expect(screen.queryByText(/min en espera/i)).not.toBeInTheDocument();
+  });
+
   it('no llama a ventas ni muestra cobrar', async () => {
     renderCocina();
     await screen.findByRole('heading', { name: /^Cocina$/ });

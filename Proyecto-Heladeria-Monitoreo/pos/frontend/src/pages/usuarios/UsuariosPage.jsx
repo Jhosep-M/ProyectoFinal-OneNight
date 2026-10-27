@@ -15,6 +15,7 @@ export default function UsuariosPage() {
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState(empty);
   const [editando, setEditando] = useState(null);
+  const [verPassword, setVerPassword] = useState(false);
   const [alert, setAlert] = useState(null);
 
   const recargar = useCallback(async (silent = false) => {
@@ -66,6 +67,7 @@ export default function UsuariosPage() {
       }
       setForm(empty);
       setEditando(null);
+      setVerPassword(false);
       await recargar(true);
     } catch (e2) { setAlert({ tone: 'error', message: e2.message }); }
   };
@@ -75,7 +77,7 @@ export default function UsuariosPage() {
     setForm({ nombre: u.nombre, email: u.email, password: '', rol: u.rol || '' });
   };
 
-  const cancelar = () => { setEditando(null); setForm(empty); };
+  const cancelar = () => { setEditando(null); setForm(empty); setVerPassword(false); };
 
   const eliminar = async (u) => {
     if (!window.confirm(`¿Eliminar a ${u.nombre} (${u.email})? Desaparecerá de la lista. Si tiene historial, se desactiva en vez de borrarse.`)) return;
@@ -104,7 +106,7 @@ export default function UsuariosPage() {
             <Input placeholder="nombre" value={form.nombre} onChange={(e) => setForm({ ...form, nombre: e.target.value })} required />
             <Input placeholder="email" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required />
           </div>
-          <div className="row-inline">
+          <div className="row-inline" style={{ alignItems: 'center' }}>
             <Select
               value={form.rol}
               onChange={(e) => setForm({ ...form, rol: e.target.value })}
@@ -115,16 +117,53 @@ export default function UsuariosPage() {
                 <option key={r.id_rol} value={r.nombre}>{r.nombre}</option>
               ))}
             </Select>
-            <Input
-              placeholder={editando ? 'nueva contraseña (opcional)' : 'contraseña (mín. 8)'}
-              type="password"
-              value={form.password}
-              onChange={(e) => setForm({ ...form, password: e.target.value })}
-              required={!editando}
-              minLength={editando ? undefined : 8}
-            />
-            <Button type="submit">{editando ? 'Guardar' : 'Crear'}</Button>
-            {editando && <Button type="button" variant="secondary" onClick={cancelar}>Cancelar</Button>}
+            <div style={{ position: 'relative' }}>
+              <Input
+                placeholder={editando ? 'nueva contraseña (opcional)' : 'contraseña (mín. 8)'}
+                type={verPassword ? 'text' : 'password'}
+                value={form.password}
+                onChange={(e) => setForm({ ...form, password: e.target.value })}
+                required={!editando}
+                minLength={editando ? undefined : 8}
+                style={{ paddingRight: 36 }}
+              />
+              <button
+                type="button"
+                aria-label={verPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                aria-pressed={verPassword}
+                title={verPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                onClick={() => setVerPassword((v) => !v)}
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  bottom: 12,
+                  right: 8,
+                  display: 'flex',
+                  alignItems: 'center',
+                  background: 'none',
+                  border: 'none',
+                  padding: 4,
+                  cursor: 'pointer',
+                  color: 'var(--ink-muted)',
+                }}
+              >
+                {verPassword ? (
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94" />
+                    <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19" />
+                    <path d="M14.12 14.12A3 3 0 1 1 9.88 9.88" />
+                    <line x1="2" y1="2" x2="22" y2="22" />
+                  </svg>
+                ) : (
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" />
+                    <circle cx="12" cy="12" r="3" />
+                  </svg>
+                )}
+              </button>
+            </div>
+            <Button type="submit" style={{ alignSelf: 'center', marginBottom: 12 }}>{editando ? 'Guardar' : 'Crear'}</Button>
+            {editando && <Button type="button" variant="secondary" onClick={cancelar} style={{ alignSelf: 'center', marginBottom: 12 }}>Cancelar</Button>}
           </div>
         </form>
       </Card>
