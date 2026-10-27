@@ -208,21 +208,32 @@ router.patch('/:id/estado', authorize('pedido.estado'), async (req, res, next) =
           { status: 409 }
         );
       }
+      // Migracion 026: fecha_listo congela el contador de Cocina.
+      // Cada query usa :estado UNA sola vez (sin CASE con placeholder
+      // duplicado): el stray ":estado" rompía PG con 42601 en prod.
+      // La rama se elige en JS según el destino ya validado.
       let rows;
       try {
-        [rows] = await sequelize.query(
-          // Migracion 026: fecha_listo congela el contador de Cocina.
-          // Solo se marca al llegar a 'listo'; el frontend usa
-          // fecha_listo - fecha en vez de NOW() - fecha.
-          `UPDATE pedido SET estado=:estado, fecha_listo=CASE WHEN :estado='listo' THEN COALESCE(fecha_listo, NOW()) ELSE fecha_listo END WHERE id_pedido=:id RETURNING *`,
-          { replacements: { estado: siguiente, id: pedidoId }, transaction: t }
-        );
+        if (siguiente === 'listo') {
+          [rows] = await sequelize.query(
+            `UPDATE pedido SET estado=:estado, fecha_listo=COALESCE(fecha_listo, NOW()) WHERE id_pedido=:id RETURNING *`,
+            { replacements: { estado: siguiente, id: pedidoId }, transaction: t }
+          );
+        } else {
+          [rows] = await sequelize.query(
+            `UPDATE pedido SET estado=:estado WHERE id_pedido=:id RETURNING *`,
+            { replacements: { estado: siguiente, id: pedidoId }, transaction: t }
+          );
+        }
       } catch (e) {
-        // Fallback si la columna no existe en el entorno (drift 026/027).
+        // Fallback si la columna no existe (drift 026/027, PG 42703) o si
+        // el driver/PG rechaza el placeholder (PG 42601, ":" suelto).
         const code = e?.original?.code || e?.parent?.code || e?.code;
         const msg = `${e?.message || ''} ${e?.original?.message || ''}`;
-        if (code !== '42703' && !/fecha_listo/.test(msg)) throw e;
-        console.warn('[orders] fallback sin fecha_listo: columna no existe');
+        const esDrift = code === '42703' || /fecha_listo/.test(msg);
+        const esSintaxis = code === '42601' || /syntax error at or near/i.test(msg);
+        if (!esDrift && !esSintaxis) throw e;
+        console.warn('[orders] fallback estado simple (drift/sintaxis fecha_listo)');
         [rows] = await sequelize.query(
           `UPDATE pedido SET estado=:estado WHERE id_pedido=:id RETURNING *`,
           { replacements: { estado: siguiente, id: pedidoId }, transaction: t }

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { listarPromociones } from '../services/promotionsService.js';
+import { usePermisos } from '../context/PermisosContext.jsx';
 
 export function esPromoVigente(p) {
   if (!p || p.estado !== 'activa') return false;
@@ -19,7 +20,12 @@ export function esPromoVigente(p) {
 
 export function usePromocionesVigentes() {
   const [map, setMap] = useState(new Map());
+  // Sin promocion.consultar (ej. rol cocina) no se pide nada: evita el 403
+  // en consola de Pedidos/Ventas para roles sin ese permiso.
+  const { tienePermiso, loading: permLoading } = usePermisos();
   useEffect(() => {
+    if (permLoading) return;
+    if (typeof tienePermiso === 'function' && !tienePermiso('promocion.consultar')) return;
     let viva = true;
     listarPromociones()
       .then((list) => {
@@ -36,7 +42,7 @@ export function usePromocionesVigentes() {
       })
       .catch(() => {});
     return () => { viva = false; };
-  }, []);
+  }, [permLoading, tienePermiso]);
   return map;
 }
 
