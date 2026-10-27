@@ -34,18 +34,29 @@ export default function TicketNotaVenta({ venta }) {
       </div>
       <div className="print-ticket__sep" aria-hidden="true">- - - - - - - - - - - - - - -</div>
       <div>
-        {items.map((it, i) => (
-          <div key={i} className="print-ticket__line">
-            <span>{it.cantidad} x {it.nombre}</span>
-            <span className="print-ticket__amount">{formatCurrency((Number(it.precio) || 0) * (Number(it.cantidad) || 0))}</span>
-          </div>
-        ))}
+        {items.map((it, i) => {
+          const pct = Number(it.porcentaje_descuento) || 0;
+          const original = it.precioOriginal != null ? Number(it.precioOriginal) || 0 : null;
+          const conPromo = pct > 0 && original != null && original > (Number(it.precio) || 0);
+          return (
+            <div key={i} className="print-ticket__line">
+              <span>{it.cantidad} x {it.nombre}{conPromo ? ` (-${pct}%)` : ''}</span>
+              <span className="print-ticket__amount">{formatCurrency((Number(it.precio) || 0) * (Number(it.cantidad) || 0))}</span>
+            </div>
+          );
+        })}
       </div>
       <div className="print-ticket__sep" aria-hidden="true">- - - - - - - - - - - - - - -</div>
       <div className="print-ticket__line print-ticket__total">
         <span>Subtotal</span>
-        <span className="print-ticket__amount">{formatCurrency(v.total ?? 0)}</span>
+        <span className="print-ticket__amount">{formatCurrency(v.subtotal ?? v.total ?? 0)}</span>
       </div>
+      {Number(v.descuento) > 0 && (
+        <div className="print-ticket__line">
+          <span>Descuento promociones</span>
+          <span className="print-ticket__amount">-{formatCurrency(v.descuento || 0)}</span>
+        </div>
+      )}
       <div className="print-ticket__line print-ticket__total">
         <span>Total</span>
         <span className="print-ticket__amount">{formatCurrency(v.total ?? 0)}</span>

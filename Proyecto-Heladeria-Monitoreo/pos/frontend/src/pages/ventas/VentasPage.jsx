@@ -8,7 +8,7 @@ import Skeleton from '../../components/ui/Skeleton.jsx';
 import { formatCurrency, formatTime } from '../../utils/format.js';
 import { resolveProductoImagen } from '../../utils/productoImagen.js';
 import { productosService, categoriasService } from '../../services/productosService.js';
-import { usePromocionesVigentes, precioConDescuento } from '../../hooks/usePromocionesVigentes.js';
+import { usePromocionesVigentes, precioConDescuento, calcularDescuentoTicket, precioFinalProducto } from '../../hooks/usePromocionesVigentes.js';
 import { crearVenta } from '../../services/ventasService.js';
 import { crearPedido } from '../../services/pedidosService.js';
 import { useAutoRefresh } from '../../hooks/useAutoRefresh.js';
@@ -143,10 +143,12 @@ export default function VentasPage() {
     );
   };
 
-  // Precios finales en Bs. Total = subtotal para que
-  // cuadre con registrar_venta(): pagos == subtotal - descuento.
-  const subtotal = ticket.reduce((sum, i) => sum + (Number(i.precio) || 0) * i.cantidad, 0);
-  const total = subtotal;
+  // Precios finales en Bs. bruto = suma a precio base (columna venta.subtotal),
+  // descuento = suma de promos vigentes aplicadas, neto = bruto - descuento.
+  // Cuadra con registrar_venta(): pagos == subtotal - descuento - canje.
+  const { bruto: subtotalBruto, neto: subtotalNeto, descuento: descuentoPromos } = calcularDescuentoTicket(ticket, promoMap);
+  const subtotal = subtotalBruto;
+  const total = subtotalNeto;
 
   const handleCobrar = async () => {
     if (ticket.length === 0) return;
@@ -197,20 +199,33 @@ export default function VentasPage() {
         turno_id: turnoActivo.id_turno || turnoActivo.id,
         items,
         pagos: pagosPayload,
-        descuento: 0,
+        descuento: descuentoPromos,
       };
       payload.cliente_id = cliente?.id_cliente || undefined;
       payload.puntos_canje = usarPuntos ? Number(puntosCaje) || 0 : 0;
       const ventaCreada = await crearVenta(payload);
       const ventaId = ventaCreada?.venta_id || ventaCreada?.id_venta || ventaCreada?.id || null;
       // Snapshot para nota de venta / comanda (no depende del ticket que se limpia).
+      // Guarda precio final con promo + trazabilidad del descuento para TicketNotaVenta.
       const snapshot = {
         id: ventaId,
         fecha: new Date().toISOString(),
         cajero: turnoActivo?.cajero_email || null,
         turno: turnoActivo.id_turno || turnoActivo.id,
         cliente: cliente?.nombre || null,
-        items: ticket.map((i) => ({ nombre: i.nombre, cantidad: i.cantidad, precio: Number(i.precio) || 0 })),
+        items: ticket.map((i) => {
+          const promo = promoMap.get(String(i.id_producto || i.id || ''));
+          const pct = promo ? Number(promo.porcentaje_descuento) || 0 : 0;
+          return {
+            nombre: i.nombre,
+            cantidad: i.cantidad,
+            precio: Number(precioFinalProducto(i, promoMap)) || 0,
+            precioOriginal: Number(i.precio) || 0,
+            porcentaje_descuento: pct,
+          };
+        }),
+        subtotal: subtotalBruto,
+        descuento: descuentoPromos,
         total: montoAPagar,
         metodoPago: metodosPago.find((m) => String(metodoIdDe(m)) === String(metodoPagoId))?.nombre || 'efectivo',
       };
@@ -496,23 +511,44 @@ export default function VentasPage() {
           ) : (
             <>
               <div className="d-flex flex-column gap-2 mb-3">
-                {ticket.map((i) => (
-                  <div key={i.id} className="d-flex align-items-center justify-content-between">
-                    <div>
-                      <div className="fw-semibold small">{i.nombre}</div>
-                      <div className="text-muted small">{formatCurrency(i.precio || 0)}</div>
+                {ticket.map((i) => {
+                  const promo = promoMap.get(String(i.id_producto || i.id || ''));
+                  const pct = promo ? Number(promo.porcentaje_descuento) || 0 : 0;
+                  const final = precioFinalProducto(i, promoMap);
+                  const conPromo = pct > 0;
+                  return (
+                    <div key={i.id} className="d-flex align-items-center justify-content-between">
+                      <div>
+                        <div className="fw-semibold small">
+                          {i.nombre} {conPromo && <Badge variant="success">-{pct}%</Badge>}
+                        </div>
+                        {conPromo ? (
+                          <div className="small">
+                            <span style={{ fontFamily: 'var(--bs-font-numeric)', fontVariantNumeric: 'tabular-nums' }}>{formatCurrency(final)}</span>
+                            <span className="text-muted ms-1" style={{ textDecoration: 'line-through', fontFamily: 'var(--bs-font-numeric)', fontVariantNumeric: 'tabular-nums' }}>{formatCurrency(i.precio || 0)}</span>
+                            <span className="text-muted"> × {i.cantidad} = </span>
+                            <span style={{ fontFamily: 'var(--bs-font-numeric)', fontVariantNumeric: 'tabular-nums' }}>{formatCurrency(final * i.cantidad)}</span>
+                          </div>
+                        ) : (
+                          <div className="text-muted small">
+                            <span style={{ fontFamily: 'var(--bs-font-numeric)', fontVariantNumeric: 'tabular-nums' }}>{formatCurrency(i.precio || 0)}</span>
+                            <span> × {i.cantidad} = </span>
+                            <span style={{ fontFamily: 'var(--bs-font-numeric)', fontVariantNumeric: 'tabular-nums' }}>{formatCurrency((Number(i.precio) || 0) * i.cantidad)}</span>
+                          </div>
+                        )}
+                      </div>
+                      <div className="d-flex align-items-center gap-2">
+                        <button className="btn btn-sm btn-outline-secondary" onClick={() => actualizarCantidad(i.id, -1)}>
+                          <i className="bi bi-dash"></i>
+                        </button>
+                        <span className="fw-semibold">{i.cantidad}</span>
+                        <button className="btn btn-sm btn-outline-secondary" onClick={() => actualizarCantidad(i.id, 1)}>
+                          <i className="bi bi-plus"></i>
+                        </button>
+                      </div>
                     </div>
-                    <div className="d-flex align-items-center gap-2">
-                      <button className="btn btn-sm btn-outline-secondary" onClick={() => actualizarCantidad(i.id, -1)}>
-                        <i className="bi bi-dash"></i>
-                      </button>
-                      <span className="fw-semibold">{i.cantidad}</span>
-                      <button className="btn btn-sm btn-outline-secondary" onClick={() => actualizarCantidad(i.id, 1)}>
-                        <i className="bi bi-plus"></i>
-                      </button>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
 
               <div style={{ borderTop: '1px dotted #D4C4B0' }} className="pt-3 mb-3"></div>
@@ -521,6 +557,12 @@ export default function VentasPage() {
                 <span className="text-muted">Subtotal</span>
                 <span style={{ fontFamily: 'var(--bs-font-numeric)', fontVariantNumeric: 'tabular-nums' }}>{formatCurrency(subtotal)}</span>
               </div>
+              {descuentoPromos > 0 && (
+                <div className="d-flex justify-content-between mb-1">
+                  <span className="text-muted">Descuento promociones</span>
+                  <span className="text-success" style={{ fontFamily: 'var(--bs-font-numeric)', fontVariantNumeric: 'tabular-nums' }}>-{formatCurrency(descuentoPromos)}</span>
+                </div>
+              )}
               <div className="d-flex justify-content-between mb-3">
                 <span className="fw-bold">Total</span>
                 <span className="fw-bold fs-5" style={{ fontFamily: 'var(--bs-font-numeric)', fontVariantNumeric: 'tabular-nums', color: '#8B6914' }}>
