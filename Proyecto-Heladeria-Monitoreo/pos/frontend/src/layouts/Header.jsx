@@ -1,11 +1,8 @@
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext.jsx';
-import Avatar from '../components/ui/Avatar.jsx';
+import UserMenu from '../components/ui/UserMenu.jsx';
 
 export default function Header({ title, breadcrumb, onMenu, menuAbierto = false }) {
-  const { session } = useAuth();
   const navigate = useNavigate();
-  const userName = session?.user?.user_metadata?.name || session?.user?.email || 'Usuario';
 
   return (
     <header className="header">
@@ -38,7 +35,7 @@ export default function Header({ title, breadcrumb, onMenu, menuAbierto = false 
             style={{ width: '8px', height: '8px', background: '#8B6914', top: '8px', right: '10px', border: '1.5px solid #fff' }}
           />
         </button>
-        <Avatar name={userName} size="md" />
+        <UserMenu />
       </div>
     </header>
   );
