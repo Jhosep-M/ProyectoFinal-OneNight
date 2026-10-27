@@ -4,7 +4,9 @@ import Card from '../../../components/ui/Card.jsx';
 import Badge from '../../../components/ui/Badge.jsx';
 import Skeleton from '../../../components/ui/Skeleton.jsx';
 import EmptyState from '../../../components/ui/EmptyState.jsx';
-import { formatCurrency, formatTime } from '../../../utils/format.js';
+import { esAyerBolivia, esHoyBolivia, formatCurrency, formatTime, horaEnBolivia } from '../../../utils/format.js';
+import VentasPorHora from '../../../components/dashboard/VentasPorHora.jsx';
+import { useAutoRefresh } from '../../../hooks/useAutoRefresh.js';
 import { listarVentas } from '../../../services/ventasService.js';
 import { listarMesas } from '../../../services/mesasService.js';
 import { listarPedidos } from '../../../services/pedidosService.js';
@@ -23,18 +25,11 @@ const normVenta = (v) => ({
 });
 
 function esHoy(fecha) {
-  if (!fecha) return false;
-  const d = new Date(fecha);
-  const hoy = new Date();
-  return d.getFullYear() === hoy.getFullYear() && d.getMonth() === hoy.getMonth() && d.getDate() === hoy.getDate();
+  return esHoyBolivia(fecha);
 }
 
 function esAyer(fecha) {
-  if (!fecha) return false;
-  const d = new Date(fecha);
-  const ayer = new Date();
-  ayer.setDate(ayer.getDate() - 1);
-  return d.getFullYear() === ayer.getFullYear() && d.getMonth() === ayer.getMonth() && d.getDate() === ayer.getDate();
+  return esAyerBolivia(fecha);
 }
 
 export default function AdminDashboard() {
@@ -84,11 +79,10 @@ export default function AdminDashboard() {
         if (activo) setLoading(false);
       }
     })();
-    const id = setInterval(() => { recargar().catch(() => {}); }, 15000);
-    const onFocus = () => { recargar().catch(() => {}); };
-    window.addEventListener('focus', onFocus);
-    return () => { activo = false; clearInterval(id); window.removeEventListener('focus', onFocus); };
+    return () => { activo = false; };
   }, [recargar]);
+  // Polling operativo silencioso 15s + revalidación en focus (AGENTS 15.2).
+  useAutoRefresh(recargar, { intervalMs: 15000, onFocus: true });
 
   const stats = useMemo(() => {
     const hoy = ventas.filter((v) => esHoy(v.fecha || v.created_at));
@@ -98,13 +92,17 @@ export default function AdminDashboard() {
     const totalAyer = ayer.filter((v) => v.estado !== 'anulado').reduce((s, v) => s + (v.total || 0), 0);
     const anuladas = hoy.filter((v) => v.estado === 'anulado').length;
     const delta = totalAyer > 0 ? ((totalHoy - totalAyer) / totalAyer) * 100 : null;
-    // Ventas por hora (0-23) para mini gráfico.
-    const porHora = Array.from({ length: 24 }, () => 0);
+    // Ventas por hora (0-23) en horario Bolivia para gráfico interactivo.
+    const porHora = Array.from({ length: 24 }, () => ({ total: 0, count: 0 }));
     validasHoy.forEach((v) => {
-      const d = new Date(v.fecha || v.created_at);
-      if (!Number.isNaN(d.getTime())) porHora[d.getHours()] += (v.total || 0);
+      const f = v.fecha || v.created_at;
+      const d = new Date(f);
+      if (Number.isNaN(d.getTime())) return;
+      const h = horaEnBolivia(f);
+      porHora[h].total += (v.total || 0);
+      porHora[h].count += 1;
     });
-    const maxHora = Math.max(1, ...porHora);
+    const maxHora = Math.max(1, ...porHora.map((x) => x.total));
     return { hoy, ayer, validasHoy, totalHoy, totalAyer, anuladas, delta, porHora, maxHora };
   }, [ventas]);
 
@@ -167,24 +165,7 @@ export default function AdminDashboard() {
               <h5 className="mb-0" style={{ fontFamily: 'var(--bs-font-serif)' }}>Ventas por hora (hoy)</h5>
               <Badge variant="secondary">{stats.validasHoy.length} ventas</Badge>
             </div>
-            <div className="d-flex align-items-end gap-1" style={{ height: '110px' }} role="img" aria-label="Ventas por hora">
-              {stats.porHora.map((v, h) => (
-                <div
-                  key={h}
-                  title={`${h}:00 — ${formatCurrency(v)}`}
-                  style={{
-                    flex: 1,
-                    height: `${Math.max(4, (v / stats.maxHora) * 100)}%`,
-                    background: v > 0 ? 'var(--bs-primary)' : 'var(--bs-tertiary-bg)',
-                    borderRadius: '4px',
-                    opacity: v > 0 ? 0.9 : 1,
-                  }}
-                />
-              ))}
-            </div>
-            <div className="d-flex justify-content-between text-muted small mt-1" style={{ fontVariantNumeric: 'tabular-nums' }}>
-              <span>00h</span><span>06h</span><span>12h</span><span>18h</span><span>23h</span>
-            </div>
+            <VentasPorHora porHora={stats.porHora} totalDia={stats.totalHoy} />
           </Card>
         </div>
         <div className="col-12 col-xl-5">
